@@ -1,25 +1,24 @@
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import { tmpdir } from 'node:os'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { getLogDir } from '../../setupFile'
 
-let logDir: string
-
-async function importLogger(level = '5', extraEnv: Record<string, string> = {}) {
-    vi.resetModules()
-    logDir = await mkdtemp(join(tmpdir(), 'tui-logs-'))
-    process.env.LOG_DIR = logDir
+async function importLogger(
+    level = '5',
+    extraEnv: Record<string, string> = {}
+) {
     process.env.LOG_LEVEL = level
+    process.env.LOG_FILE_DISABLED = 'false'
 
     for (const [key, value] of Object.entries(extraEnv)) {
         process.env[key] = value
     }
 
-    return await import('../../server/utils/logger')
+    return await import('../../../../server/utils/logger')
 }
 
 async function readLogLines() {
-    const logFile = join(logDir, 'server.log')
+    const logFile = join(getLogDir(), 'server.log')
     const contents = await readFile(logFile, 'utf8')
 
     return contents
@@ -29,19 +28,6 @@ async function readLogLines() {
 }
 
 describe('server logger', () => {
-    beforeEach(() => {})
-
-    afterEach(async () => {
-        vi.restoreAllMocks()
-        delete process.env.LOG_DIR
-        delete process.env.LOG_FILE
-        delete process.env.LOG_LEVEL
-
-        if (logDir) {
-            await rm(logDir, { recursive: true, force: true })
-        }
-    })
-
     it('writes log entries to a file with a msg field', async () => {
         const { logger } = await importLogger()
 
@@ -65,7 +51,9 @@ describe('server logger', () => {
 
         const logs = await readLogLines()
 
-        expect(logs[0]?.msg).toBe('Created user {"id":"user-1","username":"abc"}')
+        expect(logs[0]?.msg).toBe(
+            'Created user {"id":"user-1","username":"abc"}'
+        )
     })
 
     it('uses compact trace output without a stack trace', async () => {
@@ -105,8 +93,11 @@ describe('server logger', () => {
         logger.info('First message that should live in the first file')
         logger.info('Second message that should rotate the active file')
 
-        const activeLog = await readFile(join(logDir, 'server.log'), 'utf8')
-        const rotatedLog = await readFile(join(logDir, 'server.log.1'), 'utf8')
+        const activeLog = await readFile(join(getLogDir(), 'server.log'), 'utf8')
+        const rotatedLog = await readFile(
+            join(getLogDir(), 'server.log.1'),
+            'utf8'
+        )
 
         expect(activeLog).toContain('Second message')
         expect(rotatedLog).toContain('First message')
@@ -123,8 +114,27 @@ describe('server logger', () => {
         logger.info('Third message that becomes the active file')
         logger.info('Fourth message that should remove the oldest rotation')
 
-        const logFiles = await readdir(logDir)
+        const logFiles = await readdir(getLogDir())
 
-        expect(logFiles.sort()).toEqual(['server.log', 'server.log.1', 'server.log.2'])
+        expect(logFiles.sort()).toEqual([
+            'server.log',
+            'server.log.1',
+            'server.log.2',
+        ])
+    })
+
+    it('does not write to log file when file logs are turned off', async () => {
+        const { logger } = await importLogger('5', {
+            LOG_FILE_DISABLED: 'true',
+        })
+
+        logger.info('First message that will be rotated away eventually')
+        logger.info('Second message that becomes a rotated file')
+        logger.info('Third message that becomes the active file')
+        logger.info('Fourth message that should remove the oldest rotation')
+
+        const logFiles = await readdir(getLogDir())
+
+        expect(logFiles.sort()).toEqual([])
     })
 })

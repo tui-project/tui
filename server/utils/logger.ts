@@ -6,16 +6,19 @@ const logDir = process.env.LOG_DIR ?? join(process.cwd(), 'config', 'logs')
 const logFile = process.env.LOG_FILE ?? join(logDir, 'server.log')
 const logMaxBytes = Number(process.env.LOG_MAX_BYTES ?? 5 * 1024 * 1024)
 const logMaxFiles = Number(process.env.LOG_MAX_FILES ?? 5)
+const logFileDisabled = process.env.LOG_FILE_DISABLED === 'true'
 
 mkdirSync(logDir, { recursive: true })
 
 const baseLogger = createConsola({
-    level: process.env.LOG_LEVEL ? Number(process.env.LOG_LEVEL) : 5,
+    level: process.env.LOG_LEVEL ? Number(process.env.LOG_LEVEL) : 1,
 })
 
-baseLogger.addReporter({
-    log: writeFileLog,
-})
+if (!logFileDisabled) {
+    baseLogger.addReporter({
+        log: writeFileLog,
+    })
+}
 
 function writeFileLog(logObj: LogObject) {
     const line = JSON.stringify({

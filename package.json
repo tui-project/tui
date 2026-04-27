@@ -11,7 +11,10 @@
         "typecheck": "nuxt typecheck",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
-        "format": "exec prettier . --write"
+        "format": "exec prettier . --write",
+        "test": "vitest run",
+        "test:unit": "vitest run --project unit",
+        "test:e2e": "vitest run --project e2e"
     },
     "dependencies": {
         "@nuxt/eslint": "1.15.2",

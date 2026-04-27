@@ -7,15 +7,17 @@ export default defineConfig({
             {
                 test: {
                     name: 'unit',
-                    include: ['test/unit/*.{test,spec}.ts'],
+                    include: ['test/unit/**/*.{test,spec}.ts'],
                     environment: 'node',
+                    setupFiles: 'test/unit/setupFile.ts'
                 },
             },
             {
                 test: {
                     name: 'e2e',
-                    include: ['test/e2e/*.{test,spec}.ts'],
+                    include: ['test/e2e/**/*.{test,spec}.ts'],
                     environment: 'node',
+                    globalSetup: 'test/e2e/globalSetup.ts',
                 },
             },
             await defineVitestProject({
