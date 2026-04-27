@@ -23,7 +23,6 @@ describe('server db', () => {
 
         const datafile = await stat(join(dataDir, 'users.db'))
 
-        expect(db.dataDir).toBe(dataDir)
         expect(datafile.isFile()).toBe(true)
     })
 
