@@ -24,6 +24,10 @@ Prefer running the focused test first after a small change, then the full unit p
 - Keep route handlers thin. Validation, logging, and response shaping can live in the route; database interactions should go through repositories.
 - Existing route files use direct default exports with `defineEventHandler`.
 - Import explicit helpers such as `readBody` and `createError` from `h3` when needed.
+- For expected API error responses (for example validation errors or conflict states), prefer `setResponseStatus(event, <status>)` and return a JSON payload with this shape:
+    - `code`: stable machine-readable identifier
+    - `message`: human-readable summary
+- When returning expected API error responses, add a `warn` log with useful non-sensitive context.
 
 Example route pattern:
 
@@ -61,11 +65,13 @@ For setup status specifically:
 
 ## Tests
 
-Unit tests mirror the source tree under `test/unit/server`.
+API route tests should live under `test/e2e/server/api`.
+
+Unit tests should cover non-route modules (for example repositories and utilities) under `test/unit/server`.
 
 Examples:
 
-- `server/api/setup/status.get.ts` -> `test/unit/server/api/setup/status.get.test.ts`
+- `server/api/setup/status.get.ts` -> `test/e2e/server/api/setup/status.get.test.ts`
 - `server/repositories/user-repository.ts` -> `test/unit/server/repositories/user-repository.test.ts`
 - `server/utils/db.ts` -> `test/unit/server/utils/db.test.ts`
 
@@ -81,11 +87,7 @@ When testing modules that initialize the database:
 - Set `process.env.DATABASE_DIR` to a temp directory before import.
 - Remove the temp directory and delete env vars in `afterEach`.
 
-When testing Nitro route handlers directly in unit tests, stub `defineEventHandler` before importing the route:
-
-```ts
-vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
-```
+Do not add unit tests that import Nitro route handlers directly.
 
 ## Editing Notes
 

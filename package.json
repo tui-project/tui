@@ -14,7 +14,8 @@
         "format": "exec prettier . --write",
         "test": "vitest run",
         "test:unit": "vitest run --project unit",
-        "test:e2e": "vitest run --project e2e"
+        "test:e2e": "vitest run --project e2e",
+        "test:coverage": "vitest run --project unit --coverage"
     },
     "dependencies": {
         "@nuxt/eslint": "1.15.2",
@@ -30,6 +31,7 @@
     },
     "devDependencies": {
         "@nuxt/test-utils": "4.0.2",
+        "@vitest/coverage-v8": "4.1.5",
         "@vue/test-utils": "2.4.8",
         "eslint-config-prettier": "10.1.8",
         "happy-dom": "20.9.0",

@@ -1,11 +1,11 @@
-import { count } from '../../repositories/user-repository'
+import { userCount } from '../../repositories/user-repository'
 import { logger } from '../../utils/logger'
 
 export default defineEventHandler(async () => {
     logger.debug('Setup status request received.')
 
-    const userCount = await count()
-    const setupRequired = userCount === 0
+    const totalUsers = await userCount()
+    const setupRequired = totalUsers === 0
 
     if (setupRequired) {
         logger.info('Setup your Admin user to login in.')

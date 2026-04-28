@@ -1,12 +1,11 @@
 import { readFile, readdir } from 'node:fs/promises'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { getLogDir } from '../../setupFile'
 
-async function importLogger(
-    level = '5',
-    extraEnv: Record<string, string> = {}
-) {
+async function importLogger(level = '5', extraEnv: Record<string, string> = {}) {
     process.env.LOG_LEVEL = level
     process.env.LOG_FILE_DISABLED = 'false'
 
@@ -51,9 +50,7 @@ describe('server logger', () => {
 
         const logs = await readLogLines()
 
-        expect(logs[0]?.msg).toBe(
-            'Created user {"id":"user-1","username":"abc"}'
-        )
+        expect(logs[0]?.msg).toBe('Created user {"id":"user-1","username":"abc"}')
     })
 
     it('uses compact trace output without a stack trace', async () => {
@@ -94,10 +91,7 @@ describe('server logger', () => {
         logger.info('Second message that should rotate the active file')
 
         const activeLog = await readFile(join(getLogDir(), 'server.log'), 'utf8')
-        const rotatedLog = await readFile(
-            join(getLogDir(), 'server.log.1'),
-            'utf8'
-        )
+        const rotatedLog = await readFile(join(getLogDir(), 'server.log.1'), 'utf8')
 
         expect(activeLog).toContain('Second message')
         expect(rotatedLog).toContain('First message')
@@ -116,11 +110,7 @@ describe('server logger', () => {
 
         const logFiles = await readdir(getLogDir())
 
-        expect(logFiles.sort()).toEqual([
-            'server.log',
-            'server.log.1',
-            'server.log.2',
-        ])
+        expect(logFiles.sort()).toEqual(['server.log', 'server.log.1', 'server.log.2'])
     })
 
     it('does not write to log file when file logs are turned off', async () => {
@@ -136,5 +126,102 @@ describe('server logger', () => {
         const logFiles = await readdir(getLogDir())
 
         expect(logFiles.sort()).toEqual([])
+    })
+
+    it('serialises Error values using stack or message', async () => {
+        const { logger } = await importLogger()
+        const error = new Error('boom')
+        error.stack = undefined
+
+        logger.error('Operation failed', error)
+
+        const logs = await readLogLines()
+        expect(logs[0]?.msg).toContain('Operation failed boom')
+    })
+
+    it('does not rotate when rotation is disabled by config', async () => {
+        const { logger } = await importLogger('5', {
+            LOG_MAX_BYTES: '0',
+            LOG_MAX_FILES: '2',
+            LOG_FILE_DISABLED: 'false',
+        })
+
+        logger.info('one')
+        logger.info('two')
+
+        const logFiles = await readdir(getLogDir())
+        expect(logFiles.sort()).toEqual(['server.log'])
+    })
+
+    it('serialises primitive non-string values in msg', async () => {
+        const { logger } = await importLogger()
+
+        logger.info('User count', 42)
+
+        const logs = await readLogLines()
+        expect(logs[0]?.msg).toBe('User count 42')
+    })
+
+    it('does not rotate when log size stays below max bytes', async () => {
+        const { logger } = await importLogger('5', {
+            LOG_MAX_BYTES: '100000',
+            LOG_MAX_FILES: '2',
+            LOG_FILE_DISABLED: 'false',
+        })
+
+        logger.info('small message')
+
+        const logFiles = await readdir(getLogDir())
+        expect(logFiles.sort()).toEqual(['server.log'])
+    })
+
+    it('does not rotate when an existing log plus next write is still under max', async () => {
+        const { logger } = await importLogger('5', {
+            LOG_MAX_BYTES: '100000',
+            LOG_MAX_FILES: '2',
+            LOG_FILE_DISABLED: 'false',
+        })
+
+        logger.info('first small message')
+        logger.info('second small message')
+
+        const logFiles = await readdir(getLogDir())
+        expect(logFiles.sort()).toEqual(['server.log'])
+    })
+
+    it('uses default LOG_DIR when LOG_DIR is not set', async () => {
+        const originalCwd = process.cwd()
+        const tempCwd = mkdtempSync(join(tmpdir(), 'tui-unit-log-cwd-'))
+
+        try {
+            process.env.LOG_FILE_DISABLED = 'false'
+            delete process.env.LOG_DIR
+            process.chdir(tempCwd)
+            vi.resetModules()
+
+            const { logger } = await import('../../../../server/utils/logger')
+            logger.info('default log dir test')
+
+            const logFiles = await readdir(join(tempCwd, 'config', 'logs'))
+            expect(logFiles).toContain('server.log')
+        } finally {
+            process.chdir(originalCwd)
+        }
+    })
+
+    it('uses default LOG_LEVEL when LOG_LEVEL is not set', async () => {
+        process.env.LOG_DIR = getLogDir()
+        process.env.LOG_FILE_DISABLED = 'false'
+        delete process.env.LOG_LEVEL
+
+        vi.resetModules()
+        const { logger } = await import('../../../../server/utils/logger')
+
+        logger.debug('hidden at default level')
+        logger.error('visible at default level')
+
+        const logs = await readLogLines()
+        expect(logs).toHaveLength(1)
+        expect(logs[0]?.msg).toBe('visible at default level')
     })
 })

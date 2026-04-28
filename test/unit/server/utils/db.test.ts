@@ -1,6 +1,8 @@
-import { readFile, stat } from 'node:fs/promises'
+import { mkdtempSync } from 'node:fs'
+import { readFile, rm, stat } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { getDataDir } from '../../setupFile'
 
 describe('server db', () => {
@@ -33,5 +35,25 @@ describe('server db', () => {
             passwordHash: 'hashed-password',
         })
         expect(datafile).toContain('"username":"abc"')
+    })
+
+    it('falls back to cwd config/database when DATABASE_DIR is not set', async () => {
+        const originalCwd = process.cwd()
+        const tempCwd = mkdtempSync(join(tmpdir(), 'tui-unit-cwd-'))
+
+        try {
+            delete process.env.DATABASE_DIR
+            process.chdir(tempCwd)
+            vi.resetModules()
+
+            const db = await import('../../../../server/utils/db')
+            await db.userCollection.autoloadPromise
+
+            const datafile = await stat(join(tempCwd, 'config', 'database', 'users.db'))
+            expect(datafile.isFile()).toBe(true)
+        } finally {
+            process.chdir(originalCwd)
+            await rm(tempCwd, { recursive: true, force: true })
+        }
     })
 })

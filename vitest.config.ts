@@ -9,7 +9,7 @@ export default defineConfig({
                     name: 'unit',
                     include: ['test/unit/**/*.{test,spec}.ts'],
                     environment: 'node',
-                    setupFiles: 'test/unit/setupFile.ts'
+                    setupFiles: 'test/unit/setupFile.ts',
                 },
             },
             {
@@ -17,7 +17,8 @@ export default defineConfig({
                     name: 'e2e',
                     include: ['test/e2e/**/*.{test,spec}.ts'],
                     environment: 'node',
-                    globalSetup: 'test/e2e/globalSetup.ts',
+                    fileParallelism: false,
+                    maxWorkers: 1,
                 },
             },
             await defineVitestProject({

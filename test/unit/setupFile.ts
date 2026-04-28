@@ -36,8 +36,5 @@ afterEach(async () => {
     delete process.env.LOG_FILE_DISABLED
     delete process.env.LOG_LEVEL
 
-    await Promise.all([
-        rm(dataDir, { recursive: true, force: true }),
-        rm(logDir, { recursive: true, force: true }),
-    ])
+    await Promise.all([rm(dataDir, { recursive: true, force: true }), rm(logDir, { recursive: true, force: true })])
 })
