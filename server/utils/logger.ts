@@ -11,7 +11,7 @@ const logFileDisabled = process.env.LOG_FILE_DISABLED === 'true'
 mkdirSync(logDir, { recursive: true })
 
 const baseLogger = createConsola({
-    level: process.env.LOG_LEVEL ? Number(process.env.LOG_LEVEL) : 1,
+    level: process.env.LOG_LEVEL ? Number(process.env.LOG_LEVEL) : 3,
 })
 
 if (!logFileDisabled) {
@@ -21,12 +21,23 @@ if (!logFileDisabled) {
 }
 
 function writeFileLog(logObj: LogObject) {
-    const line = JSON.stringify({
+    const context = logObj.args.filter((arg) => typeof arg === 'object' && arg !== null && !(arg instanceof Error))
+    const messageParts = logObj.args
+        .filter((arg) => typeof arg !== 'object' || arg === null || arg instanceof Error)
+        .map(formatLogArg)
+
+    const entry: Record<string, unknown> = {
         time: logObj.date,
         type: logObj.type,
         tag: logObj.tag,
-        msg: logObj.args.map(formatLogArg).join(' '),
-    })
+        msg: messageParts.join(' '),
+    }
+
+    if (context.length > 0) {
+        entry.context = context.length === 1 ? context[0] : context
+    }
+
+    const line = JSON.stringify(entry)
 
     rotateLogFileIfNeeded(Buffer.byteLength(`${line}\n`))
     appendFileSync(logFile, `${line}\n`)
@@ -83,7 +94,7 @@ function writeCompactTrace(...args: unknown[]) {
     serverLogger._log({
         args,
         date: new Date(),
-        level: 5,
+        level: baseLogger.level,
         tag: 'server',
         type: 'debug',
     })

@@ -43,14 +43,25 @@ describe('server logger', () => {
         expect(logs[0]).not.toHaveProperty('args')
     })
 
-    it('serializes additional values into the msg field', async () => {
+    it('serializes additional values into the msg field and context', async () => {
         const { logger } = await importLogger()
 
         logger.info('Created user', { id: 'user-1', username: 'abc' })
 
         const logs = await readLogLines()
 
-        expect(logs[0]?.msg).toBe('Created user {"id":"user-1","username":"abc"}')
+        expect(logs[0]?.msg).toBe('Created user')
+        expect(logs[0]?.context).toEqual({ id: 'user-1', username: 'abc' })
+    })
+
+    it('serializes multiple context objects as an array', async () => {
+        const { logger } = await importLogger()
+
+        logger.info('Context batch', { id: 'user-1' }, { source: 'setup' })
+
+        const logs = await readLogLines()
+        expect(logs[0]?.msg).toBe('Context batch')
+        expect(logs[0]?.context).toEqual([{ id: 'user-1' }, { source: 'setup' }])
     })
 
     it('uses compact trace output without a stack trace', async () => {
@@ -160,6 +171,15 @@ describe('server logger', () => {
 
         const logs = await readLogLines()
         expect(logs[0]?.msg).toBe('User count 42')
+    })
+
+    it('serialises null values in msg', async () => {
+        const { logger } = await importLogger()
+
+        logger.info('Nullable value', null)
+
+        const logs = await readLogLines()
+        expect(logs[0]?.msg).toBe('Nullable value null')
     })
 
     it('does not rotate when log size stays below max bytes', async () => {

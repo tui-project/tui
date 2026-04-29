@@ -89,6 +89,11 @@ When testing modules that initialize the database:
 
 Do not add unit tests that import Nitro route handlers directly.
 
+Coverage expectations:
+
+- For newly added or modified runtime code, add or update tests so touched files keep 100% line, statement, and branch coverage.
+- If a file is intentionally excluded from coverage (for example model/type-only files), document the reason in configuration comments.
+
 ## Editing Notes
 
 - Keep changes small and aligned with existing patterns.

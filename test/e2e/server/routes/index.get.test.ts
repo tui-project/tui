@@ -23,6 +23,11 @@ describe('GET /', async () => {
         expect(response).toContain('Setup Page')
     })
 
+    it('redirects non-setup routes to /setup when setup is required', async () => {
+        const response = await $fetch('/login', { responseType: 'text' })
+        expect(response).toContain('Setup Page')
+    })
+
     it('redirects to /login when setup is completed', async () => {
         await $fetch('/api/setup', {
             method: 'POST',
