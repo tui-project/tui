@@ -15,7 +15,7 @@
         "test": "vitest run",
         "test:unit": "vitest run --project unit",
         "test:e2e": "vitest run --project e2e",
-        "test:coverage": "vitest run --project unit --coverage"
+        "test:coverage": "vitest run --project unit --project nuxt --coverage"
     },
     "dependencies": {
         "@nuxt/eslint": "1.15.2",
@@ -27,7 +27,8 @@
         "nuxt": "4.4.2",
         "tailwindcss": "4.2.4",
         "vue": "3.5.33",
-        "vue-router": "5.0.6"
+        "vue-router": "5.0.6",
+        "zod": "4.3.6"
     },
     "devDependencies": {
         "@nuxt/test-utils": "4.0.2",

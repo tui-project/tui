@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID, scrypt as scryptCallback } from 'node:crypto'
 import { promisify } from 'node:util'
-import { readBody, setResponseStatus } from 'h3'
+import { createError, readBody } from 'h3'
 import { userCount, userCreate } from '../repositories/user-repository'
 import { logger } from '../utils/logger'
 
@@ -33,11 +33,10 @@ export default defineEventHandler(async (event) => {
 
     if (totalUsers > 0) {
         logger.warn('Rejected setup request because setup is already completed.', { userCount: totalUsers })
-        setResponseStatus(event, 409)
-        return {
-            code: 'setup_completed',
-            message: 'setup already completed',
-        }
+        throw createError({
+            statusCode: 409,
+            message: 'setup_completed',
+        })
     }
 
     const request = await readBody<SetupRequest>(event)
@@ -46,20 +45,18 @@ export default defineEventHandler(async (event) => {
 
     if (!username || !password) {
         logger.warn('Rejected setup request with missing required fields.', { hasUsername: Boolean(username), hasPassword: Boolean(password) })
-        setResponseStatus(event, 400)
-        return {
-            code: 'invalid_request',
-            message: 'username and password are required',
-        }
+        throw createError({
+            statusCode: 400,
+            message: 'invalid_request',
+        })
     }
 
     if (!isStrongPassword(password)) {
         logger.warn('Rejected setup request because password does not meet strength requirements.', { username })
-        setResponseStatus(event, 400)
-        return {
-            code: 'weak_password',
-            message: 'password must include lower, upper, digit, and special characters',
-        }
+        throw createError({
+            statusCode: 400,
+            message: 'weak_password',
+        })
     }
 
     const passwordHash = await hashPassword(password)

@@ -22,9 +22,7 @@ if (!logFileDisabled) {
 
 function writeFileLog(logObj: LogObject) {
     const context = logObj.args.filter((arg) => typeof arg === 'object' && arg !== null && !(arg instanceof Error))
-    const messageParts = logObj.args
-        .filter((arg) => typeof arg !== 'object' || arg === null || arg instanceof Error)
-        .map(formatLogArg)
+    const messageParts = logObj.args.filter((arg) => typeof arg !== 'object' || arg === null || arg instanceof Error).map(formatLogArg)
 
     const entry: Record<string, unknown> = {
         time: logObj.date,

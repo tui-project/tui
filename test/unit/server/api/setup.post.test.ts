@@ -7,7 +7,7 @@ const logger = {
 }
 
 const readBody = vi.fn<() => Promise<{ username?: string; password?: string }>>()
-const setResponseStatus = vi.fn()
+const createError = vi.fn((payload: unknown) => payload)
 const userCount = vi.fn<() => Promise<number>>()
 const userCreate = vi.fn<() => Promise<{ id: string; username: string; passwordHash: string }>>()
 
@@ -19,8 +19,8 @@ beforeEach(() => {
 
 async function loadHandler() {
     vi.doMock('h3', () => ({
+        createError,
         readBody,
-        setResponseStatus,
     }))
     vi.doMock('../../../../server/repositories/user-repository', () => ({
         userCount,
@@ -41,11 +41,14 @@ describe('POST /api/setup route handler', () => {
         const handler = await loadHandler()
         const event = {} as never
 
-        await expect(handler(event)).resolves.toEqual({
-            code: 'setup_completed',
-            message: 'setup already completed',
+        await expect(handler(event)).rejects.toEqual({
+            statusCode: 409,
+            message: 'setup_completed',
         })
-        expect(setResponseStatus).toHaveBeenCalledWith(event, 409)
+        expect(createError).toHaveBeenCalledWith({
+            statusCode: 409,
+            message: 'setup_completed',
+        })
         expect(logger.warn).toHaveBeenCalled()
     })
 
@@ -56,11 +59,14 @@ describe('POST /api/setup route handler', () => {
         const handler = await loadHandler()
         const event = {} as never
 
-        await expect(handler(event)).resolves.toEqual({
-            code: 'invalid_request',
-            message: 'username and password are required',
+        await expect(handler(event)).rejects.toEqual({
+            statusCode: 400,
+            message: 'invalid_request',
         })
-        expect(setResponseStatus).toHaveBeenCalledWith(event, 400)
+        expect(createError).toHaveBeenCalledWith({
+            statusCode: 400,
+            message: 'invalid_request',
+        })
         expect(logger.warn).toHaveBeenCalled()
     })
 
@@ -71,11 +77,14 @@ describe('POST /api/setup route handler', () => {
         const handler = await loadHandler()
         const event = {} as never
 
-        await expect(handler(event)).resolves.toEqual({
-            code: 'weak_password',
-            message: 'password must include lower, upper, digit, and special characters',
+        await expect(handler(event)).rejects.toEqual({
+            statusCode: 400,
+            message: 'weak_password',
         })
-        expect(setResponseStatus).toHaveBeenCalledWith(event, 400)
+        expect(createError).toHaveBeenCalledWith({
+            statusCode: 400,
+            message: 'weak_password',
+        })
         expect(logger.warn).toHaveBeenCalled()
     })
 

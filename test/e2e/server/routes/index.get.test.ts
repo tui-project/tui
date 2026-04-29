@@ -20,12 +20,12 @@ describe('GET /', async () => {
 
     it('redirects to /setup when setup is required', async () => {
         const response = await $fetch('/', { responseType: 'text' })
-        expect(response).toContain('Setup Page')
+        expect(response).toContain('Create your admin user account.')
     })
 
     it('redirects non-setup routes to /setup when setup is required', async () => {
         const response = await $fetch('/login', { responseType: 'text' })
-        expect(response).toContain('Setup Page')
+        expect(response).toContain('Create your admin user account.')
     })
 
     it('redirects to /login when setup is completed', async () => {

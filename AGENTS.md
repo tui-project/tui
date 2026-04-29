@@ -67,6 +67,14 @@ For setup status specifically:
 
 API route tests should live under `test/e2e/server/api`.
 
+Nuxt browser e2e page tests should use `@nuxt/test-utils/e2e` with `vitest` (not `@playwright/test` runner). Use Playwright page APIs for interactions and selectors.
+
+For browser assertions in e2e page tests:
+
+- Prefer selector-based checks such as `waitForSelector`, `getByRole`, `getByPlaceholder`, and `locator`.
+- Avoid broad assertions against `page.textContent('body')`; assert targeted UI content via selectors instead.
+- For repeated input scenarios, prefer parameterized tests with `it.each(...)` over manual `for` loops inside a single test.
+
 Unit tests should cover non-route modules (for example repositories and utilities) under `test/unit/server`.
 
 Examples:

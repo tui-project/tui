@@ -5,7 +5,7 @@ export default defineConfig({
     test: {
         coverage: {
             provider: 'v8',
-            include: ['server/**/*.{ts,js}'],
+            include: ['server/**/*.{ts,js}', 'app/**/*'],
             exclude: ['server/**/*.d.ts'],
             reporter: ['text', 'html'],
         },
@@ -30,7 +30,7 @@ export default defineConfig({
             await defineVitestProject({
                 test: {
                     name: 'nuxt',
-                    include: ['test/nuxt/*.{test,spec}.ts'],
+                    include: ['test/nuxt/**/*.{test,spec}.ts'],
                     environment: 'nuxt',
                 },
             }),
