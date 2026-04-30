@@ -65,4 +65,17 @@ describe('session repository', () => {
             id: 'session-active',
         })
     })
+
+    it('removes a session by id', async () => {
+        const { create, findActiveById, removeById } = await import('../../../../server/repositories/session-repository')
+
+        await create({
+            id: 'session-remove-me',
+            userId: 'user-1',
+            expiresAt: '2030-01-01T00:00:00.000Z',
+        })
+
+        await expect(removeById('session-remove-me')).resolves.toBe(1)
+        await expect(findActiveById('session-remove-me', '2029-01-01T00:00:00.000Z')).resolves.toBeNull()
+    })
 })

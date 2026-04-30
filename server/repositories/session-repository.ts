@@ -20,6 +20,11 @@ export async function deleteExpired(nowIso = new Date().toISOString()) {
         {
             expiresAt: { $lte: nowIso },
         },
-        { multi: true },
+        { multi: true }
     )
+}
+
+export async function removeById(id: string) {
+    await sessionCollection.autoloadPromise
+    return await sessionCollection.removeAsync({ id }, {})
 }

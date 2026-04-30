@@ -2,7 +2,7 @@ import { getCookie, getRequestURL, sendRedirect } from 'h3'
 import { deleteExpired, findActiveById } from '../repositories/session-repository'
 import { logger } from '../utils/logger'
 
-const BYPASS_PATHS = ['/setup', '/api/setup', '/login', '/api/login', '/_ipx']
+const BYPASS_PATHS = ['/setup', '/api/setup', '/login', '/api/login', '/api/logout', '/_ipx']
 
 export default defineEventHandler(async (event) => {
     const path = getRequestURL(event).pathname

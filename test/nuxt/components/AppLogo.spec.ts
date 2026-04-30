@@ -24,6 +24,18 @@ describe('AppLogo', () => {
         expect(logoImage.getAttribute('src')).toContain('logo.png')
     })
 
+    it('applies a custom height class when provided', async () => {
+        await renderSuspended(AppLogo, {
+            props: {
+                height: 'h-12',
+            },
+        })
+
+        const logoImage = screen.getByAltText('logo')
+
+        expect(logoImage.className).toContain('h-12')
+    })
+
     it('renders a non-link logo when no destination is provided', async () => {
         await renderSuspended(AppLogo)
 

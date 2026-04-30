@@ -40,7 +40,7 @@ describe('login page flow', async () => {
         await page.getByRole('button', { name: 'Log in' }).click()
 
         await page.waitForURL('**/')
-        await page.waitForSelector('text=Home page')
+        await page.waitForSelector('text=Dashboard')
     })
 
     it('redirects to login when opening app routes without a session', async () => {
@@ -59,5 +59,21 @@ describe('login page flow', async () => {
 
         await page.waitForSelector('text=Invalid username or password.')
         expect(page.url()).toMatch(/\/login$/)
+    })
+
+    it('logs out and redirects back to login', async () => {
+        const page = await createPage('/login')
+
+        await page.getByPlaceholder('enter your username').fill('admin')
+        await page.getByPlaceholder('enter your password').fill('Admin@123')
+        await page.getByRole('button', { name: 'Log in' }).click()
+        await page.waitForURL('**/')
+
+        await page.getByRole('button', { name: 'Log out' }).click()
+        await page.waitForSelector('text=Are you sure you want to log out?')
+        await page.locator('[role="dialog"]').getByRole('button', { name: 'Log out' }).click()
+
+        await page.waitForURL('**/login')
+        await page.waitForSelector('text=Sign in to continue.')
     })
 })

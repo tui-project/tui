@@ -60,7 +60,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
                     <UInput v-model="state.password" type="password" placeholder="enter your password" class="w-full" icon="qlementine-icons:password-16" />
                 </UFormField>
 
-                <UButton type="submit" :loading="isSubmitting" :disabled="isSubmitting" block color="neutral" icon="i-lucide-log-in"> Log in </UButton>
+                <UButton type="submit" :loading="isSubmitting" :disabled="isSubmitting" block icon="i-lucide-log-in"> Log in </UButton>
             </UForm>
         </UCard>
     </div>
