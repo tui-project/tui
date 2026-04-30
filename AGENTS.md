@@ -69,6 +69,14 @@ API route tests should live under `test/e2e/server/api`.
 
 Nuxt browser e2e page tests should use `@nuxt/test-utils/e2e` with `vitest` (not `@playwright/test` runner). Use Playwright page APIs for interactions and selectors.
 
+Nuxt component/page tests under `test/nuxt` should prefer Testing Library patterns:
+
+- Use `renderSuspended` from `@nuxt/test-utils/runtime`.
+- Use queries from `@testing-library/vue` (`screen.getByRole`, `getByText`, `getByPlaceholderText`, etc.).
+- Use `@testing-library/user-event` for realistic user interactions.
+- Avoid broad assertions on wrapper text; prefer targeted selector-based assertions.
+- If a third-party component abstracts form submission in a way that is not reliably triggered by DOM events in tests, use the smallest possible fallback while keeping render/assertion flow in Testing Library style.
+
 For browser assertions in e2e page tests:
 
 - Prefer selector-based checks such as `waitForSelector`, `getByRole`, `getByPlaceholder`, and `locator`.

@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { renderSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+import userEvent from '@testing-library/user-event'
+import { screen } from '@testing-library/vue'
 import SetupPage from '../../../app/pages/setup.vue'
 
-const { initializeMock, loadingRef, errorMessageRef, navigateToMock } = vi.hoisted(() => ({
+const { initializeMock, setupState, errorMessageRef, navigateToMock } = vi.hoisted(() => ({
     initializeMock: vi.fn(),
-    loadingRef: { value: false },
+    setupState: { loading: false },
     errorMessageRef: { value: '' },
     navigateToMock: vi.fn(),
 }))
@@ -12,7 +14,7 @@ const { initializeMock, loadingRef, errorMessageRef, navigateToMock } = vi.hoist
 mockNuxtImport('useSetup', () => {
     return () => ({
         initialize: initializeMock,
-        loading: loadingRef,
+        loading: setupState.loading,
         errorMessage: errorMessageRef,
     })
 })
@@ -23,41 +25,34 @@ describe('setup page', () => {
     beforeEach(() => {
         initializeMock.mockReset()
         navigateToMock.mockReset()
-        loadingRef.value = false
+        setupState.loading = false
         errorMessageRef.value = ''
     })
 
     it('renders setup heading', async () => {
-        const wrapper = await mountSuspended(SetupPage)
-
-        expect(wrapper.text()).toContain('Create your admin user account.')
+        await renderSuspended(SetupPage)
+        expect(screen.getByText('Create your admin user account.')).toBeDefined()
     })
 
     it('shows setup-completed message from error key', async () => {
         errorMessageRef.value = 'setup_completed'
-        const wrapper = await mountSuspended(SetupPage)
-
-        expect(wrapper.text()).toContain('Setup is already completed. Please log in.')
+        await renderSuspended(SetupPage)
+        expect(screen.getByText('Setup is already completed. Please log in.')).toBeDefined()
     })
 
     it('shows a generic setup failure message for other errors', async () => {
         errorMessageRef.value = 'network_error'
-        const wrapper = await mountSuspended(SetupPage)
-
-        expect(wrapper.text()).toContain('Failed to complete setup.')
+        await renderSuspended(SetupPage)
+        expect(screen.getByText('Failed to complete setup.')).toBeDefined()
     })
 
     it('submits setup form and navigates to login on success', async () => {
         initializeMock.mockResolvedValue({ id: 'user-1', username: 'admin' })
-        const wrapper = await mountSuspended(SetupPage)
-        const setupForm = wrapper.findComponent({ name: 'UForm' })
-        setupForm.vm.$emit('submit', {
-            data: {
-                username: 'admin',
-                password: 'Admin@123',
-            },
-        })
-        await wrapper.vm.$nextTick()
+        const user = userEvent.setup()
+        await renderSuspended(SetupPage)
+        await user.type(screen.getByPlaceholderText('choose a username'), 'admin')
+        await user.type(screen.getByPlaceholderText('choose a password'), 'Admin@123')
+        await user.click(screen.getByRole('button', { name: /complete setup/i }))
 
         expect(initializeMock).toHaveBeenCalledWith('admin', 'Admin@123')
         expect(navigateToMock).toHaveBeenCalledWith('/login')
@@ -65,15 +60,11 @@ describe('setup page', () => {
 
     it('does not navigate when setup submit fails', async () => {
         initializeMock.mockResolvedValue(null)
-        const wrapper = await mountSuspended(SetupPage)
-        const setupForm = wrapper.findComponent({ name: 'UForm' })
-        setupForm.vm.$emit('submit', {
-            data: {
-                username: 'admin',
-                password: 'Admin@123',
-            },
-        })
-        await wrapper.vm.$nextTick()
+        const user = userEvent.setup()
+        await renderSuspended(SetupPage)
+        await user.type(screen.getByPlaceholderText('choose a username'), 'admin')
+        await user.type(screen.getByPlaceholderText('choose a password'), 'Admin@123')
+        await user.click(screen.getByRole('button', { name: /complete setup/i }))
 
         expect(initializeMock).toHaveBeenCalledWith('admin', 'Admin@123')
         expect(navigateToMock).not.toHaveBeenCalled()
