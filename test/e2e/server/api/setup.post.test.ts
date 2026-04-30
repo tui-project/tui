@@ -33,7 +33,7 @@ describe('POST /api/setup', async () => {
         expect(response.id).toEqual(expect.any(String))
 
         const rootResponse = await $fetch('/', { responseType: 'text' })
-        expect(rootResponse).toContain('Login Page')
+        expect(rootResponse).toContain('Sign in to continue.')
     })
 
     it('rejects follow-up setup requests after setup is completed', async () => {

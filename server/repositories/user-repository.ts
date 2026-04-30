@@ -15,3 +15,8 @@ export async function userCount() {
     await userCollection.autoloadPromise
     return await userCollection.countAsync({})
 }
+
+export async function findByUsername(username: string) {
+    await userCollection.autoloadPromise
+    return await userCollection.findOneAsync({ username })
+}

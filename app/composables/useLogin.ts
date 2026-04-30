@@ -1,16 +1,17 @@
 import { readonly, ref } from 'vue'
 import { getApiErrorMessage } from '../utils/api-error'
 
-interface SetupResponse {
-    id: string
-    username: string
+interface LoginResponse {
+    sessionId: string
+    userId: string
+    expiresAt: string
 }
 
-export function useSetup() {
+export function useLogin() {
     const loading = ref(false)
     const errorMessage = ref('')
 
-    async function initialize(username: string, password: string) {
+    async function login(username: string, password: string) {
         if (loading.value) {
             return null
         }
@@ -19,7 +20,7 @@ export function useSetup() {
         loading.value = true
 
         try {
-            return await $fetch<SetupResponse>('/api/setup', {
+            return await $fetch<LoginResponse>('/api/login', {
                 method: 'POST',
                 body: {
                     username,
@@ -35,7 +36,7 @@ export function useSetup() {
     }
 
     return {
-        initialize,
+        login,
         loading: readonly(loading),
         errorMessage: readonly(errorMessage),
     }

@@ -37,7 +37,7 @@ describe('setup page flow', async () => {
         await page.getByRole('button', { name: 'Complete setup' }).click()
 
         await page.waitForURL('**/login')
-        await page.waitForSelector('text=Login Page')
+        await page.waitForSelector('text=Sign in to continue.')
     })
 
     it('shows the completed setup message when submitting again', async () => {

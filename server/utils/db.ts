@@ -1,10 +1,12 @@
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import Datastore, { type Document } from '@seald-io/nedb'
+import type { Session } from '../model/session'
 import type { User } from '../model/user'
 import { logger } from './logger'
 
 export type UserDocument = Document<User>
+export type SessionDocument = Document<Session>
 
 const dataDir = process.env.DATABASE_DIR ?? join(process.cwd(), 'config', 'database')
 
@@ -18,5 +20,13 @@ export const userCollection = new Datastore<User>({
     timestampData: true,
 })
 
+const sessionCollectionDataDir = join(dataDir, 'sessions.db')
+export const sessionCollection = new Datastore<Session>({
+    filename: sessionCollectionDataDir,
+    autoload: true,
+    timestampData: true,
+})
+
 logger.debug(`Users datastore initialized: ${userCollectionDataDir}`)
+logger.debug(`Sessions datastore initialized: ${sessionCollectionDataDir}`)
 logger.info('Database initialised.')

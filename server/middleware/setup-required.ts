@@ -2,7 +2,7 @@ import { getRequestURL, sendRedirect } from 'h3'
 import { userCount } from '../repositories/user-repository'
 import { logger } from '../utils/logger'
 
-const BYPASS_PATHS = ['/setup', '/api/setup']
+const BYPASS_PATHS = ['/setup', '/api/setup', '/_ipx']
 
 export default defineEventHandler(async (event) => {
     const path = getRequestURL(event).pathname

@@ -21,7 +21,7 @@ describe('user repository', () => {
     })
 
     it('finds all users sorted by username', async () => {
-        const { userCreate, userFindAll } = await import('../../../../server/repositories/user-repository')
+        const { userCreate, userFindAll, findByUsername } = await import('../../../../server/repositories/user-repository')
 
         await userCreate({
             id: 'user-2',
@@ -35,7 +35,12 @@ describe('user repository', () => {
         })
 
         const users = await userFindAll()
+        const anna = await findByUsername('anna')
 
         expect(users.map((user) => user.username)).toEqual(['anna', 'zara'])
+        expect(anna).toMatchObject({
+            id: 'user-1',
+            username: 'anna',
+        })
     })
 })

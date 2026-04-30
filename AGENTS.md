@@ -24,9 +24,9 @@ Prefer running the focused test first after a small change, then the full unit p
 - Keep route handlers thin. Validation, logging, and response shaping can live in the route; database interactions should go through repositories.
 - Existing route files use direct default exports with `defineEventHandler`.
 - Import explicit helpers such as `readBody` and `createError` from `h3` when needed.
-- For expected API error responses (for example validation errors or conflict states), prefer `setResponseStatus(event, <status>)` and return a JSON payload with this shape:
-    - `code`: stable machine-readable identifier
-    - `message`: human-readable summary
+- For expected API error responses (for example validation errors or conflict states), prefer `createError` with:
+    - `statusCode`: HTTP status code
+    - `message`: stable machine-readable identifier
 - When returning expected API error responses, add a `warn` log with useful non-sensitive context.
 
 Example route pattern:
