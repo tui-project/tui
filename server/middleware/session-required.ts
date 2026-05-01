@@ -1,8 +1,8 @@
 import { getCookie, getRequestURL, sendRedirect } from 'h3'
-import { deleteExpired, findActiveById } from '../repositories/session-repository'
+import { deleteExpiredSessions, findActiveSessionById } from '../repositories/session-repository'
 import { logger } from '../utils/logger'
 
-const BYPASS_PATHS = ['/setup', '/api/setup', '/login', '/api/login', '/api/logout', '/_ipx']
+const BYPASS_PATHS = ['/setup', '/api', '/login', '/_ipx']
 
 export default defineEventHandler(async (event) => {
     const path = getRequestURL(event).pathname
@@ -19,8 +19,8 @@ export default defineEventHandler(async (event) => {
         return sendRedirect(event, '/login')
     }
 
-    await deleteExpired()
-    const session = await findActiveById(sessionId)
+    await deleteExpiredSessions()
+    const session = await findActiveSessionById(sessionId)
 
     if (!session) {
         logger.warn('Invalid or expired session. Redirecting request to login page.', { path, sessionId })

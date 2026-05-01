@@ -25,6 +25,12 @@ const items = computed<NavigationMenuItem[]>(() => [
         active: route.path.startsWith('/upload'),
     },
     {
+        label: 'Settings',
+        to: '/settings',
+        icon: 'i-lucide-settings',
+        active: route.path.startsWith('/settings'),
+    },
+    {
         label: 'About',
         to: '/about',
         icon: 'i-lucide-box',
@@ -65,9 +71,9 @@ async function onConfirmLogout() {
                 <UNavigationMenu orientation="vertical" :items="items" variant="pill" class="py-3" :ui="{ link: 'px-2 py-2 text-base', linkLeadingIcon: 'size-5' }" />
             </UDashboardSidebar>
 
-            <UDashboardPanel :ui="{ body: 'px-2 py-2' }">
+            <UDashboardPanel>
                 <template #body>
-                    <div class="mx-auto w-full max-w-480 p-4 sm:p-6">
+                    <div class="mx-auto w-full max-w-480">
                         <slot />
                     </div>
                 </template>

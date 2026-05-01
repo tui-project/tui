@@ -10,12 +10,15 @@ describe('server db', () => {
         const db = await import('../../../../server/utils/db')
         await db.userCollection.autoloadPromise
         await db.sessionCollection.autoloadPromise
+        await db.settingsCollection.autoloadPromise
 
         const userDatafile = await stat(join(getDataDir(), 'users.db'))
         const sessionDatafile = await stat(join(getDataDir(), 'sessions.db'))
+        const settingsDatafile = await stat(join(getDataDir(), 'settings.db'))
 
         expect(userDatafile.isFile()).toBe(true)
         expect(sessionDatafile.isFile()).toBe(true)
+        expect(settingsDatafile.isFile()).toBe(true)
     })
 
     it('persists user documents to the users datafile', async () => {

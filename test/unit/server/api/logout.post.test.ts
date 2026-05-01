@@ -8,7 +8,7 @@ const logger = {
 const getCookie = vi.fn<(event: unknown, name: string) => string | undefined>()
 const deleteCookie = vi.fn()
 const setResponseStatus = vi.fn()
-const removeById = vi.fn<() => Promise<number>>()
+const removeSessionById = vi.fn<() => Promise<number>>()
 
 beforeEach(() => {
     vi.resetModules()
@@ -23,7 +23,7 @@ async function loadHandler() {
         setResponseStatus,
     }))
     vi.doMock('../../../../server/repositories/session-repository', () => ({
-        removeById,
+        removeSessionById,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
         logger,
@@ -37,12 +37,12 @@ describe('POST /api/logout route handler', () => {
     it('removes session and clears cookie when session cookie exists', async () => {
         const event = {} as never
         getCookie.mockReturnValue('session-1')
-        removeById.mockResolvedValue(1)
+        removeSessionById.mockResolvedValue(1)
 
         const handler = await loadHandler()
         const response = await handler(event)
 
-        expect(removeById).toHaveBeenCalledWith('session-1')
+        expect(removeSessionById).toHaveBeenCalledWith('session-1')
         expect(deleteCookie).toHaveBeenCalledWith(event, 'session_id', { path: '/' })
         expect(response).toBeUndefined()
         expect(setResponseStatus).toHaveBeenCalledWith(event, 204)
@@ -55,7 +55,7 @@ describe('POST /api/logout route handler', () => {
         const handler = await loadHandler()
         const response = await handler(event)
 
-        expect(removeById).not.toHaveBeenCalled()
+        expect(removeSessionById).not.toHaveBeenCalled()
         expect(deleteCookie).toHaveBeenCalledWith(event, 'session_id', { path: '/' })
         expect(response).toBeUndefined()
         expect(setResponseStatus).toHaveBeenCalledWith(event, 204)

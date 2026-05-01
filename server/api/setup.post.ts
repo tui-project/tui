@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID, scrypt as scryptCallback } from 'node:crypto'
 import { promisify } from 'node:util'
 import { createError, readBody } from 'h3'
-import { userCount, userCreate } from '../repositories/user-repository'
+import { userCount, createUser } from '../repositories/user-repository'
 import { logger } from '../utils/logger'
 
 const scrypt = promisify(scryptCallback)
@@ -60,7 +60,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const passwordHash = await hashPassword(password)
-    const user = await userCreate({
+    const user = await createUser({
         id: randomUUID(),
         username,
         passwordHash,

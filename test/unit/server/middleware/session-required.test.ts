@@ -4,8 +4,8 @@ const logger = {
     warn: vi.fn(),
 }
 
-const deleteExpired = vi.fn<() => Promise<number>>()
-const findActiveById = vi.fn<() => Promise<{ id: string } | null>>()
+const deleteExpiredSessions = vi.fn<() => Promise<number>>()
+const findActiveSessionById = vi.fn<() => Promise<{ id: string } | null>>()
 const sendRedirect = vi.fn((event: unknown, to: string) => ({ event, to }))
 const getRequestURL = vi.fn<(event: unknown) => { pathname: string }>()
 const getCookie = vi.fn<(event: unknown, name: string) => string | undefined>()
@@ -23,8 +23,8 @@ async function loadHandler() {
         sendRedirect,
     }))
     vi.doMock('../../../../server/repositories/session-repository', () => ({
-        deleteExpired,
-        findActiveById,
+        deleteExpiredSessions,
+        findActiveSessionById,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
         logger,
@@ -56,23 +56,23 @@ describe('session required middleware', () => {
     it('redirects to login when session is not active', async () => {
         getRequestURL.mockReturnValue({ pathname: '/' })
         getCookie.mockReturnValue('session-1')
-        findActiveById.mockResolvedValue(null)
+        findActiveSessionById.mockResolvedValue(null)
         const event = { requestId: 'req-1' } as never
         const handler = await loadHandler()
 
         await expect(handler(event)).resolves.toEqual({ event, to: '/login' })
-        expect(deleteExpired).toHaveBeenCalledTimes(1)
-        expect(findActiveById).toHaveBeenCalledWith('session-1')
+        expect(deleteExpiredSessions).toHaveBeenCalledTimes(1)
+        expect(findActiveSessionById).toHaveBeenCalledWith('session-1')
     })
 
     it('allows request with active session', async () => {
         getRequestURL.mockReturnValue({ pathname: '/' })
         getCookie.mockReturnValue('session-1')
-        findActiveById.mockResolvedValue({ id: 'session-1' })
+        findActiveSessionById.mockResolvedValue({ id: 'session-1' })
         const handler = await loadHandler()
 
         await expect(handler({} as never)).resolves.toBeUndefined()
-        expect(deleteExpired).toHaveBeenCalledTimes(1)
+        expect(deleteExpiredSessions).toHaveBeenCalledTimes(1)
         expect(sendRedirect).not.toHaveBeenCalled()
     })
 })

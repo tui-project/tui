@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest'
 
 describe('user repository', () => {
     it('creates and counts users', async () => {
-        const { userCount, userCreate } = await import('../../../../server/repositories/user-repository')
+        const { userCount, createUser } = await import('../../../../server/repositories/user-repository')
 
         await expect(userCount()).resolves.toBe(0)
 
-        const user = await userCreate({
+        const user = await createUser({
             id: 'user-1',
             username: 'abc',
             passwordHash: 'hashed-password',
@@ -21,21 +21,21 @@ describe('user repository', () => {
     })
 
     it('finds all users sorted by username', async () => {
-        const { userCreate, userFindAll, findByUsername } = await import('../../../../server/repositories/user-repository')
+        const { createUser, findAllUsers, findUserByUsername } = await import('../../../../server/repositories/user-repository')
 
-        await userCreate({
+        await createUser({
             id: 'user-2',
             username: 'zara',
             passwordHash: 'hashed-password',
         })
-        await userCreate({
+        await createUser({
             id: 'user-1',
             username: 'anna',
             passwordHash: 'hashed-password',
         })
 
-        const users = await userFindAll()
-        const anna = await findByUsername('anna')
+        const users = await findAllUsers()
+        const anna = await findUserByUsername('anna')
 
         expect(users.map((user) => user.username)).toEqual(['anna', 'zara'])
         expect(anna).toMatchObject({

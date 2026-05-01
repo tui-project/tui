@@ -1,8 +1,8 @@
 import { randomUUID, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto'
 import { promisify } from 'node:util'
 import { createError, readBody, setCookie } from 'h3'
-import { create as createSession } from '../repositories/session-repository'
-import { findByUsername } from '../repositories/user-repository'
+import { createSession } from '../repositories/session-repository'
+import { findUserByUsername } from '../repositories/user-repository'
 import { logger } from '../utils/logger'
 
 const scrypt = promisify(scryptCallback)
@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
         })
     }
 
-    const user = await findByUsername(username)
+    const user = await findUserByUsername(username)
 
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
         logger.warn('Rejected login request with invalid credentials.', { username })

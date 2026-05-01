@@ -1,12 +1,12 @@
 import type { Session } from '../model/session'
 import { sessionCollection } from '../utils/db'
 
-export async function create(session: Session) {
+export async function createSession(session: Session) {
     await sessionCollection.autoloadPromise
     return await sessionCollection.insertAsync(session)
 }
 
-export async function findActiveById(id: string, nowIso = new Date().toISOString()) {
+export async function findActiveSessionById(id: string, nowIso = new Date().toISOString()) {
     await sessionCollection.autoloadPromise
     return await sessionCollection.findOneAsync({
         id,
@@ -14,7 +14,7 @@ export async function findActiveById(id: string, nowIso = new Date().toISOString
     })
 }
 
-export async function deleteExpired(nowIso = new Date().toISOString()) {
+export async function deleteExpiredSessions(nowIso = new Date().toISOString()) {
     await sessionCollection.autoloadPromise
     return await sessionCollection.removeAsync(
         {
@@ -24,7 +24,7 @@ export async function deleteExpired(nowIso = new Date().toISOString()) {
     )
 }
 
-export async function removeById(id: string) {
+export async function removeSessionById(id: string) {
     await sessionCollection.autoloadPromise
     return await sessionCollection.removeAsync({ id }, {})
 }

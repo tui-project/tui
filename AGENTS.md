@@ -42,7 +42,7 @@ export default defineEventHandler(async () => {
 ## Repository Conventions
 
 - Put database interaction modules in `server/repositories`.
-- Repository method names should be contextual and avoid repeating the entity name. For example, use `create`, `findAll`, and `count` inside `user-repository.ts`, not `createUser`.
+- Repository method names should be contextual and use clear verb-first names. Include the entity in the method name when it improves readability across imports/call sites. For example, use `createUser`, `findAllUsers`, `userCount`, `createSession`, and `getSettings`.
 - Repositories should wait for datastore autoload before querying or writing:
 
 ```ts

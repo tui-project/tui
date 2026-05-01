@@ -9,7 +9,7 @@ const logger = {
 const readBody = vi.fn<() => Promise<{ username?: string; password?: string }>>()
 const createError = vi.fn((payload: unknown) => payload)
 const setCookie = vi.fn()
-const findByUsername = vi.fn<() => Promise<{ id: string; username: string; passwordHash: string } | null>>()
+const findUserByUsername = vi.fn<() => Promise<{ id: string; username: string; passwordHash: string } | null>>()
 const createSession = vi.fn<() => Promise<{ id: string; userId: string; expiresAt: string }>>()
 
 beforeEach(() => {
@@ -25,10 +25,10 @@ async function loadHandler() {
         setCookie,
     }))
     vi.doMock('../../../../server/repositories/user-repository', () => ({
-        findByUsername,
+        findUserByUsername,
     }))
     vi.doMock('../../../../server/repositories/session-repository', () => ({
-        create: createSession,
+        createSession,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
         logger,
@@ -53,7 +53,7 @@ describe('POST /api/login route handler', () => {
 
     it('returns unauthorized for invalid credentials', async () => {
         readBody.mockResolvedValue({ username: 'admin', password: 'bad' })
-        findByUsername.mockResolvedValue(null)
+        findUserByUsername.mockResolvedValue(null)
 
         const handler = await loadHandler()
         const event = {} as never
@@ -66,7 +66,7 @@ describe('POST /api/login route handler', () => {
 
     it('returns unauthorized when stored password hash is malformed', async () => {
         readBody.mockResolvedValue({ username: 'admin', password: 'Admin@123' })
-        findByUsername.mockResolvedValue({
+        findUserByUsername.mockResolvedValue({
             id: 'user-1',
             username: 'admin',
             passwordHash: 'malformed-hash',
@@ -82,7 +82,7 @@ describe('POST /api/login route handler', () => {
 
     it('returns unauthorized when stored hash length does not match derived key length', async () => {
         readBody.mockResolvedValue({ username: 'admin', password: 'Admin@123' })
-        findByUsername.mockResolvedValue({
+        findUserByUsername.mockResolvedValue({
             id: 'user-1',
             username: 'admin',
             passwordHash: '00112233445566778899aabbccddeeff:abcd',
@@ -98,7 +98,7 @@ describe('POST /api/login route handler', () => {
 
     it('creates a one-hour session for valid credentials', async () => {
         readBody.mockResolvedValue({ username: 'admin', password: 'Admin@123' })
-        findByUsername.mockResolvedValue({
+        findUserByUsername.mockResolvedValue({
             id: 'user-1',
             username: 'admin',
             passwordHash:

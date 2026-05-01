@@ -1,5 +1,5 @@
 import { deleteCookie, getCookie, setResponseStatus } from 'h3'
-import { removeById } from '../repositories/session-repository'
+import { removeSessionById } from '../repositories/session-repository'
 import { logger } from '../utils/logger'
 
 export default defineEventHandler(async (event) => {
@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
     const sessionId = getCookie(event, 'session_id')
 
     if (sessionId) {
-        await removeById(sessionId)
+        await removeSessionById(sessionId)
         logger.info('Logout succeeded and session removed.', { sessionId })
     }
 

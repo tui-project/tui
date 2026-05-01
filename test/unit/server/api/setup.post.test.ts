@@ -9,7 +9,7 @@ const logger = {
 const readBody = vi.fn<() => Promise<{ username?: string; password?: string }>>()
 const createError = vi.fn((payload: unknown) => payload)
 const userCount = vi.fn<() => Promise<number>>()
-const userCreate = vi.fn<() => Promise<{ id: string; username: string; passwordHash: string }>>()
+const createUser = vi.fn<() => Promise<{ id: string; username: string; passwordHash: string }>>()
 
 beforeEach(() => {
     vi.resetModules()
@@ -24,7 +24,7 @@ async function loadHandler() {
     }))
     vi.doMock('../../../../server/repositories/user-repository', () => ({
         userCount,
-        userCreate,
+        createUser,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
         logger,
@@ -91,7 +91,7 @@ describe('POST /api/setup route handler', () => {
     it('creates setup user when payload is valid', async () => {
         userCount.mockResolvedValue(0)
         readBody.mockResolvedValue({ username: '  admin  ', password: 'Admin@123' })
-        userCreate.mockResolvedValue({
+        createUser.mockResolvedValue({
             id: 'generated-id',
             username: 'admin',
             passwordHash: 'hashed-value',
@@ -103,7 +103,7 @@ describe('POST /api/setup route handler', () => {
             id: 'generated-id',
             username: 'admin',
         })
-        expect(userCreate).toHaveBeenCalledWith(
+        expect(createUser).toHaveBeenCalledWith(
             expect.objectContaining({
                 username: 'admin',
                 id: expect.any(String),
