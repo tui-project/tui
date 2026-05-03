@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const logger = {
+    trace: vi.fn(),
     warn: vi.fn(),
 }
 

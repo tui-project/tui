@@ -6,19 +6,22 @@ import { describe, expect, it, vi } from 'vitest'
 import { getDataDir } from '../../setupFile'
 
 describe('server db', () => {
-    it('creates user and session datastores in the configured data directory', async () => {
+    it('creates user, session, settings, and directory cache datastores in the configured data directory', async () => {
         const db = await import('../../../../server/utils/db')
         await db.userCollection.autoloadPromise
         await db.sessionCollection.autoloadPromise
         await db.settingsCollection.autoloadPromise
+        await db.directoryCacheCollection.autoloadPromise
 
         const userDatafile = await stat(join(getDataDir(), 'users.db'))
         const sessionDatafile = await stat(join(getDataDir(), 'sessions.db'))
         const settingsDatafile = await stat(join(getDataDir(), 'settings.db'))
+        const directoryCacheDatafile = await stat(join(getDataDir(), 'directory-cache.db'))
 
         expect(userDatafile.isFile()).toBe(true)
         expect(sessionDatafile.isFile()).toBe(true)
         expect(settingsDatafile.isFile()).toBe(true)
+        expect(directoryCacheDatafile.isFile()).toBe(true)
     })
 
     it('persists user documents to the users datafile', async () => {

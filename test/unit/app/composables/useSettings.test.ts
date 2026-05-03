@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useSettings } from '../../../app/composables/useSettings'
 
 describe('useSettings composable', () => {
     beforeEach(() => {
+        vi.resetModules()
         vi.unstubAllGlobals()
     })
 
@@ -10,6 +10,7 @@ describe('useSettings composable', () => {
         const fetchMock = vi.fn().mockResolvedValue({ mediaPaths: ['/media/a'] })
         vi.stubGlobal('$fetch', fetchMock)
 
+        const { useSettings } = await import('../../../../app/composables/useSettings')
         const { getSettings, loading, error } = useSettings()
         const result = await getSettings()
 
@@ -23,6 +24,7 @@ describe('useSettings composable', () => {
         const fetchMock = vi.fn().mockRejectedValue(new Error('network'))
         vi.stubGlobal('$fetch', fetchMock)
 
+        const { useSettings } = await import('../../../../app/composables/useSettings')
         const { getSettings, loading, error } = useSettings()
         const result = await getSettings()
 
@@ -35,6 +37,7 @@ describe('useSettings composable', () => {
         const fetchMock = vi.fn().mockResolvedValue({ mediaPaths: ['/media/a', '/media/b'] })
         vi.stubGlobal('$fetch', fetchMock)
 
+        const { useSettings } = await import('../../../../app/composables/useSettings')
         const { saveSettings, loading, error } = useSettings()
         const result = await saveSettings({ mediaPaths: ['/media/a', '/media/b'] })
 
@@ -51,6 +54,7 @@ describe('useSettings composable', () => {
         const fetchMock = vi.fn().mockRejectedValue(new Error('network'))
         vi.stubGlobal('$fetch', fetchMock)
 
+        const { useSettings } = await import('../../../../app/composables/useSettings')
         const { saveSettings, loading, error } = useSettings()
         const result = await saveSettings({ mediaPaths: ['/media/a'] })
 
@@ -69,6 +73,7 @@ describe('useSettings composable', () => {
         )
         vi.stubGlobal('$fetch', fetchMock)
 
+        const { useSettings } = await import('../../../../app/composables/useSettings')
         const { getSettings, loading } = useSettings()
         const pending = getSettings()
 
@@ -91,6 +96,7 @@ describe('useSettings composable', () => {
         )
         vi.stubGlobal('$fetch', fetchMock)
 
+        const { useSettings } = await import('../../../../app/composables/useSettings')
         const { saveSettings, loading } = useSettings()
         const pending = saveSettings({ mediaPaths: ['/media/a'] })
 

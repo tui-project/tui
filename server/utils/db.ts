@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import Datastore, { type Document } from '@seald-io/nedb'
 import type { Session } from '../model/session'
+import type { DirectoryCache } from '../model/directory-cache'
 import type { Settings } from '../model/settings'
 import type { User } from '../model/user'
 import { logger } from './logger'
@@ -9,6 +10,7 @@ import { logger } from './logger'
 export type UserDocument = Document<User>
 export type SessionDocument = Document<Session>
 export type SettingsDocument = Document<Settings>
+export type DirectoryCacheDocument = Document<DirectoryCache>
 
 const dataDir = process.env.DATABASE_DIR ?? join(process.cwd(), 'config', 'database')
 
@@ -36,7 +38,15 @@ export const settingsCollection = new Datastore<Settings>({
     timestampData: true,
 })
 
+const directoryCacheCollectionDataDir = join(dataDir, 'directory-cache.db')
+export const directoryCacheCollection = new Datastore<DirectoryCache>({
+    filename: directoryCacheCollectionDataDir,
+    autoload: true,
+    timestampData: true,
+})
+
 logger.debug(`Users datastore initialized: ${userCollectionDataDir}`)
 logger.debug(`Sessions datastore initialized: ${sessionCollectionDataDir}`)
 logger.debug(`Settings datastore initialized: ${settingsCollectionDataDir}`)
+logger.debug(`Directory cache datastore initialized: ${directoryCacheCollectionDataDir}`)
 logger.info('Database initialised.')

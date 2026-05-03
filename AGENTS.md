@@ -75,6 +75,8 @@ Nuxt component/page tests under `test/nuxt` should prefer Testing Library patter
 - Use queries from `@testing-library/vue` (`screen.getByRole`, `getByText`, `getByPlaceholderText`, etc.).
 - Use `@testing-library/user-event` for realistic user interactions.
 - Avoid broad assertions on wrapper text; prefer targeted selector-based assertions.
+- Prefer selector-based element targeting over index-based access. Avoid patterns like `findAll(...)[0]` when a stable selector (`getByRole`, `getByLabelText`, `get`, `locator`, etc.) can be used.
+- Prefer `renderSuspended` + selector-driven interactions over Vue Test Utils component-instance access (`findComponent`, `vm.$emit`) for `test/nuxt` tests.
 - If a third-party component abstracts form submission in a way that is not reliably triggered by DOM events in tests, use the smallest possible fallback while keeping render/assertion flow in Testing Library style.
 
 For browser assertions in e2e page tests:
@@ -113,6 +115,7 @@ Coverage expectations:
 ## Editing Notes
 
 - Keep changes small and aligned with existing patterns.
+- Prefer single-responsibility methods: each method should do one clear job, and complex flows should be split into focused helper methods.
 - Avoid unrelated refactors while implementing a feature.
 - Keep persisted filenames stable unless a migration is intended. For example, `userCollection` still writes to `users.db`.
 - Use ASCII text unless the surrounding file already uses non-ASCII.

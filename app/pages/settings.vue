@@ -63,15 +63,18 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="space-y-6">
+    <PageContainer>
         <PageHeader title="Settings" description="Configure settings for the application." />
+
         <UAlert v-if="error" color="error" variant="soft" :title="alertMessage" />
         <UAlert v-if="successfullySaved" color="success" variant="soft" :title="alertMessage" />
+
         <div v-if="loading" class="space-y-2">
             <USkeleton class="h-20 w-full" />
             <USkeleton class="h-20 w-full" />
             <USkeleton class="h-20 w-full" />
         </div>
+
         <UForm v-else :schema="schema" :state="formState" @submit="onSubmit">
             <UCard title="Media paths" description="Root directory paths to access media" variant="subtle">
                 <div class="space-y-3">
@@ -90,9 +93,10 @@ onMounted(() => {
                     <div v-else class="text-sm text-muted">No media paths configured yet.</div>
                 </div>
             </UCard>
+
             <div class="flex justify-end pt-4">
                 <UButton size="xl" type="submit" :loading="loading" :disabled="loading"> Save </UButton>
             </div>
         </UForm>
-    </div>
+    </PageContainer>
 </template>
