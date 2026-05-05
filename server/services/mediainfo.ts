@@ -291,7 +291,7 @@ function parseAudioChannels(channels: string, channelLayout: string): AudioChann
 }
 
 function parseAudioMetadata(formatCommercialIfAny: string, title: string): AudioMetadata {
-    if (!formatCommercialIfAny) return undefined
+    if (!formatCommercialIfAny || formatCommercialIfAny === 'Dolby Digital Plus') return undefined
 
     if (formatCommercialIfAny.includes('Atmos') || title.includes('Atmos')) return AUDIO_METADATA_TYPES.ATMOS
     if (formatCommercialIfAny.includes('Auro3D') || title.includes('Auro3D')) return AUDIO_METADATA_TYPES.AURO3D

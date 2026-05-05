@@ -670,6 +670,36 @@ describe('mediainfo service', () => {
                 tvdbId: undefined,
             },
         },
+        {
+            name: 'plain dolby digital plus does not imply atmos metadata',
+            sourceType: 'WEB-DL' as const,
+            result: {
+                media: {
+                    track: [
+                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', HDR_Format: '', HDR_Format_Compatibility: '' },
+                        {
+                            '@type': 'Audio',
+                            Default: 'Yes',
+                            Format: 'E-AC-3',
+                            Channels: '6',
+                            ChannelLayout: 'L R C LFE Ls Rs',
+                            Language: 'en-US',
+                            Title: 'Main',
+                            Format_Commercial_IfAny: 'Dolby Digital Plus',
+                        },
+                    ],
+                },
+            },
+            expected: {
+                resolution: '1080p',
+                videoCodec: 'H.264',
+                hdr: [],
+                audioCodec: 'DD+',
+                audioChannels: '5.1',
+                audioMetadata: undefined,
+                language: ['en'],
+            },
+        },
     ])('parses mediainfo metadata across branches: $name', async ({ sourceType, result, expected }) => {
         const { parseMetadataFromMediainfo } = await loadService()
         analyzeDataMock.mockResolvedValueOnce(result)
