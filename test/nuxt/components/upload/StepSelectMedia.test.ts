@@ -2,7 +2,7 @@ import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import StepSelectMedia from '../../../app/components/upload/StepSelectMedia.vue'
+import StepSelectMedia from '~/components/upload/StepSelectMedia.vue'
 
 const fetchMock = vi.fn()
 

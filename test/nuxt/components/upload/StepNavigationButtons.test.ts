@@ -2,7 +2,7 @@ import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import StepNavigationButtons from '../../../app/components/upload/StepNavigationButtons.vue'
+import StepNavigationButtons from '~/components/upload/StepNavigationButtons.vue'
 
 describe('StepNavigationButtons', () => {
     it('renders defaults and emits back/next clicks', async () => {

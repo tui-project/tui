@@ -1,10 +1,9 @@
 import { createError, getQuery } from 'h3'
-import { realpath, stat } from 'node:fs/promises'
-import { sep } from 'node:path'
+import { stat } from 'node:fs/promises'
 import { getSettings } from '../repositories/settings-repository'
 import { listChildren } from '../services/directory-browse'
 import { logger } from '../utils/logger'
-import { sortPathItems } from '../utils/file-system'
+import { isWithinAnyRoot, sortPathItems } from '../utils/file-system'
 import { isBlank } from '../utils/string'
 
 interface PathsQuery {
@@ -27,7 +26,7 @@ export default defineEventHandler(async (event) => {
 
 async function browseEligiblePaths(parent?: string) {
     const settings = await getSettings()
-    const roots = [...new Set(settings.mediaPaths)]
+    const roots = settings.mediaPaths
 
     logger.debug('Browsing directories and files')
 
@@ -44,6 +43,7 @@ async function browseEligiblePaths(parent?: string) {
         const parentPathAllowed = await isParentPathAllowed(parent, roots)
         if (!parentPathAllowed) {
             logger.warn('Rejected directory browse because parent path is outside configured roots.', { parent })
+
             throw createError({
                 statusCode: 400,
                 message: 'invalid_parent_path',
@@ -53,6 +53,7 @@ async function browseEligiblePaths(parent?: string) {
         return await listChildren(parent)
     } catch (error: unknown) {
         logger.error(error)
+
         throw createError({
             statusCode: 400,
             message: 'invalid_parent_path',
@@ -76,22 +77,5 @@ async function listRootPaths(roots: string[]) {
 }
 
 async function isParentPathAllowed(parent: string, roots: string[]) {
-    const parentRealPath = await realpath(parent)
-    const allowedRoots = await resolvedRoots(roots)
-
-    return isWithinAnyRoot(parentRealPath, allowedRoots)
-}
-
-async function resolvedRoots(roots: string[]) {
-    const rootPaths = await Promise.all(
-        roots.map(async (rootPath) => {
-            return realpath(rootPath)
-        })
-    )
-
-    return [...new Set(rootPaths)]
-}
-
-function isWithinAnyRoot(pathToCheck: string, allowedRoots: string[]) {
-    return allowedRoots.some((rootPath) => pathToCheck === rootPath || pathToCheck.startsWith(`${rootPath}${sep}`))
+    return isWithinAnyRoot(parent, roots)
 }

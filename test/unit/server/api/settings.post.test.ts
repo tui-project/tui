@@ -6,9 +6,9 @@ const logger = {
     warn: vi.fn(),
 }
 
-const readBody = vi.fn<() => Promise<{ mediaPaths?: unknown }>>()
+const readBody = vi.fn<() => Promise<{ mediaPaths?: unknown; tmdbApiKey?: unknown }>>()
 const createError = vi.fn((payload: unknown) => payload)
-const saveSettings = vi.fn<() => Promise<{ mediaPaths: string[] }>>()
+const saveSettings = vi.fn<() => Promise<{ mediaPaths: string[]; tmdbApiKey: string }>>()
 const stat = vi.fn()
 
 beforeEach(() => {
@@ -38,7 +38,7 @@ async function loadHandler() {
 
 describe('POST /api/settings route handler', () => {
     it('rejects invalid request shape', async () => {
-        readBody.mockResolvedValue({ mediaPaths: 'abc' })
+        readBody.mockResolvedValue({ mediaPaths: 'abc', tmdbApiKey: 'abc' })
         const handler = await loadHandler()
 
         await expect(handler({} as never)).rejects.toEqual({
@@ -48,7 +48,7 @@ describe('POST /api/settings route handler', () => {
     })
 
     it('rejects when media path does not exist', async () => {
-        readBody.mockResolvedValue({ mediaPaths: ['/missing'] })
+        readBody.mockResolvedValue({ mediaPaths: ['/missing'], tmdbApiKey: 'abc' })
         stat.mockRejectedValue(new Error('missing'))
         const handler = await loadHandler()
 
@@ -59,7 +59,7 @@ describe('POST /api/settings route handler', () => {
     })
 
     it('rejects when media paths contain invalid entries after normalization', async () => {
-        readBody.mockResolvedValue({ mediaPaths: ['/ok', '   '] })
+        readBody.mockResolvedValue({ mediaPaths: ['/ok', '   '], tmdbApiKey: 'abc' })
         const handler = await loadHandler()
 
         await expect(handler({} as never)).rejects.toEqual({
@@ -69,17 +69,29 @@ describe('POST /api/settings route handler', () => {
     })
 
     it('deduplicates paths and saves valid settings', async () => {
-        readBody.mockResolvedValue({ mediaPaths: [' /a ', '/a', '/b'] })
+        readBody.mockResolvedValue({ mediaPaths: [' /a ', '/a', '/b'], tmdbApiKey: '  abc  ' })
         stat.mockResolvedValue({})
         saveSettings.mockResolvedValue({
             mediaPaths: ['/a', '/b'],
+            tmdbApiKey: 'abc',
         })
         const handler = await loadHandler()
 
         await expect(handler({} as never)).resolves.toEqual({
             mediaPaths: ['/a', '/b'],
+            tmdbApiKey: 'abc',
         })
-        expect(saveSettings).toHaveBeenCalledWith({ mediaPaths: ['/a', '/b'] })
+        expect(saveSettings).toHaveBeenCalledWith({ mediaPaths: ['/a', '/b'], tmdbApiKey: 'abc' })
         expect(logger.info).toHaveBeenCalledWith('Settings updated.')
+    })
+
+    it('rejects when tmdb api key is invalid', async () => {
+        readBody.mockResolvedValue({ mediaPaths: ['/ok'], tmdbApiKey: 123 })
+        const handler = await loadHandler()
+
+        await expect(handler({} as never)).rejects.toEqual({
+            statusCode: 400,
+            message: 'invalid_request',
+        })
     })
 })

@@ -45,8 +45,16 @@ export const directoryCacheCollection = new Datastore<DirectoryCache>({
     timestampData: true,
 })
 
-logger.debug(`Users datastore initialized: ${userCollectionDataDir}`)
-logger.debug(`Sessions datastore initialized: ${sessionCollectionDataDir}`)
-logger.debug(`Settings datastore initialized: ${settingsCollectionDataDir}`)
-logger.debug(`Directory cache datastore initialized: ${directoryCacheCollectionDataDir}`)
-logger.info('Database initialised.')
+export async function initDatastores() {
+        await userCollection.autoloadPromise
+        logger.debug(`Users datastore initialized: ${userCollectionDataDir}`)
+
+        await sessionCollection.autoloadPromise
+        logger.debug(`Sessions datastore initialized: ${sessionCollectionDataDir}`)
+
+        await settingsCollection.autoloadPromise
+        logger.debug(`Settings datastore initialized: ${settingsCollectionDataDir}`)
+
+        await directoryCacheCollection.autoloadPromise
+        logger.debug(`Directory cache datastore initialized: ${directoryCacheCollectionDataDir}`)
+}

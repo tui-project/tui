@@ -7,7 +7,7 @@ describe('useSettings composable', () => {
     })
 
     it('loads settings successfully', async () => {
-        const fetchMock = vi.fn().mockResolvedValue({ mediaPaths: ['/media/a'] })
+        const fetchMock = vi.fn().mockResolvedValue({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useSettings } = await import('../../../../app/composables/useSettings')
@@ -15,7 +15,7 @@ describe('useSettings composable', () => {
         const result = await getSettings()
 
         expect(fetchMock).toHaveBeenCalledWith('/api/settings')
-        expect(result).toEqual({ mediaPaths: ['/media/a'] })
+        expect(result).toEqual({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
         expect(loading.value).toBe(false)
         expect(error.value).toBe(false)
     })
@@ -34,18 +34,18 @@ describe('useSettings composable', () => {
     })
 
     it('saves settings successfully', async () => {
-        const fetchMock = vi.fn().mockResolvedValue({ mediaPaths: ['/media/a', '/media/b'] })
+        const fetchMock = vi.fn().mockResolvedValue({ mediaPaths: ['/media/a', '/media/b'], tmdbApiKey: 'abc' })
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useSettings } = await import('../../../../app/composables/useSettings')
         const { saveSettings, loading, error } = useSettings()
-        const result = await saveSettings({ mediaPaths: ['/media/a', '/media/b'] })
+        const result = await saveSettings({ mediaPaths: ['/media/a', '/media/b'], tmdbApiKey: 'abc' })
 
         expect(fetchMock).toHaveBeenCalledWith('/api/settings', {
             method: 'POST',
-            body: { mediaPaths: ['/media/a', '/media/b'] },
+            body: { mediaPaths: ['/media/a', '/media/b'], tmdbApiKey: 'abc' },
         })
-        expect(result).toEqual({ mediaPaths: ['/media/a', '/media/b'] })
+        expect(result).toEqual({ mediaPaths: ['/media/a', '/media/b'], tmdbApiKey: 'abc' })
         expect(loading.value).toBe(false)
         expect(error.value).toBe(false)
     })
@@ -56,7 +56,7 @@ describe('useSettings composable', () => {
 
         const { useSettings } = await import('../../../../app/composables/useSettings')
         const { saveSettings, loading, error } = useSettings()
-        const result = await saveSettings({ mediaPaths: ['/media/a'] })
+        const result = await saveSettings({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
 
         expect(result).toBeNull()
         expect(loading.value).toBe(false)
@@ -64,10 +64,10 @@ describe('useSettings composable', () => {
     })
 
     it('does not call fetch when already loading', async () => {
-        let resolveFetch: ((value: { mediaPaths: string[] }) => void) | undefined
+        let resolveFetch: ((value: { mediaPaths: string[]; tmdbApiKey: string }) => void) | undefined
         const fetchMock = vi.fn().mockImplementation(
             () =>
-                new Promise<{ mediaPaths: string[] }>((resolve) => {
+                new Promise<{ mediaPaths: string[]; tmdbApiKey: string }>((resolve) => {
                     resolveFetch = resolve
                 })
         )
@@ -81,16 +81,16 @@ describe('useSettings composable', () => {
         await expect(getSettings()).resolves.toBeNull()
         expect(fetchMock).toHaveBeenCalledTimes(1)
 
-        resolveFetch?.({ mediaPaths: [] })
+        resolveFetch?.({ mediaPaths: [], tmdbApiKey: '' })
         await pending
         expect(loading.value).toBe(false)
     })
 
     it('does not call save fetch when already loading', async () => {
-        let resolveFetch: ((value: { mediaPaths: string[] }) => void) | undefined
+        let resolveFetch: ((value: { mediaPaths: string[]; tmdbApiKey: string }) => void) | undefined
         const fetchMock = vi.fn().mockImplementation(
             () =>
-                new Promise<{ mediaPaths: string[] }>((resolve) => {
+                new Promise<{ mediaPaths: string[]; tmdbApiKey: string }>((resolve) => {
                     resolveFetch = resolve
                 })
         )
@@ -98,13 +98,13 @@ describe('useSettings composable', () => {
 
         const { useSettings } = await import('../../../../app/composables/useSettings')
         const { saveSettings, loading } = useSettings()
-        const pending = saveSettings({ mediaPaths: ['/media/a'] })
+        const pending = saveSettings({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
 
         expect(loading.value).toBe(true)
-        await expect(saveSettings({ mediaPaths: ['/media/b'] })).resolves.toBeNull()
+        await expect(saveSettings({ mediaPaths: ['/media/b'], tmdbApiKey: '' })).resolves.toBeNull()
         expect(fetchMock).toHaveBeenCalledTimes(1)
 
-        resolveFetch?.({ mediaPaths: ['/media/a'] })
+        resolveFetch?.({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
         await pending
         expect(loading.value).toBe(false)
     })

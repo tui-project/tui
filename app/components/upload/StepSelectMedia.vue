@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Path } from './StepSelectMedia.types'
+import type { Path } from './upload.types'
 import StepNavigationButtons from './StepNavigationButtons.vue'
 
 const emit = defineEmits<{

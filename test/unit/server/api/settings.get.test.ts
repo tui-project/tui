@@ -8,7 +8,7 @@ const logger = {
     error: vi.fn(),
 }
 
-const getSettings = vi.fn<() => Promise<{ id: string; mediaPaths: string[] }>>()
+const getSettings = vi.fn<() => Promise<{ id: string; mediaPaths: string[]; tmdbApiKey: string }>>()
 
 beforeEach(() => {
     vi.resetModules()
@@ -30,20 +30,22 @@ async function loadHandler() {
 
 describe('GET /api/settings route handler', () => {
     it('returns empty list when settings are missing', async () => {
-        getSettings.mockResolvedValue({ id: 'app-settings', mediaPaths: [] })
+        getSettings.mockResolvedValue({ id: 'app-settings', mediaPaths: [], tmdbApiKey: '' })
         const handler = await loadHandler()
 
         await expect(handler({} as never)).resolves.toEqual({
             mediaPaths: [],
+            tmdbApiKey: '',
         })
     })
 
     it('returns stored media paths', async () => {
-        getSettings.mockResolvedValue({ id: 'app-settings', mediaPaths: ['/a', '/b'] })
+        getSettings.mockResolvedValue({ id: 'app-settings', mediaPaths: ['/a', '/b'], tmdbApiKey: 'abc' })
         const handler = await loadHandler()
 
         await expect(handler({} as never)).resolves.toEqual({
             mediaPaths: ['/a', '/b'],
+            tmdbApiKey: 'abc',
         })
     })
 })

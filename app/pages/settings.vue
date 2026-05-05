@@ -8,10 +8,12 @@ const alertMessage = ref('')
 const successfullySaved = ref(false)
 const formState = reactive({
     mediaPaths: [] as string[],
+    tmdbApiKey: '',
 })
 
 const schema = z.object({
     mediaPaths: z.array(z.string()).min(1, 'At least one media path is required.'),
+    tmdbApiKey: z.string(),
 })
 
 type SettingsFormState = z.output<typeof schema>
@@ -34,9 +36,10 @@ function removeMediaPath(path: string) {
 async function onSubmit(event: FormSubmitEvent<SettingsFormState>) {
     successfullySaved.value = false
 
-    const response = await saveSettings({ mediaPaths: event.data.mediaPaths })
+    const response = await saveSettings({ mediaPaths: event.data.mediaPaths, tmdbApiKey: event.data.tmdbApiKey })
     if (response) {
         formState.mediaPaths = response.mediaPaths
+        formState.tmdbApiKey = response.tmdbApiKey
         alertMessage.value = 'Settings successfully saved.'
         successfullySaved.value = true
     }
@@ -50,6 +53,7 @@ async function loadSettings() {
     const response = await getSettings()
     if (response) {
         formState.mediaPaths = response.mediaPaths
+        formState.tmdbApiKey = response.tmdbApiKey
     }
 
     if (error.value) {
@@ -92,6 +96,12 @@ onMounted(() => {
                     </ul>
                     <div v-else class="text-sm text-muted">No media paths configured yet.</div>
                 </div>
+            </UCard>
+
+            <UCard title="TMDB" description="API key used for metadata lookup" variant="subtle" class="mt-4">
+                <UFormField label="TMDB API Key" name="tmdbApiKey">
+                    <UInput v-model="formState.tmdbApiKey" size="xl" class="w-full" placeholder="Enter TMDB API key" />
+                </UFormField>
             </UCard>
 
             <div class="flex justify-end pt-4">

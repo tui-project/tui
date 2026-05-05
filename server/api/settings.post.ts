@@ -5,6 +5,7 @@ import { logger } from '../utils/logger'
 
 interface SettingsRequest {
     mediaPaths?: unknown
+    tmdbApiKey?: unknown
 }
 
 export default defineEventHandler(async (event) => {
@@ -12,9 +13,10 @@ export default defineEventHandler(async (event) => {
 
     const request = await readBody<SettingsRequest>(event)
     const mediaPaths = normalizeMediaPaths(request.mediaPaths)
+    const tmdbApiKey = normalizeTMDbAPIKey(request.tmdbApiKey)
 
-    if (!mediaPaths) {
-        logger.warn('Rejected settings update with invalid media paths payload.')
+    if (!mediaPaths || tmdbApiKey === null) {
+        logger.warn('Rejected settings update with invalid payload.')
         throw createError({
             statusCode: 400,
             message: 'invalid_request',
@@ -32,7 +34,7 @@ export default defineEventHandler(async (event) => {
         }
     }
 
-    const settings = await saveSettings({ mediaPaths })
+    const settings = await saveSettings({ mediaPaths, tmdbApiKey })
     logger.info('Settings updated.')
 
     return settings
@@ -53,6 +55,14 @@ function normalizeMediaPaths(input: unknown) {
     }
 
     return [...new Set(trimmed)]
+}
+
+function normalizeTMDbAPIKey(input: unknown) {
+    if (typeof input !== 'string') {
+        return null
+    }
+
+    return input.trim()
 }
 
 async function pathExists(path: string) {

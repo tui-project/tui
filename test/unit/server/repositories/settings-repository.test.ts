@@ -6,27 +6,30 @@ describe('settings repository', () => {
         await expect(getSettings()).resolves.toMatchObject({
             id: 'app-settings',
             mediaPaths: [],
+            tmdbApiKey: '',
         })
     })
 
     it('saves and returns settings', async () => {
         const { getSettings, saveSettings } = await import('../../../../server/repositories/settings-repository')
-        await saveSettings({ mediaPaths: ['/media/a', '/media/b'] })
+        await saveSettings({ mediaPaths: ['/media/a', '/media/b'], tmdbApiKey: 'abc' })
 
         await expect(getSettings()).resolves.toMatchObject({
             id: 'app-settings',
             mediaPaths: ['/media/a', '/media/b'],
+            tmdbApiKey: 'abc',
         })
     })
 
     it('overwrites settings on save', async () => {
         const { getSettings, saveSettings } = await import('../../../../server/repositories/settings-repository')
-        await saveSettings({ mediaPaths: ['/media/old'] })
-        await saveSettings({ mediaPaths: ['/media/new'] })
+        await saveSettings({ mediaPaths: ['/media/old'], tmdbApiKey: 'old' })
+        await saveSettings({ mediaPaths: ['/media/new'], tmdbApiKey: 'new' })
 
         await expect(getSettings()).resolves.toMatchObject({
             id: 'app-settings',
             mediaPaths: ['/media/new'],
+            tmdbApiKey: 'new',
         })
     })
 
@@ -43,8 +46,8 @@ describe('settings repository', () => {
         }))
 
         vi.doMock('../../../../server/utils/db', () => ({
+            initDatastores: vi.fn().mockResolvedValue(undefined),
             settingsCollection: {
-                autoloadPromise: Promise.resolve(),
                 findOneAsync: vi.fn().mockRejectedValue(new Error('init failure')),
                 insertAsync: vi.fn(),
                 updateAsync: vi.fn(),

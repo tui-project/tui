@@ -8,10 +8,7 @@ import { getDataDir } from '../../setupFile'
 describe('server db', () => {
     it('creates user, session, settings, and directory cache datastores in the configured data directory', async () => {
         const db = await import('../../../../server/utils/db')
-        await db.userCollection.autoloadPromise
-        await db.sessionCollection.autoloadPromise
-        await db.settingsCollection.autoloadPromise
-        await db.directoryCacheCollection.autoloadPromise
+        await db.initDatastores()
 
         const userDatafile = await stat(join(getDataDir(), 'users.db'))
         const sessionDatafile = await stat(join(getDataDir(), 'sessions.db'))
@@ -25,8 +22,8 @@ describe('server db', () => {
     })
 
     it('persists user documents to the users datafile', async () => {
-        const { userCollection } = await import('../../../../server/utils/db')
-        await userCollection.autoloadPromise
+        const { initDatastores, userCollection } = await import('../../../../server/utils/db')
+        await initDatastores()
 
         await userCollection.insertAsync({
             id: 'user-1',
@@ -56,7 +53,7 @@ describe('server db', () => {
             vi.resetModules()
 
             const db = await import('../../../../server/utils/db')
-            await db.userCollection.autoloadPromise
+            await db.initDatastores()
 
             const datafile = await stat(join(tempCwd, 'config', 'database', 'users.db'))
             expect(datafile.isFile()).toBe(true)

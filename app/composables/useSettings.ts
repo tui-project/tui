@@ -2,6 +2,7 @@ import { readonly, ref } from 'vue'
 
 export interface AppSettings {
     mediaPaths: string[]
+    tmdbApiKey: string
 }
 
 export function useSettings() {

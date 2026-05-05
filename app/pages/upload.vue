@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { StepperItem } from '@nuxt/ui'
-import type { Path } from '~/components/upload/StepSelectMedia.types'
+import type { Metadata, Path } from '~/components/upload/upload.types'
 
 const stepItems: StepperItem[] = [
     {
@@ -26,8 +26,9 @@ const stepItems: StepperItem[] = [
 ]
 
 const stepper = useTemplateRef('stepper')
-const selectedPath = ref<Path>()
 const currentStep = ref(0)
+const selectedPath = ref<Path>()
+const reviewedMetadata = ref<Metadata>()
 
 watch(
     () => selectedPath.value?.value?.trim() ?? '',
@@ -35,11 +36,17 @@ watch(
         if (!path || !previousPath || path === previousPath) {
             return
         }
+
+        reviewedMetadata.value = undefined
     }
 )
 
 function goToNextStep() {
     stepper.value?.next()
+}
+
+function goToPrevStep() {
+    stepper.value?.prev()
 }
 </script>
 
@@ -50,8 +57,9 @@ function goToNextStep() {
             <template #select-media>
                 <UploadStepSelectMedia v-model="selectedPath" @next="goToNextStep" />
             </template>
-
-            <template #review-metadata> </template>
+            <template #review-metadata>
+                <UploadStepReviewMetadata v-model="reviewedMetadata" :selected-path="selectedPath" @back="goToPrevStep" @next="goToNextStep" />
+            </template>
 
             <template #description> </template>
 

@@ -20,6 +20,7 @@ beforeEach(() => {
     vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
     createError.mockImplementation((payload) => payload)
     getSettings.mockResolvedValue({ id: 'app-settings', mediaPaths: ['/media'] })
+    realpath.mockImplementation(async (target) => target)
 })
 
 async function loadHandler() {
