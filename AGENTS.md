@@ -43,12 +43,7 @@ export default defineEventHandler(async () => {
 
 - Put database interaction modules in `server/repositories`.
 - Repository method names should be contextual and use clear verb-first names. Include the entity in the method name when it improves readability across imports/call sites. For example, use `createUser`, `findAllUsers`, `userCount`, `createSession`, and `getSettings`.
-- Repositories should wait for datastore autoload before querying or writing:
-
-```ts
-await userCollection.autoloadPromise
-```
-
+- Datastore readiness is handled during app bootstrap; repository methods should not add per-method `autoloadPromise` waits.
 - Keep raw datastore exports in `server/utils/db.ts`; application code should usually use repositories instead of importing collections directly.
 
 ## Logging
