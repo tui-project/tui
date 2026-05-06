@@ -48,6 +48,9 @@ describe('directory browse service', () => {
                 error: loggerError,
             },
         }))
+        vi.doMock('h3', () => ({
+            createError: (payload: unknown) => payload,
+        }))
         vi.doMock('node:fs/promises', async () => {
             const actual = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
             return {

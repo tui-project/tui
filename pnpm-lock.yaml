@@ -7,6 +7,15 @@ settings:
 importers:
     .:
         dependencies:
+            '@bbob/html':
+                specifier: 4.3.1
+                version: 4.3.1
+            '@bbob/plugin-helper':
+                specifier: 4.3.1
+                version: 4.3.1
+            '@bbob/preset-html5':
+                specifier: 4.3.1
+                version: 4.3.1
             '@nuxt/eslint':
                 specifier: 1.15.2
                 version: 1.15.2(@typescript-eslint/utils@8.59.0(eslint@10.2.1(jiti@2.6.1))(typescript@6.0.3))(@vue/compiler-sfc@3.5.33)(eslint@10.2.1(jiti@2.6.1))(magicast@0.5.2)(typescript@6.0.3)(vite@7.3.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(yaml@2.8.3))
@@ -44,6 +53,9 @@ importers:
                 specifier: 4.3.6
                 version: 4.3.6
         devDependencies:
+            '@bbob/types':
+                specifier: 4.3.1
+                version: 4.3.1
             '@iconify-json/lucide':
                 specifier: ^1.2.105
                 version: 1.2.105
@@ -221,6 +233,27 @@ packages:
     '@babel/types@7.29.0':
         resolution: { integrity: sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A== }
         engines: { node: '>=6.9.0' }
+
+    '@bbob/core@4.3.1':
+        resolution: { integrity: sha512-qNS5wNY2oJROV5CQ2e29e9dBz4ZuSO7JcciBXM2yDHvKFUYl+J4o8DxOsugce6z2cFpGz6F4J7vJN7X+6ujWiQ== }
+
+    '@bbob/html@4.3.1':
+        resolution: { integrity: sha512-W1qFvBZwhpGkZBNfeRpUFsoF492BlfNmgdh5iczg7B/PDULdOPH5lPLtT/6ZNpyx/xo6/DBssl9YtEO/bm15hw== }
+
+    '@bbob/parser@4.3.1':
+        resolution: { integrity: sha512-BqDo8PDLcVLhFvOMdLmeaWk5qqD8E1bEdvzSJQuJC/U1XFs1tMC4lwZ4oPBFmZCeCLNsYFawqjP/S5MDdr7/Tg== }
+
+    '@bbob/plugin-helper@4.3.1':
+        resolution: { integrity: sha512-0gyhW5sU270iCBvaRO1jYDTs1oGHu913yB9tqxPO9zT5OIDhu47PwensdJ7EuZwgYKEyQ4zZZ+1jvDzkubjdyQ== }
+
+    '@bbob/preset-html5@4.3.1':
+        resolution: { integrity: sha512-6Yn8kOrBWt/2u4ZUt7nSTzWP+xvTaH4TlAds6p+BcBRbs4Ov2f1zkRgCh1JlckMXwhH9q9CGF0wn6w8bkUYcFA== }
+
+    '@bbob/preset@4.3.1':
+        resolution: { integrity: sha512-we6ITgrwciNIdpZRRJl4y3OOEbXEEVA21895JUInvYXevZBrIgIAvO502qlEYQtqhJqQ1HxY5xyhDjZ9rEYQHg== }
+
+    '@bbob/types@4.3.1':
+        resolution: { integrity: sha512-TXxFPfKvZVH/sR0mfn5I99bEFmbnAzIoqFBxG1htRiKyJUx7Yb/ZNS/OsQD1mIsR6+srDqXFDaWbDgVudTTjvQ== }
 
     '@bcoe/v8-coverage@1.0.2':
         resolution: { integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA== }
@@ -5923,6 +5956,40 @@ snapshots:
         dependencies:
             '@babel/helper-string-parser': 7.27.1
             '@babel/helper-validator-identifier': 7.28.5
+
+    '@bbob/core@4.3.1':
+        dependencies:
+            '@bbob/parser': 4.3.1
+            '@bbob/plugin-helper': 4.3.1
+            '@bbob/types': 4.3.1
+
+    '@bbob/html@4.3.1':
+        dependencies:
+            '@bbob/core': 4.3.1
+            '@bbob/plugin-helper': 4.3.1
+            '@bbob/types': 4.3.1
+
+    '@bbob/parser@4.3.1':
+        dependencies:
+            '@bbob/plugin-helper': 4.3.1
+            '@bbob/types': 4.3.1
+
+    '@bbob/plugin-helper@4.3.1':
+        dependencies:
+            '@bbob/types': 4.3.1
+
+    '@bbob/preset-html5@4.3.1':
+        dependencies:
+            '@bbob/plugin-helper': 4.3.1
+            '@bbob/preset': 4.3.1
+            '@bbob/types': 4.3.1
+
+    '@bbob/preset@4.3.1':
+        dependencies:
+            '@bbob/plugin-helper': 4.3.1
+            '@bbob/types': 4.3.1
+
+    '@bbob/types@4.3.1': {}
 
     '@bcoe/v8-coverage@1.0.2': {}
 

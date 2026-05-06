@@ -3,6 +3,11 @@ import { readonly, ref } from 'vue'
 export interface AppSettings {
     mediaPaths: string[]
     tmdbApiKey: string
+    ffmpegPath: string
+    ffprobePath: string
+    movieScreenshotCount: number
+    tvEpisodeScreenshotCount: number
+    imgbbApiKey: string
 }
 
 export function useSettings() {

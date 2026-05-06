@@ -45,6 +45,7 @@ export default defineEventHandler(async () => {
 - Repository method names should be contextual and use clear verb-first names. Include the entity in the method name when it improves readability across imports/call sites. For example, use `createUser`, `findAllUsers`, `userCount`, `createSession`, and `getSettings`.
 - Datastore readiness is handled during app bootstrap; repository methods should not add per-method `autoloadPromise` waits.
 - Keep raw datastore exports in `server/utils/db.ts`; application code should usually use repositories instead of importing collections directly.
+- Avoid passing broad configuration objects such as `settings` through multiple method parameters when the callee can resolve what it needs internally. Prefer keeping configuration lookup close to the service that owns that behavior, and pass only the specific values required when lookup cannot be done locally.
 
 ## Logging
 

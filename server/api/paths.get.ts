@@ -4,7 +4,7 @@ import { getSettings } from '../repositories/settings-repository'
 import { listChildren } from '../services/directory-browse'
 import { logger } from '../utils/logger'
 import { isWithinAnyRoot, sortPathItems } from '../utils/file-system'
-import { isBlank } from '../utils/string'
+import { isBlank, normaliseString } from '../utils/string'
 
 interface PathsQuery {
     parent?: string
@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
     logger.debug('Paths request received.')
 
     const query = getQuery(event) as PathsQuery
-    const parent = typeof query.parent === 'string' ? query.parent.trim() : ''
+    const parent = normaliseString(query.parent)
 
     logger.debug(`Parent directory: ${parent}`)
 
@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
     return paths
 })
 
-async function browseEligiblePaths(parent?: string) {
+async function browseEligiblePaths(parent: string | null) {
     const settings = await getSettings()
     const roots = settings.mediaPaths
 

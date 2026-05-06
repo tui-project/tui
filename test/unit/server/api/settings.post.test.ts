@@ -6,9 +6,9 @@ const logger = {
     warn: vi.fn(),
 }
 
-const readBody = vi.fn<() => Promise<{ mediaPaths?: unknown; tmdbApiKey?: unknown }>>()
+const readBody = vi.fn()
 const createError = vi.fn((payload: unknown) => payload)
-const saveSettings = vi.fn<() => Promise<{ mediaPaths: string[]; tmdbApiKey: string }>>()
+const saveSettings = vi.fn()
 const stat = vi.fn()
 
 beforeEach(() => {
@@ -48,7 +48,7 @@ describe('POST /api/settings route handler', () => {
     })
 
     it('rejects when media path does not exist', async () => {
-        readBody.mockResolvedValue({ mediaPaths: ['/missing'], tmdbApiKey: 'abc' })
+        readBody.mockResolvedValue(baseRequest({ mediaPaths: ['/missing'] }))
         stat.mockRejectedValue(new Error('missing'))
         const handler = await loadHandler()
 
@@ -59,7 +59,7 @@ describe('POST /api/settings route handler', () => {
     })
 
     it('rejects when media paths contain invalid entries after normalization', async () => {
-        readBody.mockResolvedValue({ mediaPaths: ['/ok', '   '], tmdbApiKey: 'abc' })
+        readBody.mockResolvedValue(baseRequest({ mediaPaths: ['/ok', '   '] }))
         const handler = await loadHandler()
 
         await expect(handler({} as never)).rejects.toEqual({
@@ -69,24 +69,42 @@ describe('POST /api/settings route handler', () => {
     })
 
     it('deduplicates paths and saves valid settings', async () => {
-        readBody.mockResolvedValue({ mediaPaths: [' /a ', '/a', '/b'], tmdbApiKey: '  abc  ' })
+        readBody.mockResolvedValue(baseRequest({ mediaPaths: [' /a ', '/a', '/b'], tmdbApiKey: '  abc  ' }))
         stat.mockResolvedValue({})
         saveSettings.mockResolvedValue({
             mediaPaths: ['/a', '/b'],
             tmdbApiKey: 'abc',
+            ffmpegPath: 'ffmpeg',
+            ffprobePath: 'ffprobe',
+            movieScreenshotCount: 6,
+            tvEpisodeScreenshotCount: 3,
+            imgbbApiKey: 'imgbb-key',
         })
         const handler = await loadHandler()
 
         await expect(handler({} as never)).resolves.toEqual({
             mediaPaths: ['/a', '/b'],
             tmdbApiKey: 'abc',
+            ffmpegPath: 'ffmpeg',
+            ffprobePath: 'ffprobe',
+            movieScreenshotCount: 6,
+            tvEpisodeScreenshotCount: 3,
+            imgbbApiKey: 'imgbb-key',
         })
-        expect(saveSettings).toHaveBeenCalledWith({ mediaPaths: ['/a', '/b'], tmdbApiKey: 'abc' })
+        expect(saveSettings).toHaveBeenCalledWith({
+            mediaPaths: ['/a', '/b'],
+            tmdbApiKey: 'abc',
+            ffmpegPath: 'ffmpeg',
+            ffprobePath: 'ffprobe',
+            movieScreenshotCount: 6,
+            tvEpisodeScreenshotCount: 3,
+            imgbbApiKey: 'imgbb-key',
+        })
         expect(logger.info).toHaveBeenCalledWith('Settings updated.')
     })
 
     it('rejects when tmdb api key is invalid', async () => {
-        readBody.mockResolvedValue({ mediaPaths: ['/ok'], tmdbApiKey: 123 })
+        readBody.mockResolvedValue(baseRequest({ mediaPaths: ['/ok'], tmdbApiKey: 123 }))
         const handler = await loadHandler()
 
         await expect(handler({} as never)).rejects.toEqual({
@@ -94,4 +112,52 @@ describe('POST /api/settings route handler', () => {
             message: 'invalid_request',
         })
     })
+
+    it('allows blank ffmpeg path, ffprobe path, and imgbb api key', async () => {
+        readBody.mockResolvedValue(baseRequest({ ffmpegPath: '   ', ffprobePath: ' ', imgbbApiKey: '   ' }))
+        stat.mockResolvedValue({})
+        saveSettings.mockResolvedValue({
+            mediaPaths: ['/ok'],
+            tmdbApiKey: 'abc',
+            ffmpegPath: '',
+            ffprobePath: '',
+            movieScreenshotCount: 6,
+            tvEpisodeScreenshotCount: 3,
+            imgbbApiKey: '',
+        })
+        const handler = await loadHandler()
+
+        await expect(handler({} as never)).resolves.toEqual({
+            mediaPaths: ['/ok'],
+            tmdbApiKey: 'abc',
+            ffmpegPath: '',
+            ffprobePath: '',
+            movieScreenshotCount: 6,
+            tvEpisodeScreenshotCount: 3,
+            imgbbApiKey: '',
+        })
+    })
 })
+
+function baseRequest(
+    overrides: Partial<{
+        mediaPaths: unknown
+        tmdbApiKey: unknown
+        ffmpegPath: unknown
+        ffprobePath: unknown
+        movieScreenshotCount: unknown
+        tvEpisodeScreenshotCount: unknown
+        imgbbApiKey: unknown
+    }> = {}
+) {
+    return {
+        mediaPaths: ['/ok'],
+        tmdbApiKey: 'abc',
+        ffmpegPath: 'ffmpeg',
+        ffprobePath: 'ffprobe',
+        movieScreenshotCount: 6,
+        tvEpisodeScreenshotCount: 3,
+        imgbbApiKey: 'imgbb-key',
+        ...overrides,
+    }
+}

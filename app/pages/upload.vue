@@ -29,6 +29,7 @@ const stepper = useTemplateRef('stepper')
 const currentStep = ref(0)
 const selectedPath = ref<Path>()
 const reviewedMetadata = ref<Metadata>()
+const description = ref('')
 
 watch(
     () => selectedPath.value?.value?.trim() ?? '',
@@ -61,7 +62,16 @@ function goToPrevStep() {
                 <UploadStepReviewMetadata v-model="reviewedMetadata" :selected-path="selectedPath" @back="goToPrevStep" @next="goToNextStep" />
             </template>
 
-            <template #description> </template>
+            <template #description>
+                <UploadStepDescription
+                    v-model="description"
+                    :selected-path="selectedPath"
+                    :is-hdr="Boolean(reviewedMetadata?.hdr?.length)"
+                    :is-tv="reviewedMetadata?.mediaType === 'tv'"
+                    @back="goToPrevStep"
+                    @next="goToNextStep"
+                />
+            </template>
 
             <template #upload> </template>
         </UStepper>

@@ -8,7 +8,18 @@ const logger = {
     error: vi.fn(),
 }
 
-const getSettings = vi.fn<() => Promise<{ id: string; mediaPaths: string[]; tmdbApiKey: string }>>()
+const getSettings = vi.fn<
+    () => Promise<{
+        id: string
+        mediaPaths: string[]
+        tmdbApiKey: string
+        ffmpegPath: string
+        ffprobePath: string
+        movieScreenshotCount: number
+        tvEpisodeScreenshotCount: number
+        imgbbApiKey: string
+    }>
+>()
 
 beforeEach(() => {
     vi.resetModules()
@@ -30,22 +41,50 @@ async function loadHandler() {
 
 describe('GET /api/settings route handler', () => {
     it('returns empty list when settings are missing', async () => {
-        getSettings.mockResolvedValue({ id: 'app-settings', mediaPaths: [], tmdbApiKey: '' })
+        getSettings.mockResolvedValue({
+            id: 'app-settings',
+            mediaPaths: [],
+            tmdbApiKey: '',
+            ffmpegPath: 'ffmpeg',
+            ffprobePath: 'ffprobe',
+            movieScreenshotCount: 6,
+            tvEpisodeScreenshotCount: 3,
+            imgbbApiKey: '',
+        })
         const handler = await loadHandler()
 
         await expect(handler({} as never)).resolves.toEqual({
             mediaPaths: [],
             tmdbApiKey: '',
+            ffmpegPath: 'ffmpeg',
+            ffprobePath: 'ffprobe',
+            movieScreenshotCount: 6,
+            tvEpisodeScreenshotCount: 3,
+            imgbbApiKey: '',
         })
     })
 
     it('returns stored media paths', async () => {
-        getSettings.mockResolvedValue({ id: 'app-settings', mediaPaths: ['/a', '/b'], tmdbApiKey: 'abc' })
+        getSettings.mockResolvedValue({
+            id: 'app-settings',
+            mediaPaths: ['/a', '/b'],
+            tmdbApiKey: 'abc',
+            ffmpegPath: '/usr/local/bin/ffmpeg',
+            ffprobePath: '/usr/local/bin/ffprobe',
+            movieScreenshotCount: 8,
+            tvEpisodeScreenshotCount: 4,
+            imgbbApiKey: 'imgbb-key',
+        })
         const handler = await loadHandler()
 
         await expect(handler({} as never)).resolves.toEqual({
             mediaPaths: ['/a', '/b'],
             tmdbApiKey: 'abc',
+            ffmpegPath: '/usr/local/bin/ffmpeg',
+            ffprobePath: '/usr/local/bin/ffprobe',
+            movieScreenshotCount: 8,
+            tvEpisodeScreenshotCount: 4,
+            imgbbApiKey: 'imgbb-key',
         })
     })
 })

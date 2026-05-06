@@ -2,21 +2,41 @@ import { stat } from 'node:fs/promises'
 import { createError, readBody } from 'h3'
 import { saveSettings } from '../repositories/settings-repository'
 import { logger } from '../utils/logger'
+import { normalisePositiveInteger, normaliseString } from '../utils/string'
 
 interface SettingsRequest {
     mediaPaths?: unknown
     tmdbApiKey?: unknown
+    ffmpegPath?: unknown
+    ffprobePath?: unknown
+    movieScreenshotCount?: unknown
+    tvEpisodeScreenshotCount?: unknown
+    imgbbApiKey?: unknown
 }
 
 export default defineEventHandler(async (event) => {
     logger.debug('Settings update request received.')
 
     const request = await readBody<SettingsRequest>(event)
-    const mediaPaths = normalizeMediaPaths(request.mediaPaths)
-    const tmdbApiKey = normalizeTMDbAPIKey(request.tmdbApiKey)
+    const mediaPaths = normaliseMediaPaths(request.mediaPaths)
+    const tmdbApiKey = normaliseString(request.tmdbApiKey)
+    const ffmpegPath = normaliseString(request.ffmpegPath)
+    const ffprobePath = normaliseString(request.ffprobePath)
+    const movieScreenshotCount = normalisePositiveInteger(request.movieScreenshotCount)
+    const tvEpisodeScreenshotCount = normalisePositiveInteger(request.tvEpisodeScreenshotCount)
+    const imgbbApiKey = normaliseString(request.imgbbApiKey)
 
-    if (!mediaPaths || tmdbApiKey === null) {
+    if (
+        !mediaPaths ||
+        tmdbApiKey === null ||
+        ffmpegPath === null ||
+        ffprobePath === null ||
+        movieScreenshotCount === null ||
+        tvEpisodeScreenshotCount === null ||
+        imgbbApiKey === null
+    ) {
         logger.warn('Rejected settings update with invalid payload.')
+
         throw createError({
             statusCode: 400,
             message: 'invalid_request',
@@ -27,6 +47,7 @@ export default defineEventHandler(async (event) => {
         const exists = await pathExists(mediaPath)
         if (!exists) {
             logger.warn('Rejected settings update due to non-existent media path.', { mediaPath })
+
             throw createError({
                 statusCode: 400,
                 message: 'invalid_media_path',
@@ -34,13 +55,13 @@ export default defineEventHandler(async (event) => {
         }
     }
 
-    const settings = await saveSettings({ mediaPaths, tmdbApiKey })
+    const settings = await saveSettings({ mediaPaths, tmdbApiKey, ffmpegPath, ffprobePath, movieScreenshotCount, tvEpisodeScreenshotCount, imgbbApiKey })
     logger.info('Settings updated.')
 
     return settings
 })
 
-function normalizeMediaPaths(input: unknown) {
+function normaliseMediaPaths(input: unknown) {
     if (!Array.isArray(input)) {
         return null
     }
@@ -55,14 +76,6 @@ function normalizeMediaPaths(input: unknown) {
     }
 
     return [...new Set(trimmed)]
-}
-
-function normalizeTMDbAPIKey(input: unknown) {
-    if (typeof input !== 'string') {
-        return null
-    }
-
-    return input.trim()
 }
 
 async function pathExists(path: string) {

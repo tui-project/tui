@@ -1,8 +1,29 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+let storedSettings: Record<string, unknown> | null = null
+
+beforeEach(() => {
+    vi.resetModules()
+    vi.clearAllMocks()
+    storedSettings = null
+})
+
+async function loadRepository() {
+    vi.doMock('../../../../server/utils/db', () => ({
+        settingsCollection: {
+            findOneAsync: vi.fn(async () => storedSettings),
+            updateAsync: vi.fn(async (_query, settings) => {
+                storedSettings = settings
+            }),
+        },
+    }))
+
+    return import('../../../../server/repositories/settings-repository')
+}
 
 describe('settings repository', () => {
     it('returns empty settings before settings are saved', async () => {
-        const { getSettings } = await import('../../../../server/repositories/settings-repository')
+        const { getSettings } = await loadRepository()
         await expect(getSettings()).resolves.toMatchObject({
             id: 'app-settings',
             mediaPaths: [],
@@ -11,8 +32,16 @@ describe('settings repository', () => {
     })
 
     it('saves and returns settings', async () => {
-        const { getSettings, saveSettings } = await import('../../../../server/repositories/settings-repository')
-        await saveSettings({ mediaPaths: ['/media/a', '/media/b'], tmdbApiKey: 'abc' })
+        const { getSettings, saveSettings } = await loadRepository()
+        await saveSettings({
+            mediaPaths: ['/media/a', '/media/b'],
+            tmdbApiKey: 'abc',
+            ffmpegPath: '',
+            ffprobePath: '',
+            movieScreenshotCount: 6,
+            tvEpisodeScreenshotCount: 1,
+            imgbbApiKey: '',
+        })
 
         await expect(getSettings()).resolves.toMatchObject({
             id: 'app-settings',
@@ -22,42 +51,30 @@ describe('settings repository', () => {
     })
 
     it('overwrites settings on save', async () => {
-        const { getSettings, saveSettings } = await import('../../../../server/repositories/settings-repository')
-        await saveSettings({ mediaPaths: ['/media/old'], tmdbApiKey: 'old' })
-        await saveSettings({ mediaPaths: ['/media/new'], tmdbApiKey: 'new' })
+        const { getSettings, saveSettings } = await loadRepository()
+        await saveSettings({
+            mediaPaths: ['/media/old'],
+            tmdbApiKey: 'old',
+            ffmpegPath: '',
+            ffprobePath: '',
+            movieScreenshotCount: 6,
+            tvEpisodeScreenshotCount: 1,
+            imgbbApiKey: '',
+        })
+        await saveSettings({
+            mediaPaths: ['/media/new'],
+            tmdbApiKey: 'new',
+            ffmpegPath: '',
+            ffprobePath: '',
+            movieScreenshotCount: 6,
+            tvEpisodeScreenshotCount: 1,
+            imgbbApiKey: '',
+        })
 
         await expect(getSettings()).resolves.toMatchObject({
             id: 'app-settings',
             mediaPaths: ['/media/new'],
             tmdbApiKey: 'new',
         })
-    })
-
-    it('logs initialization error when default settings initialization fails', async () => {
-        vi.resetModules()
-
-        const logger = {
-            info: vi.fn(),
-            error: vi.fn(),
-        }
-
-        vi.doMock('../../../../server/utils/logger', () => ({
-            logger,
-        }))
-
-        vi.doMock('../../../../server/utils/db', () => ({
-            initDatastores: vi.fn().mockResolvedValue(undefined),
-            settingsCollection: {
-                findOneAsync: vi.fn().mockRejectedValue(new Error('init failure')),
-                insertAsync: vi.fn(),
-                updateAsync: vi.fn(),
-            },
-        }))
-
-        await import('../../../../server/repositories/settings-repository')
-        await Promise.resolve()
-        await Promise.resolve()
-
-        expect(logger.error).toHaveBeenCalledWith('Failed to initialize default settings.', expect.any(Error))
     })
 })

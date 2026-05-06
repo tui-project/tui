@@ -201,7 +201,11 @@ const languageOptions: SelectOption[] = [
 ]
 
 const requiredString = (message: string) => z.string().trim().min(1, message)
-const requiredNumber = (message: string) => z.number().nullable().refine((value) => value !== null, message)
+const requiredNumber = (message: string) =>
+    z
+        .number()
+        .nullable()
+        .refine((value) => value !== null, message)
 
 const schema = z
     .object({

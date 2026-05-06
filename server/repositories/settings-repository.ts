@@ -1,17 +1,24 @@
 import type { Settings } from '../model/settings'
-import { initDatastores, settingsCollection } from '../utils/db'
-import { logger } from '../utils/logger'
+import { settingsCollection } from '../utils/db'
 
-const DEFAULT_SETTINGS: Settings = {
+export const DEFAULT_SETTINGS: Settings = {
     id: 'app-settings',
     mediaPaths: [],
     tmdbApiKey: '',
+    ffmpegPath: 'ffmpeg',
+    ffprobePath: 'ffprobe',
+    movieScreenshotCount: 6,
+    tvEpisodeScreenshotCount: 1,
+    imgbbApiKey: '',
 }
 
 export async function getSettings() {
     const settings = await settingsCollection.findOneAsync({ id: DEFAULT_SETTINGS.id } as Settings)
 
-    return settings ? settings : DEFAULT_SETTINGS
+    return {
+        ...DEFAULT_SETTINGS,
+        ...settings,
+    }
 }
 
 export async function saveSettings(settingsInput: Omit<Settings, 'id'>) {
@@ -23,16 +30,3 @@ export async function saveSettings(settingsInput: Omit<Settings, 'id'>) {
     await settingsCollection.updateAsync({ id: DEFAULT_SETTINGS.id }, settings, { upsert: true })
     return settings
 }
-
-initDatastores()
-    ?.then(async () => {
-        const existingSettings = await settingsCollection.findOneAsync({ id: DEFAULT_SETTINGS.id } as Settings)
-
-        if (!existingSettings) {
-            await settingsCollection.insertAsync(DEFAULT_SETTINGS)
-            logger.info('Default settings were created.')
-        }
-    })
-    .catch((error: unknown) => {
-        logger.error('Failed to initialize default settings.', error)
-    })

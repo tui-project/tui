@@ -1,26 +1,27 @@
 import { createError, getQuery } from 'h3'
-import { readdir, stat } from 'node:fs/promises'
-import { basename, sep } from 'node:path'
+import { basename } from 'node:path'
 import { getSettings } from '../repositories/settings-repository'
 import { logger } from '../utils/logger'
 import { parseMetadataFromName, type ParsedNameMetadata } from '../services/media-name-parser'
 import { parseMetadataFromMediainfo, type ParsedMediainfoMetadata } from '../services/mediainfo'
 import { findByExternalID, findByTitle, getDetails, getExternalIDs, ID_TYPES } from '../services/tmdb'
-import { isWithinAnyRoot } from '../utils/file-system'
+import { isWithinAnyRoot, resolveMediaFilePath } from '../utils/file-system'
 import type { Metadata } from '../model/metadata'
+import { normaliseRequiredString } from '../utils/string'
 
 interface MetadataQuery {
-    path?: string
+    path: string
 }
 
 export default defineEventHandler(async (event) => {
     logger.debug('Metadata request received.')
 
     const query = getQuery(event) as MetadataQuery
-    const path = typeof query.path === 'string' ? query.path.trim() : ''
+    const path = normaliseRequiredString(query.path)
 
     if (!path) {
         logger.warn('Rejected metadata request with missing path query.', { hasPath: Boolean(query.path) })
+
         throw createError({
             statusCode: 400,
             message: 'invalid_path',
@@ -30,6 +31,7 @@ export default defineEventHandler(async (event) => {
     const settings = await getSettings()
     if (!isWithinAnyRoot(path, settings.mediaPaths)) {
         logger.warn('Rejected metadata request because path is outside configured roots.', { path: path })
+
         throw createError({
             statusCode: 400,
             message: 'invalid_path',
@@ -38,56 +40,19 @@ export default defineEventHandler(async (event) => {
 
     const filename = basename(path)
     const metadataFromFilename = parseMetadataFromName(filename)
-    logger.debug('Parsed filename metadata.', {
-        fileName: filename,
-        sourceType: metadataFromFilename.sourceType,
-        service: metadataFromFilename.service,
-        season: metadataFromFilename.season,
-        episode: metadataFromFilename.episode,
-    })
+    logger.trace('Parsed filename metadata.', { metadataFromFilename })
 
     const mediaFilePath = await resolveMediaFilePath(path)
-    logger.debug('Resolved media file path for metadata analysis.', { inputPath: path, mediaFilePath })
+    logger.trace('Resolved media file path for metadata analysis.', { inputPath: path, mediaFilePath })
 
     const metadataFromMediainfo = await parseMetadataFromMediainfo(mediaFilePath, metadataFromFilename.sourceType)
-    const metadata = await buildMetadata(filename, metadataFromFilename, metadataFromMediainfo)
+    logger.trace('Parsed mediainfo metadata.', { metadataFromMediainfo })
 
+    const metadata = await buildMetadata(filename, metadataFromFilename, metadataFromMediainfo)
     logger.debug('Metadata response.', { metadata })
+
     return metadata
 })
-
-async function resolveMediaFilePath(inputPath: string) {
-    const pathStats = await stat(inputPath)
-    if (pathStats.isFile()) {
-        return inputPath
-    }
-
-    if (pathStats.isDirectory()) {
-        const names = await readdir(inputPath)
-        const sortedNames = names.toSorted((left, right) => left.localeCompare(right))
-
-        for (const name of sortedNames) {
-            const candidatePath = `${inputPath}${sep}${name}`
-            const candidateStats = await stat(candidatePath)
-            if (candidateStats.isFile()) {
-                return candidatePath
-            }
-        }
-
-        logger.warn('Rejected metadata request because no files were found in directory.', { path: inputPath })
-        throw createError({
-            statusCode: 400,
-            message: 'no_media_file_found',
-        })
-    }
-
-    logger.warn('Rejected metadata request because path is not a file or directory.', { path: inputPath })
-    throw createError({
-        statusCode: 400,
-        message: 'invalid_path',
-    })
-}
-
 async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameMetadata, metadataFromMediainfo: ParsedMediainfoMetadata): Promise<Metadata> {
     const metadata: Metadata = {
         fileName,
@@ -115,7 +80,7 @@ async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameM
         metadata.year = searchResult.year
     } else if (metadata.tvdbId !== undefined) {
         logger.debug('TMDB enrichment using TVDB ID.', { tvdbId: metadata.tvdbId, mediaType: metadata.mediaType })
-        
+
         const searchResult = await findByExternalID(String(metadata.tvdbId), ID_TYPES.TVDB, metadata.mediaType)
         metadata.tmdbId = searchResult.id
         metadata.title = searchResult.title

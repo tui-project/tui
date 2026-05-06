@@ -1,5 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+function buildSettings(
+    overrides: Partial<{
+        mediaPaths: string[]
+        tmdbApiKey: string
+        ffmpegPath: string
+        ffprobePath: string
+        movieScreenshotCount: number
+        tvEpisodeScreenshotCount: number
+        imgbbApiKey: string
+    }> = {}
+) {
+    return {
+        mediaPaths: ['/media/a'],
+        tmdbApiKey: '',
+        ffmpegPath: 'ffmpeg',
+        ffprobePath: 'ffprobe',
+        movieScreenshotCount: 6,
+        tvEpisodeScreenshotCount: 3,
+        imgbbApiKey: 'imgbb-key',
+        ...overrides,
+    }
+}
+
 describe('useSettings composable', () => {
     beforeEach(() => {
         vi.resetModules()
@@ -7,7 +30,8 @@ describe('useSettings composable', () => {
     })
 
     it('loads settings successfully', async () => {
-        const fetchMock = vi.fn().mockResolvedValue({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
+        const settings = buildSettings()
+        const fetchMock = vi.fn().mockResolvedValue(settings)
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useSettings } = await import('../../../../app/composables/useSettings')
@@ -15,7 +39,7 @@ describe('useSettings composable', () => {
         const result = await getSettings()
 
         expect(fetchMock).toHaveBeenCalledWith('/api/settings')
-        expect(result).toEqual({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
+        expect(result).toEqual(settings)
         expect(loading.value).toBe(false)
         expect(error.value).toBe(false)
     })
@@ -34,18 +58,24 @@ describe('useSettings composable', () => {
     })
 
     it('saves settings successfully', async () => {
-        const fetchMock = vi.fn().mockResolvedValue({ mediaPaths: ['/media/a', '/media/b'], tmdbApiKey: 'abc' })
+        const settings = buildSettings({
+            mediaPaths: ['/media/a', '/media/b'],
+            tmdbApiKey: 'abc',
+            ffmpegPath: '/usr/local/bin/ffmpeg',
+            ffprobePath: '/usr/local/bin/ffprobe',
+        })
+        const fetchMock = vi.fn().mockResolvedValue(settings)
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useSettings } = await import('../../../../app/composables/useSettings')
         const { saveSettings, loading, error } = useSettings()
-        const result = await saveSettings({ mediaPaths: ['/media/a', '/media/b'], tmdbApiKey: 'abc' })
+        const result = await saveSettings(settings)
 
         expect(fetchMock).toHaveBeenCalledWith('/api/settings', {
             method: 'POST',
-            body: { mediaPaths: ['/media/a', '/media/b'], tmdbApiKey: 'abc' },
+            body: settings,
         })
-        expect(result).toEqual({ mediaPaths: ['/media/a', '/media/b'], tmdbApiKey: 'abc' })
+        expect(result).toEqual(settings)
         expect(loading.value).toBe(false)
         expect(error.value).toBe(false)
     })
@@ -56,7 +86,7 @@ describe('useSettings composable', () => {
 
         const { useSettings } = await import('../../../../app/composables/useSettings')
         const { saveSettings, loading, error } = useSettings()
-        const result = await saveSettings({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
+        const result = await saveSettings(buildSettings())
 
         expect(result).toBeNull()
         expect(loading.value).toBe(false)
@@ -64,10 +94,10 @@ describe('useSettings composable', () => {
     })
 
     it('does not call fetch when already loading', async () => {
-        let resolveFetch: ((value: { mediaPaths: string[]; tmdbApiKey: string }) => void) | undefined
+        let resolveFetch: ((value: ReturnType<typeof buildSettings>) => void) | undefined
         const fetchMock = vi.fn().mockImplementation(
             () =>
-                new Promise<{ mediaPaths: string[]; tmdbApiKey: string }>((resolve) => {
+                new Promise<ReturnType<typeof buildSettings>>((resolve) => {
                     resolveFetch = resolve
                 })
         )
@@ -81,16 +111,16 @@ describe('useSettings composable', () => {
         await expect(getSettings()).resolves.toBeNull()
         expect(fetchMock).toHaveBeenCalledTimes(1)
 
-        resolveFetch?.({ mediaPaths: [], tmdbApiKey: '' })
+        resolveFetch?.(buildSettings())
         await pending
         expect(loading.value).toBe(false)
     })
 
     it('does not call save fetch when already loading', async () => {
-        let resolveFetch: ((value: { mediaPaths: string[]; tmdbApiKey: string }) => void) | undefined
+        let resolveFetch: ((value: ReturnType<typeof buildSettings>) => void) | undefined
         const fetchMock = vi.fn().mockImplementation(
             () =>
-                new Promise<{ mediaPaths: string[]; tmdbApiKey: string }>((resolve) => {
+                new Promise<ReturnType<typeof buildSettings>>((resolve) => {
                     resolveFetch = resolve
                 })
         )
@@ -98,13 +128,13 @@ describe('useSettings composable', () => {
 
         const { useSettings } = await import('../../../../app/composables/useSettings')
         const { saveSettings, loading } = useSettings()
-        const pending = saveSettings({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
+        const pending = saveSettings(buildSettings())
 
         expect(loading.value).toBe(true)
-        await expect(saveSettings({ mediaPaths: ['/media/b'], tmdbApiKey: '' })).resolves.toBeNull()
+        await expect(saveSettings(buildSettings({ mediaPaths: ['/media/b'] }))).resolves.toBeNull()
         expect(fetchMock).toHaveBeenCalledTimes(1)
 
-        resolveFetch?.({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
+        resolveFetch?.(buildSettings())
         await pending
         expect(loading.value).toBe(false)
     })

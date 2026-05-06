@@ -22,6 +22,29 @@ mockNuxtImport('useSettings', () => {
     })
 })
 
+function buildSettings(
+    overrides: Partial<{
+        mediaPaths: string[]
+        tmdbApiKey: string
+        ffmpegPath: string
+        ffprobePath: string
+        movieScreenshotCount: number
+        tvEpisodeScreenshotCount: number
+        imgbbApiKey: string
+    }> = {}
+) {
+    return {
+        mediaPaths: [],
+        tmdbApiKey: '',
+        ffmpegPath: 'ffmpeg',
+        ffprobePath: 'ffprobe',
+        movieScreenshotCount: 6,
+        tvEpisodeScreenshotCount: 3,
+        imgbbApiKey: 'imgbb-key',
+        ...overrides,
+    }
+}
+
 describe('settings page', () => {
     beforeEach(() => {
         getSettingsMock.mockReset()
@@ -31,7 +54,7 @@ describe('settings page', () => {
     })
 
     it('loads and renders saved media paths', async () => {
-        getSettingsMock.mockResolvedValue({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
+        getSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'] }))
         await renderSuspended(SettingsPage)
 
         expect(getSettingsMock).toHaveBeenCalledTimes(1)
@@ -39,8 +62,8 @@ describe('settings page', () => {
     })
 
     it('adds/removes paths and submits updated settings', async () => {
-        getSettingsMock.mockResolvedValue({ mediaPaths: [], tmdbApiKey: '' })
-        saveSettingsMock.mockResolvedValue({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
+        getSettingsMock.mockResolvedValue(buildSettings())
+        saveSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'] }))
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -49,14 +72,14 @@ describe('settings page', () => {
         expect(screen.getByText('/media/a')).toBeDefined()
 
         await user.click(screen.getByRole('button', { name: /save/i }))
-        expect(saveSettingsMock).toHaveBeenCalledWith({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
+        expect(saveSettingsMock).toHaveBeenCalledWith(buildSettings({ mediaPaths: ['/media/a'] }))
 
         await user.click(screen.getByRole('button', { name: 'Remove /media/a' }))
         expect(screen.queryByText('/media/a')).toBeNull()
     })
 
     it('does not add empty or duplicate media paths', async () => {
-        getSettingsMock.mockResolvedValue({ mediaPaths: [], tmdbApiKey: '' })
+        getSettingsMock.mockResolvedValue(buildSettings())
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -75,7 +98,7 @@ describe('settings page', () => {
     })
 
     it('does not submit when no media paths are configured', async () => {
-        getSettingsMock.mockResolvedValue({ mediaPaths: [], tmdbApiKey: '' })
+        getSettingsMock.mockResolvedValue(buildSettings())
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -103,7 +126,7 @@ describe('settings page', () => {
     })
 
     it('shows save error alert when settings save fails', async () => {
-        getSettingsMock.mockResolvedValue({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
+        getSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'] }))
         saveSettingsMock.mockResolvedValue(null)
         errorRef.value = true
         const user = userEvent.setup()
@@ -115,8 +138,8 @@ describe('settings page', () => {
     })
 
     it('shows success alert when settings save succeeds', async () => {
-        getSettingsMock.mockResolvedValue({ mediaPaths: [], tmdbApiKey: '' })
-        saveSettingsMock.mockResolvedValue({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
+        getSettingsMock.mockResolvedValue(buildSettings())
+        saveSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'] }))
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -124,13 +147,13 @@ describe('settings page', () => {
         await user.click(screen.getByRole('button', { name: 'Add' }))
         await user.click(screen.getByRole('button', { name: /save/i }))
 
-        expect(saveSettingsMock).toHaveBeenCalledWith({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
+        expect(saveSettingsMock).toHaveBeenCalledWith(buildSettings({ mediaPaths: ['/media/a'] }))
         expect(await screen.findByText('Settings successfully saved.')).toBeDefined()
     })
 
     it('shows loading skeletons and hides form while loading is true', async () => {
         loadingRef.value = true
-        getSettingsMock.mockResolvedValue({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
+        getSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'] }))
 
         await renderSuspended(SettingsPage)
 
@@ -139,8 +162,8 @@ describe('settings page', () => {
     })
 
     it('loads and submits tmdb api key', async () => {
-        getSettingsMock.mockResolvedValue({ mediaPaths: ['/media/a'], tmdbApiKey: 'old-key' })
-        saveSettingsMock.mockResolvedValue({ mediaPaths: ['/media/a'], tmdbApiKey: 'new-key' })
+        getSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'], tmdbApiKey: 'old-key' }))
+        saveSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'], tmdbApiKey: 'new-key' }))
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -150,6 +173,55 @@ describe('settings page', () => {
         await user.type(screen.getByPlaceholderText('Enter TMDB API key'), 'new-key')
         await user.click(screen.getByRole('button', { name: /save/i }))
 
-        expect(saveSettingsMock).toHaveBeenCalledWith({ mediaPaths: ['/media/a'], tmdbApiKey: 'new-key' })
+        expect(saveSettingsMock).toHaveBeenCalledWith(buildSettings({ mediaPaths: ['/media/a'], tmdbApiKey: 'new-key' }))
+    })
+
+    it('loads and submits screenshot settings', async () => {
+        getSettingsMock.mockResolvedValue(
+            buildSettings({
+                mediaPaths: ['/media/a'],
+                ffmpegPath: '/usr/local/bin/ffmpeg',
+                ffprobePath: '/usr/local/bin/ffprobe',
+                movieScreenshotCount: 7,
+                tvEpisodeScreenshotCount: 4,
+                imgbbApiKey: 'old-imgbb-key',
+            })
+        )
+        saveSettingsMock.mockResolvedValue(
+            buildSettings({
+                mediaPaths: ['/media/a'],
+                ffmpegPath: '/opt/ffmpeg',
+                ffprobePath: '/opt/ffprobe',
+                movieScreenshotCount: 8,
+                tvEpisodeScreenshotCount: 5,
+                imgbbApiKey: 'new-imgbb-key',
+            })
+        )
+        const user = userEvent.setup()
+
+        await renderSuspended(SettingsPage)
+
+        await user.clear(screen.getByPlaceholderText('ffmpeg'))
+        await user.type(screen.getByPlaceholderText('ffmpeg'), '/opt/ffmpeg')
+        await user.clear(screen.getByPlaceholderText('ffprobe'))
+        await user.type(screen.getByPlaceholderText('ffprobe'), '/opt/ffprobe')
+        await user.clear(screen.getByLabelText('Movie Screenshot Count'))
+        await user.type(screen.getByLabelText('Movie Screenshot Count'), '8')
+        await user.clear(screen.getByLabelText('TV Episode Screenshot Count'))
+        await user.type(screen.getByLabelText('TV Episode Screenshot Count'), '5')
+        await user.clear(screen.getByPlaceholderText('Enter ImgBB API key'))
+        await user.type(screen.getByPlaceholderText('Enter ImgBB API key'), 'new-imgbb-key')
+        await user.click(screen.getByRole('button', { name: /save/i }))
+
+        expect(saveSettingsMock).toHaveBeenCalledWith(
+            buildSettings({
+                mediaPaths: ['/media/a'],
+                ffmpegPath: '/opt/ffmpeg',
+                ffprobePath: '/opt/ffprobe',
+                movieScreenshotCount: 8,
+                tvEpisodeScreenshotCount: 5,
+                imgbbApiKey: 'new-imgbb-key',
+            })
+        )
     })
 })

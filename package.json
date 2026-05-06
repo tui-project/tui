@@ -18,6 +18,9 @@
         "test:coverage": "vitest run --project unit --project nuxt --coverage"
     },
     "dependencies": {
+        "@bbob/html": "4.3.1",
+        "@bbob/plugin-helper": "4.3.1",
+        "@bbob/preset-html5": "4.3.1",
         "@nuxt/eslint": "1.15.2",
         "@nuxt/image": "2.0.0",
         "@nuxt/ui": "4.7.0",
@@ -32,6 +35,7 @@
         "zod": "4.3.6"
     },
     "devDependencies": {
+        "@bbob/types": "4.3.1",
         "@iconify-json/lucide": "^1.2.105",
         "@nuxt/test-utils": "4.0.2",
         "@testing-library/user-event": "14.6.1",

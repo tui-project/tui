@@ -9,11 +9,21 @@ const successfullySaved = ref(false)
 const formState = reactive({
     mediaPaths: [] as string[],
     tmdbApiKey: '',
+    ffmpegPath: '',
+    ffprobePath: '',
+    movieScreenshotCount: 6,
+    tvEpisodeScreenshotCount: 3,
+    imgbbApiKey: '',
 })
 
 const schema = z.object({
     mediaPaths: z.array(z.string()).min(1, 'At least one media path is required.'),
     tmdbApiKey: z.string(),
+    ffmpegPath: z.string(),
+    ffprobePath: z.string(),
+    movieScreenshotCount: z.number().int().min(1, 'Movie screenshot count must be at least 1.'),
+    tvEpisodeScreenshotCount: z.number().int().min(1, 'TV episode screenshot count must be at least 1.'),
+    imgbbApiKey: z.string(),
 })
 
 type SettingsFormState = z.output<typeof schema>
@@ -36,10 +46,23 @@ function removeMediaPath(path: string) {
 async function onSubmit(event: FormSubmitEvent<SettingsFormState>) {
     successfullySaved.value = false
 
-    const response = await saveSettings({ mediaPaths: event.data.mediaPaths, tmdbApiKey: event.data.tmdbApiKey })
+    const response = await saveSettings({
+        mediaPaths: event.data.mediaPaths,
+        tmdbApiKey: event.data.tmdbApiKey,
+        ffmpegPath: event.data.ffmpegPath,
+        ffprobePath: event.data.ffprobePath,
+        movieScreenshotCount: event.data.movieScreenshotCount,
+        tvEpisodeScreenshotCount: event.data.tvEpisodeScreenshotCount,
+        imgbbApiKey: event.data.imgbbApiKey,
+    })
     if (response) {
         formState.mediaPaths = response.mediaPaths
         formState.tmdbApiKey = response.tmdbApiKey
+        formState.ffmpegPath = response.ffmpegPath
+        formState.ffprobePath = response.ffprobePath
+        formState.movieScreenshotCount = response.movieScreenshotCount
+        formState.tvEpisodeScreenshotCount = response.tvEpisodeScreenshotCount
+        formState.imgbbApiKey = response.imgbbApiKey
         alertMessage.value = 'Settings successfully saved.'
         successfullySaved.value = true
     }
@@ -54,6 +77,11 @@ async function loadSettings() {
     if (response) {
         formState.mediaPaths = response.mediaPaths
         formState.tmdbApiKey = response.tmdbApiKey
+        formState.ffmpegPath = response.ffmpegPath
+        formState.ffprobePath = response.ffprobePath
+        formState.movieScreenshotCount = response.movieScreenshotCount
+        formState.tvEpisodeScreenshotCount = response.tvEpisodeScreenshotCount
+        formState.imgbbApiKey = response.imgbbApiKey
     }
 
     if (error.value) {
@@ -102,6 +130,32 @@ onMounted(() => {
                 <UFormField label="TMDB API Key" name="tmdbApiKey">
                     <UInput v-model="formState.tmdbApiKey" size="xl" class="w-full" placeholder="Enter TMDB API key" />
                 </UFormField>
+            </UCard>
+
+            <UCard title="Screenshots" description="Configure screenshot generation and upload settings" variant="subtle" class="mt-4">
+                <div class="space-y-4">
+                    <UFormField label="FFmpeg Path" name="ffmpegPath">
+                        <UInput v-model="formState.ffmpegPath" size="xl" class="w-full" placeholder="ffmpeg" />
+                    </UFormField>
+
+                    <UFormField label="FFprobe Path" name="ffprobePath">
+                        <UInput v-model="formState.ffprobePath" size="xl" class="w-full" placeholder="ffprobe" />
+                    </UFormField>
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <UFormField label="Movie Screenshot Count" name="movieScreenshotCount">
+                            <UInput v-model.number="formState.movieScreenshotCount" type="number" min="1" size="xl" class="w-full" placeholder="6" />
+                        </UFormField>
+
+                        <UFormField label="TV Episode Screenshot Count" name="tvEpisodeScreenshotCount">
+                            <UInput v-model.number="formState.tvEpisodeScreenshotCount" type="number" min="1" size="xl" class="w-full" placeholder="3" />
+                        </UFormField>
+                    </div>
+
+                    <UFormField label="ImgBB API Key" name="imgbbApiKey">
+                        <UInput v-model="formState.imgbbApiKey" size="xl" class="w-full" placeholder="Enter ImgBB API key" />
+                    </UFormField>
+                </div>
             </UCard>
 
             <div class="flex justify-end pt-4">
