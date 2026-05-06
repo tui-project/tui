@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
+import type { AppSettings } from '../composables/useSettings'
 
 const { getSettings, saveSettings, loading, error } = useSettings()
 const mediaPathInput = ref('')
 const alertMessage = ref('')
 const successfullySaved = ref(false)
-const formState = reactive({
+const imageHostProviderOptions = [{ label: 'ImgBB', value: 'imgbb' }]
+const formState = reactive<AppSettings>({
     mediaPaths: [] as string[],
     tmdbApiKey: '',
+    imageHostProviders: [],
     ffmpegPath: '',
     ffprobePath: '',
     movieScreenshotCount: 6,
@@ -16,15 +19,34 @@ const formState = reactive({
     imgbbApiKey: '',
 })
 
-const schema = z.object({
-    mediaPaths: z.array(z.string()).min(1, 'At least one media path is required.'),
-    tmdbApiKey: z.string(),
-    ffmpegPath: z.string(),
-    ffprobePath: z.string(),
-    movieScreenshotCount: z.number().int().min(1, 'Movie screenshot count must be at least 1.'),
-    tvEpisodeScreenshotCount: z.number().int().min(1, 'TV episode screenshot count must be at least 1.'),
-    imgbbApiKey: z.string(),
-})
+const schema = z
+    .object({
+        mediaPaths: z.array(z.string()).min(1, 'At least one media path is required.'),
+        tmdbApiKey: z.string(),
+        imageHostProviders: z.array(z.enum(['imgbb'])),
+        ffmpegPath: z.string(),
+        ffprobePath: z.string(),
+        movieScreenshotCount: z.number().int().min(1, 'Movie screenshot count must be at least 1.'),
+        tvEpisodeScreenshotCount: z.number().int().min(1, 'TV episode screenshot count must be at least 1.'),
+        imgbbApiKey: z.string(),
+    })
+    .superRefine((value, ctx) => {
+        if (!value.imageHostProviders.includes('imgbb')) {
+            return
+        }
+
+        if (!value.ffmpegPath.trim()) {
+            ctx.addIssue({ code: 'custom', path: ['ffmpegPath'], message: 'FFmpeg Path is required when ImgBB is selected.' })
+        }
+
+        if (!value.ffprobePath.trim()) {
+            ctx.addIssue({ code: 'custom', path: ['ffprobePath'], message: 'FFprobe Path is required when ImgBB is selected.' })
+        }
+
+        if (!value.imgbbApiKey.trim()) {
+            ctx.addIssue({ code: 'custom', path: ['imgbbApiKey'], message: 'ImgBB API Key is required when ImgBB is selected.' })
+        }
+    })
 
 type SettingsFormState = z.output<typeof schema>
 
@@ -49,6 +71,7 @@ async function onSubmit(event: FormSubmitEvent<SettingsFormState>) {
     const response = await saveSettings({
         mediaPaths: event.data.mediaPaths,
         tmdbApiKey: event.data.tmdbApiKey,
+        imageHostProviders: event.data.imageHostProviders,
         ffmpegPath: event.data.ffmpegPath,
         ffprobePath: event.data.ffprobePath,
         movieScreenshotCount: event.data.movieScreenshotCount,
@@ -58,6 +81,7 @@ async function onSubmit(event: FormSubmitEvent<SettingsFormState>) {
     if (response) {
         formState.mediaPaths = response.mediaPaths
         formState.tmdbApiKey = response.tmdbApiKey
+        formState.imageHostProviders = response.imageHostProviders
         formState.ffmpegPath = response.ffmpegPath
         formState.ffprobePath = response.ffprobePath
         formState.movieScreenshotCount = response.movieScreenshotCount
@@ -77,6 +101,7 @@ async function loadSettings() {
     if (response) {
         formState.mediaPaths = response.mediaPaths
         formState.tmdbApiKey = response.tmdbApiKey
+        formState.imageHostProviders = response.imageHostProviders
         formState.ffmpegPath = response.ffmpegPath
         formState.ffprobePath = response.ffprobePath
         formState.movieScreenshotCount = response.movieScreenshotCount
@@ -134,11 +159,21 @@ onMounted(() => {
 
             <UCard title="Screenshots" description="Configure screenshot generation and upload settings" variant="subtle" class="mt-4">
                 <div class="space-y-4">
-                    <UFormField label="FFmpeg Path" name="ffmpegPath">
+                    <UFormField label="Image Host Providers" name="imageHostProviders">
+                        <UCheckboxGroup v-model="formState.imageHostProviders" :items="imageHostProviderOptions" />
+                    </UFormField>
+
+                    <UFormField v-if="formState.imageHostProviders.includes('imgbb')" label="ImgBB API Key" name="imgbbApiKey" required>
+                        <UInput v-model="formState.imgbbApiKey" size="xl" class="w-full" placeholder="Enter ImgBB API key" />
+                    </UFormField>
+
+                    <USeparator v-if="formState.imageHostProviders.includes('imgbb')" />
+
+                    <UFormField label="FFmpeg Path" name="ffmpegPath" :required="formState.imageHostProviders.includes('imgbb')">
                         <UInput v-model="formState.ffmpegPath" size="xl" class="w-full" placeholder="ffmpeg" />
                     </UFormField>
 
-                    <UFormField label="FFprobe Path" name="ffprobePath">
+                    <UFormField label="FFprobe Path" name="ffprobePath" :required="formState.imageHostProviders.includes('imgbb')">
                         <UInput v-model="formState.ffprobePath" size="xl" class="w-full" placeholder="ffprobe" />
                     </UFormField>
 
@@ -151,10 +186,6 @@ onMounted(() => {
                             <UInput v-model.number="formState.tvEpisodeScreenshotCount" type="number" min="1" size="xl" class="w-full" placeholder="3" />
                         </UFormField>
                     </div>
-
-                    <UFormField label="ImgBB API Key" name="imgbbApiKey">
-                        <UInput v-model="formState.imgbbApiKey" size="xl" class="w-full" placeholder="Enter ImgBB API key" />
-                    </UFormField>
                 </div>
             </UCard>
 

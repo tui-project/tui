@@ -36,6 +36,7 @@ describe('settings repository', () => {
         await saveSettings({
             mediaPaths: ['/media/a', '/media/b'],
             tmdbApiKey: 'abc',
+            imageHostProviders: ['imgbb'],
             ffmpegPath: '',
             ffprobePath: '',
             movieScreenshotCount: 6,
@@ -55,6 +56,7 @@ describe('settings repository', () => {
         await saveSettings({
             mediaPaths: ['/media/old'],
             tmdbApiKey: 'old',
+            imageHostProviders: [],
             ffmpegPath: '',
             ffprobePath: '',
             movieScreenshotCount: 6,
@@ -64,6 +66,7 @@ describe('settings repository', () => {
         await saveSettings({
             mediaPaths: ['/media/new'],
             tmdbApiKey: 'new',
+            imageHostProviders: ['imgbb'],
             ffmpegPath: '',
             ffprobePath: '',
             movieScreenshotCount: 6,

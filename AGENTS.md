@@ -17,6 +17,7 @@ Server-side persistence currently uses NeDB via `@seald-io/nedb`. The database i
 - Start dev server: `pnpm dev`
 
 Prefer running the focused test first after a small change, then the full unit project before finishing.
+Always run `pnpm typecheck` after making code changes before wrapping up.
 
 ## Server Route Conventions
 

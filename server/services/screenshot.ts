@@ -90,6 +90,17 @@ async function removeTempDir(tempDir: string) {
 }
 
 function validateScreenshotSettings(settings: Settings) {
+    if (!settings.imageHostProviders.includes('imgbb')) {
+        logger.warn('Screenshot generation blocked because no image host provider is enabled.')
+        throw createError({
+            statusCode: 400,
+            message: 'missing_screenshot_settings',
+            data: {
+                missingFields: ['Image Host Provider'],
+            },
+        })
+    }
+
     const missingFields = [
         settings.ffmpegPath.trim() ? null : 'FFmpeg Path',
         settings.ffprobePath.trim() ? null : 'FFprobe Path',

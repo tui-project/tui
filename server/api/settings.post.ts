@@ -7,6 +7,7 @@ import { normalisePositiveInteger, normaliseString } from '../utils/string'
 interface SettingsRequest {
     mediaPaths?: unknown
     tmdbApiKey?: unknown
+    imageHostProviders?: unknown
     ffmpegPath?: unknown
     ffprobePath?: unknown
     movieScreenshotCount?: unknown
@@ -20,6 +21,7 @@ export default defineEventHandler(async (event) => {
     const request = await readBody<SettingsRequest>(event)
     const mediaPaths = normaliseMediaPaths(request.mediaPaths)
     const tmdbApiKey = normaliseString(request.tmdbApiKey)
+    const imageHostProviders = normaliseImageHostProviders(request.imageHostProviders)
     const ffmpegPath = normaliseString(request.ffmpegPath)
     const ffprobePath = normaliseString(request.ffprobePath)
     const movieScreenshotCount = normalisePositiveInteger(request.movieScreenshotCount)
@@ -29,6 +31,7 @@ export default defineEventHandler(async (event) => {
     if (
         !mediaPaths ||
         tmdbApiKey === null ||
+        !imageHostProviders ||
         ffmpegPath === null ||
         ffprobePath === null ||
         movieScreenshotCount === null ||
@@ -55,7 +58,18 @@ export default defineEventHandler(async (event) => {
         }
     }
 
-    const settings = await saveSettings({ mediaPaths, tmdbApiKey, ffmpegPath, ffprobePath, movieScreenshotCount, tvEpisodeScreenshotCount, imgbbApiKey })
+    const settings = await saveSettings(
+        sanitiseProviderSettings({
+            mediaPaths,
+            tmdbApiKey,
+            imageHostProviders,
+            ffmpegPath,
+            ffprobePath,
+            movieScreenshotCount,
+            tvEpisodeScreenshotCount,
+            imgbbApiKey,
+        })
+    )
     logger.info('Settings updated.')
 
     return settings
@@ -76,6 +90,49 @@ function normaliseMediaPaths(input: unknown) {
     }
 
     return [...new Set(trimmed)]
+}
+
+function normaliseImageHostProviders(input: unknown) {
+    if (!Array.isArray(input)) {
+        return null
+    }
+
+    const providers = input.map((value) => normaliseString(value))
+
+    if (providers.some((provider) => provider === null || provider.length === 0)) {
+        return null
+    }
+
+    const uniqueProviders = [...new Set(providers.filter((provider): provider is string => provider !== null))]
+    const supportedProviders = new Set(['imgbb'])
+
+    if (uniqueProviders.some((provider) => !supportedProviders.has(provider))) {
+        return null
+    }
+
+    return uniqueProviders
+}
+
+function sanitiseProviderSettings(
+    settings: Omit<SettingsRequest, 'mediaPaths' | 'movieScreenshotCount' | 'tvEpisodeScreenshotCount'> & {
+        mediaPaths: string[]
+        imageHostProviders: string[]
+        ffmpegPath: string
+        ffprobePath: string
+        movieScreenshotCount: number
+        tvEpisodeScreenshotCount: number
+        imgbbApiKey: string
+        tmdbApiKey: string
+    }
+) {
+    if (settings.imageHostProviders.includes('imgbb')) {
+        return settings
+    }
+
+    return {
+        ...settings,
+        imgbbApiKey: '',
+    }
 }
 
 async function pathExists(path: string) {

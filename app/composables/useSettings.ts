@@ -1,8 +1,11 @@
 import { readonly, ref } from 'vue'
 
+export type ImageHostProvider = 'imgbb'
+
 export interface AppSettings {
     mediaPaths: string[]
     tmdbApiKey: string
+    imageHostProviders: ImageHostProvider[]
     ffmpegPath: string
     ffprobePath: string
     movieScreenshotCount: number

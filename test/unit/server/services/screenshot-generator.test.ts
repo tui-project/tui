@@ -29,6 +29,7 @@ beforeEach(() => {
         id: 'app-settings',
         mediaPaths: ['/media'],
         tmdbApiKey: '',
+        imageHostProviders: ['imgbb'],
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,
@@ -148,6 +149,7 @@ describe('screenshot generator service', () => {
             id: 'app-settings',
             mediaPaths: ['/media'],
             tmdbApiKey: '',
+            imageHostProviders: ['imgbb'],
             ffmpegPath: '',
             ffprobePath: ' ',
             movieScreenshotCount: 6,
@@ -161,6 +163,29 @@ describe('screenshot generator service', () => {
             message: 'missing_screenshot_settings',
             data: {
                 missingFields: ['FFmpeg Path', 'FFprobe Path', 'ImgBB API Key'],
+            },
+        })
+    })
+
+    it('rejects when no image host provider is enabled', async () => {
+        getSettings.mockResolvedValue({
+            id: 'app-settings',
+            mediaPaths: ['/media'],
+            tmdbApiKey: '',
+            imageHostProviders: [],
+            ffmpegPath: 'ffmpeg',
+            ffprobePath: 'ffprobe',
+            movieScreenshotCount: 6,
+            tvEpisodeScreenshotCount: 1,
+            imgbbApiKey: 'imgbb-key',
+        })
+        const { createScreenshots } = await loadService()
+
+        await expect(createScreenshots('/media/movie.mkv', false, false)).rejects.toEqual({
+            statusCode: 400,
+            message: 'missing_screenshot_settings',
+            data: {
+                missingFields: ['Image Host Provider'],
             },
         })
     })

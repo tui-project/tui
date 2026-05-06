@@ -13,6 +13,7 @@ const getSettings = vi.fn<
         id: string
         mediaPaths: string[]
         tmdbApiKey: string
+        imageHostProviders: string[]
         ffmpegPath: string
         ffprobePath: string
         movieScreenshotCount: number
@@ -45,6 +46,7 @@ describe('GET /api/settings route handler', () => {
             id: 'app-settings',
             mediaPaths: [],
             tmdbApiKey: '',
+            imageHostProviders: [],
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
@@ -56,6 +58,7 @@ describe('GET /api/settings route handler', () => {
         await expect(handler({} as never)).resolves.toEqual({
             mediaPaths: [],
             tmdbApiKey: '',
+            imageHostProviders: [],
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
@@ -69,6 +72,7 @@ describe('GET /api/settings route handler', () => {
             id: 'app-settings',
             mediaPaths: ['/a', '/b'],
             tmdbApiKey: 'abc',
+            imageHostProviders: ['imgbb'],
             ffmpegPath: '/usr/local/bin/ffmpeg',
             ffprobePath: '/usr/local/bin/ffprobe',
             movieScreenshotCount: 8,
@@ -80,6 +84,7 @@ describe('GET /api/settings route handler', () => {
         await expect(handler({} as never)).resolves.toEqual({
             mediaPaths: ['/a', '/b'],
             tmdbApiKey: 'abc',
+            imageHostProviders: ['imgbb'],
             ffmpegPath: '/usr/local/bin/ffmpeg',
             ffprobePath: '/usr/local/bin/ffprobe',
             movieScreenshotCount: 8,

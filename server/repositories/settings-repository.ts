@@ -5,6 +5,7 @@ export const DEFAULT_SETTINGS: Settings = {
     id: 'app-settings',
     mediaPaths: [],
     tmdbApiKey: '',
+    imageHostProviders: [],
     ffmpegPath: 'ffmpeg',
     ffprobePath: 'ffprobe',
     movieScreenshotCount: 6,

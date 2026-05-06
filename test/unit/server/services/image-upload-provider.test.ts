@@ -34,7 +34,7 @@ async function loadService() {
 describe('image upload provider factory', () => {
     it('creates an ImgBB provider with the trimmed API key', async () => {
         const provider = { uploadImage: vi.fn() }
-        getSettings.mockResolvedValue({ imgbbApiKey: '  secret-key  ' })
+        getSettings.mockResolvedValue({ imageHostProviders: ['imgbb'], imgbbApiKey: '  secret-key  ' })
         createImgbbImageUploadProvider.mockReturnValue(provider)
         const { createImageUploadProvider } = await loadService()
 
@@ -43,7 +43,7 @@ describe('image upload provider factory', () => {
     })
 
     it('rejects when the API key is missing', async () => {
-        getSettings.mockResolvedValue({ imgbbApiKey: '   ' })
+        getSettings.mockResolvedValue({ imageHostProviders: ['imgbb'], imgbbApiKey: '   ' })
         const { createImageUploadProvider } = await loadService()
 
         await expect(createImageUploadProvider()).rejects.toEqual({
@@ -51,5 +51,16 @@ describe('image upload provider factory', () => {
             message: 'missing_imgbb_api_key',
         })
         expect(logger.warn).toHaveBeenCalledWith('Image upload provider could not be created because ImgBB API key is missing.')
+    })
+
+    it('rejects when no image host provider is enabled', async () => {
+        getSettings.mockResolvedValue({ imageHostProviders: [], imgbbApiKey: 'secret-key' })
+        const { createImageUploadProvider } = await loadService()
+
+        await expect(createImageUploadProvider()).rejects.toEqual({
+            statusCode: 400,
+            message: 'missing_image_host_provider',
+        })
+        expect(logger.warn).toHaveBeenCalledWith('Image upload provider could not be created because no image host provider is enabled.')
     })
 })

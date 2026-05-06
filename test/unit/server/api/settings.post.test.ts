@@ -74,6 +74,7 @@ describe('POST /api/settings route handler', () => {
         saveSettings.mockResolvedValue({
             mediaPaths: ['/a', '/b'],
             tmdbApiKey: 'abc',
+            imageHostProviders: ['imgbb'],
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
@@ -85,6 +86,7 @@ describe('POST /api/settings route handler', () => {
         await expect(handler({} as never)).resolves.toEqual({
             mediaPaths: ['/a', '/b'],
             tmdbApiKey: 'abc',
+            imageHostProviders: ['imgbb'],
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
@@ -94,6 +96,7 @@ describe('POST /api/settings route handler', () => {
         expect(saveSettings).toHaveBeenCalledWith({
             mediaPaths: ['/a', '/b'],
             tmdbApiKey: 'abc',
+            imageHostProviders: ['imgbb'],
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
@@ -119,6 +122,7 @@ describe('POST /api/settings route handler', () => {
         saveSettings.mockResolvedValue({
             mediaPaths: ['/ok'],
             tmdbApiKey: 'abc',
+            imageHostProviders: [],
             ffmpegPath: '',
             ffprobePath: '',
             movieScreenshotCount: 6,
@@ -130,8 +134,56 @@ describe('POST /api/settings route handler', () => {
         await expect(handler({} as never)).resolves.toEqual({
             mediaPaths: ['/ok'],
             tmdbApiKey: 'abc',
+            imageHostProviders: [],
             ffmpegPath: '',
             ffprobePath: '',
+            movieScreenshotCount: 6,
+            tvEpisodeScreenshotCount: 3,
+            imgbbApiKey: '',
+        })
+    })
+
+    it('rejects when image host providers contain unsupported values', async () => {
+        readBody.mockResolvedValue(baseRequest({ imageHostProviders: ['imgbb', 'unknown'] }))
+        const handler = await loadHandler()
+
+        await expect(handler({} as never)).rejects.toEqual({
+            statusCode: 400,
+            message: 'invalid_request',
+        })
+    })
+
+    it('clears ImgBB API key when ImgBB is not selected', async () => {
+        readBody.mockResolvedValue(baseRequest({ imageHostProviders: [], imgbbApiKey: 'still-present' }))
+        stat.mockResolvedValue({})
+        saveSettings.mockResolvedValue({
+            mediaPaths: ['/ok'],
+            tmdbApiKey: 'abc',
+            imageHostProviders: [],
+            ffmpegPath: 'ffmpeg',
+            ffprobePath: 'ffprobe',
+            movieScreenshotCount: 6,
+            tvEpisodeScreenshotCount: 3,
+            imgbbApiKey: '',
+        })
+        const handler = await loadHandler()
+
+        await expect(handler({} as never)).resolves.toEqual({
+            mediaPaths: ['/ok'],
+            tmdbApiKey: 'abc',
+            imageHostProviders: [],
+            ffmpegPath: 'ffmpeg',
+            ffprobePath: 'ffprobe',
+            movieScreenshotCount: 6,
+            tvEpisodeScreenshotCount: 3,
+            imgbbApiKey: '',
+        })
+        expect(saveSettings).toHaveBeenCalledWith({
+            mediaPaths: ['/ok'],
+            tmdbApiKey: 'abc',
+            imageHostProviders: [],
+            ffmpegPath: 'ffmpeg',
+            ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
             tvEpisodeScreenshotCount: 3,
             imgbbApiKey: '',
@@ -143,6 +195,7 @@ function baseRequest(
     overrides: Partial<{
         mediaPaths: unknown
         tmdbApiKey: unknown
+        imageHostProviders: unknown
         ffmpegPath: unknown
         ffprobePath: unknown
         movieScreenshotCount: unknown
@@ -153,6 +206,7 @@ function baseRequest(
     return {
         mediaPaths: ['/ok'],
         tmdbApiKey: 'abc',
+        imageHostProviders: ['imgbb'],
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,

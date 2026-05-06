@@ -4,6 +4,7 @@ function buildSettings(
     overrides: Partial<{
         mediaPaths: string[]
         tmdbApiKey: string
+        imageHostProviders: string[]
         ffmpegPath: string
         ffprobePath: string
         movieScreenshotCount: number
@@ -14,6 +15,7 @@ function buildSettings(
     return {
         mediaPaths: ['/media/a'],
         tmdbApiKey: '',
+        imageHostProviders: [],
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,

@@ -26,6 +26,7 @@ function buildSettings(
     overrides: Partial<{
         mediaPaths: string[]
         tmdbApiKey: string
+        imageHostProviders: string[]
         ffmpegPath: string
         ffprobePath: string
         movieScreenshotCount: number
@@ -36,6 +37,7 @@ function buildSettings(
     return {
         mediaPaths: [],
         tmdbApiKey: '',
+        imageHostProviders: [],
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,
@@ -180,6 +182,7 @@ describe('settings page', () => {
         getSettingsMock.mockResolvedValue(
             buildSettings({
                 mediaPaths: ['/media/a'],
+                imageHostProviders: ['imgbb'],
                 ffmpegPath: '/usr/local/bin/ffmpeg',
                 ffprobePath: '/usr/local/bin/ffprobe',
                 movieScreenshotCount: 7,
@@ -190,6 +193,7 @@ describe('settings page', () => {
         saveSettingsMock.mockResolvedValue(
             buildSettings({
                 mediaPaths: ['/media/a'],
+                imageHostProviders: ['imgbb'],
                 ffmpegPath: '/opt/ffmpeg',
                 ffprobePath: '/opt/ffprobe',
                 movieScreenshotCount: 8,
@@ -216,6 +220,7 @@ describe('settings page', () => {
         expect(saveSettingsMock).toHaveBeenCalledWith(
             buildSettings({
                 mediaPaths: ['/media/a'],
+                imageHostProviders: ['imgbb'],
                 ffmpegPath: '/opt/ffmpeg',
                 ffprobePath: '/opt/ffprobe',
                 movieScreenshotCount: 8,
@@ -223,5 +228,36 @@ describe('settings page', () => {
                 imgbbApiKey: 'new-imgbb-key',
             })
         )
+    })
+
+    it('only shows ImgBB API Key when ImgBB is selected', async () => {
+        getSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'] }))
+        const user = userEvent.setup()
+
+        await renderSuspended(SettingsPage)
+
+        expect(screen.queryByPlaceholderText('Enter ImgBB API key')).toBeNull()
+
+        await user.click(screen.getByRole('checkbox', { name: 'ImgBB' }))
+
+        expect(screen.getByPlaceholderText('Enter ImgBB API key')).toBeDefined()
+    })
+
+    it('does not submit screenshot settings when ImgBB is selected and required fields are blank', async () => {
+        getSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'] }))
+        const user = userEvent.setup()
+
+        await renderSuspended(SettingsPage)
+
+        await user.click(screen.getByRole('checkbox', { name: 'ImgBB' }))
+        await user.clear(screen.getByPlaceholderText('ffmpeg'))
+        await user.clear(screen.getByPlaceholderText('ffprobe'))
+        await user.clear(screen.getByPlaceholderText('Enter ImgBB API key'))
+        await user.click(screen.getByRole('button', { name: /save/i }))
+
+        expect(saveSettingsMock).not.toHaveBeenCalled()
+        expect(screen.getByText('FFmpeg Path is required when ImgBB is selected.')).toBeDefined()
+        expect(screen.getByText('FFprobe Path is required when ImgBB is selected.')).toBeDefined()
+        expect(screen.getByText('ImgBB API Key is required when ImgBB is selected.')).toBeDefined()
     })
 })
