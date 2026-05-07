@@ -1,35 +1,28 @@
 import { randomUUID, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto'
 import { promisify } from 'node:util'
-import { createError, readBody, setCookie } from 'h3'
+import { createError, setCookie } from 'h3'
+import { z } from 'zod'
 import { createSession } from '../repositories/session-repository'
 import { findUserByUsername } from '../repositories/user-repository'
+import { parseValidatedBody } from '../utils/request-validator'
 import { logger } from '../utils/logger'
 
 const scrypt = promisify(scryptCallback)
 const SESSION_TTL_MS = 60 * 60 * 1000
 
-interface LoginRequest {
-    username?: string
-    password?: string
-}
+const loginRequestSchema = z.object({
+    username: z.string().trim().min(1),
+    password: z.string().trim().min(1),
+})
 
 export default defineEventHandler(async (event) => {
     logger.debug('Login request received.')
 
-    const request = await readBody<LoginRequest>(event)
-    const username = request.username?.trim()
-    const password = request.password?.trim()
-
-    if (!username || !password) {
-        logger.warn('Rejected login request with missing required fields.', { hasUsername: Boolean(username), hasPassword: Boolean(password) })
-        throw createError({
-            statusCode: 400,
-            message: 'invalid_request',
-        })
-    }
+    const { username, password } = await parseValidatedBody(event, loginRequestSchema, {
+        onInvalid: (issues) => logger.warn('Rejected login request with invalid payload.', { issues }),
+    })
 
     const user = await findUserByUsername(username)
-
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
         logger.warn('Rejected login request with invalid credentials.', { username })
         throw createError({

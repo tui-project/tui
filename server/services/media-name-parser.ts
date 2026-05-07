@@ -169,7 +169,6 @@ function parseTitle(name: string, seasonEpisodeIndex: number, isFileName: boolea
 
 function findFileMetadataIndex(name: string) {
     const metadataStartPatterns = [/\b(?:19|20)\d{2}\b/, /\b(?:480|576|720|1080|2160|4320)p\b/i, /\bREMUX\b/i, /\bBlu[.\s_-]*ray\b/i, /\bWEB[.\s_-]*(?:DL|RIP)?\b/i]
-
     const indexes = metadataStartPatterns.map((pattern) => pattern.exec(name)?.index ?? -1).filter((index) => index >= 0)
 
     return indexes.length > 0 ? Math.min(...indexes) : -1

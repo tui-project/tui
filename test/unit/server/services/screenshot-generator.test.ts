@@ -29,12 +29,12 @@ beforeEach(() => {
         id: 'app-settings',
         mediaPaths: ['/media'],
         tmdbApiKey: '',
-        imageHostProviders: ['imgbb'],
+        imageHostProviders: { imgbb: { apiKey: 'imgbb-key' } },
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,
         tvEpisodeScreenshotCount: 1,
-        imgbbApiKey: 'imgbb-key',
+        trackers: {},
     })
     probeMediaDuration.mockResolvedValue({ durationSeconds: 100 })
     generateScreenshotsWithFfmpeg.mockResolvedValue([
@@ -149,12 +149,12 @@ describe('screenshot generator service', () => {
             id: 'app-settings',
             mediaPaths: ['/media'],
             tmdbApiKey: '',
-            imageHostProviders: ['imgbb'],
+            imageHostProviders: { imgbb: { apiKey: '' } },
             ffmpegPath: '',
             ffprobePath: ' ',
             movieScreenshotCount: 6,
             tvEpisodeScreenshotCount: 1,
-            imgbbApiKey: '',
+            trackers: {},
         })
         const { createScreenshots } = await loadService()
 
@@ -172,12 +172,12 @@ describe('screenshot generator service', () => {
             id: 'app-settings',
             mediaPaths: ['/media'],
             tmdbApiKey: '',
-            imageHostProviders: [],
+            imageHostProviders: {},
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
             tvEpisodeScreenshotCount: 1,
-            imgbbApiKey: 'imgbb-key',
+            trackers: {},
         })
         const { createScreenshots } = await loadService()
 

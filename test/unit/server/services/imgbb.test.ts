@@ -92,9 +92,13 @@ describe('ImgBB upload provider', () => {
             statusCode: 502,
             message: 'image_upload_failed',
         })
-        expect(logger.warn).toHaveBeenCalledWith('ImgBB upload response missing expected URLs.', {
-            filePath: '/tmp/image.png',
-        })
+        expect(logger.warn).toHaveBeenCalledWith(
+            'ImgBB upload response missing expected URLs.',
+            expect.objectContaining({
+                filePath: '/tmp/image.png',
+                issues: expect.any(Array),
+            })
+        )
     })
 
     it('rejects payloads without a data object', async () => {

@@ -1,20 +1,28 @@
-import { createError, getQuery } from 'h3'
+import { createError } from 'h3'
 import { stat } from 'node:fs/promises'
+import { z } from 'zod'
 import { getSettings } from '../repositories/settings-repository'
 import { listChildren } from '../services/directory-browse'
 import { logger } from '../utils/logger'
 import { isWithinAnyRoot, sortPathItems } from '../utils/file-system'
-import { isBlank, normaliseString } from '../utils/string'
+import { isBlank } from '../utils/string'
+import { parseValidatedQuery } from '../utils/request-validator'
 
-interface PathsQuery {
-    parent?: string
-}
+const pathsQuerySchema = z
+    .object({
+        parent: z.string().trim().optional(),
+    })
+    .transform(({ parent }) => ({
+        parent: parent && parent.length > 0 ? parent : null,
+    }))
 
 export default defineEventHandler(async (event) => {
     logger.debug('Paths request received.')
 
-    const query = getQuery(event) as PathsQuery
-    const parent = normaliseString(query.parent)
+    const { parent } = parseValidatedQuery(event, pathsQuerySchema, {
+        errorMessage: 'invalid_parent_path',
+        onInvalid: (issues) => logger.warn('Rejected directory browse with invalid parent query.', { issues }),
+    })
 
     logger.debug(`Parent directory: ${parent}`)
 
@@ -40,8 +48,7 @@ async function browseEligiblePaths(parent: string | null) {
 
         logger.debug('Browsing directory children for parent path.', { parent })
 
-        const parentPathAllowed = await isParentPathAllowed(parent, roots)
-        if (!parentPathAllowed) {
+        if (!isWithinAnyRoot(parent, roots)) {
             logger.warn('Rejected directory browse because parent path is outside configured roots.', { parent })
 
             throw createError({
@@ -52,7 +59,7 @@ async function browseEligiblePaths(parent: string | null) {
 
         return await listChildren(parent)
     } catch (error: unknown) {
-        logger.error(error)
+        logger.error('Unable to load paths', error)
 
         throw createError({
             statusCode: 400,
@@ -74,8 +81,4 @@ async function listRootPaths(roots: string[]) {
     )
 
     return sortPathItems(items)
-}
-
-async function isParentPathAllowed(parent: string, roots: string[]) {
-    return isWithinAnyRoot(parent, roots)
 }

@@ -20,14 +20,16 @@ export interface ScreenshotResult {
 
 export async function createScreenshots(inputPath: string, hdr: boolean, tv: boolean): Promise<ScreenshotResult> {
     logger.debug('Starting screenshot generation.', { inputPath, hdr, tv })
+
     const settings = await getSettings()
-    validateScreenshotSettings(settings)
+    validatSettings(settings)
+
     const mediaFilePaths = tv ? await resolveMediaFilePaths(inputPath) : [await resolveMediaFilePath(inputPath)]
     const provider = await createImageUploadProvider()
     const tempDir = join(process.cwd(), 'config', 'tmp', 'screenshots', randomUUID())
     const screenshotCount = tv ? settings.tvEpisodeScreenshotCount : settings.movieScreenshotCount
 
-    logger.debug('Screenshot generation prepared.', {
+    logger.trace('Screenshot generation prepared.', {
         inputPath,
         mediaFileCount: mediaFilePaths.length,
         screenshotCount,
@@ -50,7 +52,8 @@ export async function createScreenshots(inputPath: string, hdr: boolean, tv: boo
             ...screenshot,
             order: index + 1,
         }))
-        logger.debug('Generated local screenshots.', { count: localScreenshots.length, tempDir })
+        
+        logger.trace('Generated local screenshots.', { count: localScreenshots.length, tempDir })
         const uploadedScreenshots = await Promise.all(
             localScreenshots.map(async (screenshot) => {
                 const uploaded = await provider.uploadImage(screenshot.outputPath)
@@ -63,7 +66,7 @@ export async function createScreenshots(inputPath: string, hdr: boolean, tv: boo
             })
         )
 
-        logger.info('Screenshot generation completed.', { inputPath, screenshotCount: uploadedScreenshots.length, tv })
+        logger.debug('Screenshot generation completed.', { inputPath, screenshotCount: uploadedScreenshots.length, tv })
         return {
             screenshots: uploadedScreenshots,
         }
@@ -89,8 +92,10 @@ async function removeTempDir(tempDir: string) {
     }
 }
 
-function validateScreenshotSettings(settings: Settings) {
-    if (!settings.imageHostProviders.includes('imgbb')) {
+function validatSettings(settings: Settings) {
+    const imgbbSettings = settings.imageHostProviders.imgbb
+
+    if (!imgbbSettings) {
         logger.warn('Screenshot generation blocked because no image host provider is enabled.')
         throw createError({
             statusCode: 400,
@@ -101,23 +106,20 @@ function validateScreenshotSettings(settings: Settings) {
         })
     }
 
-    const missingFields = [
-        settings.ffmpegPath.trim() ? null : 'FFmpeg Path',
-        settings.ffprobePath.trim() ? null : 'FFprobe Path',
-        settings.imgbbApiKey.trim() ? null : 'ImgBB API Key',
-    ].filter((field): field is string => field !== null)
+    const missingFields = [settings.ffmpegPath ? null : 'FFmpeg Path', settings.ffprobePath ? null : 'FFprobe Path', imgbbSettings.apiKey ? null : 'ImgBB API Key'].filter(
+        (field): field is string => field !== null
+    )
 
     if (missingFields.length === 0) {
         logger.trace('Screenshot settings validated successfully.')
-        return
+    } else {
+        logger.warn('Screenshot generation blocked because required settings are missing.', { missingFields })
+        throw createError({
+            statusCode: 400,
+            message: 'missing_screenshot_settings',
+            data: {
+                missingFields,
+            },
+        })
     }
-
-    logger.warn('Screenshot generation blocked because required settings are missing.', { missingFields })
-    throw createError({
-        statusCode: 400,
-        message: 'missing_screenshot_settings',
-        data: {
-            missingFields,
-        },
-    })
 }

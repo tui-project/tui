@@ -97,7 +97,7 @@ describe('POST /api/login route handler', () => {
     })
 
     it('creates a one-hour session for valid credentials', async () => {
-        readBody.mockResolvedValue({ username: 'admin', password: 'Admin@123' })
+        readBody.mockResolvedValue({ username: '  admin  ', password: '  Admin@123  ' })
         findUserByUsername.mockResolvedValue({
             id: 'user-1',
             username: 'admin',
@@ -113,6 +113,7 @@ describe('POST /api/login route handler', () => {
         const handler = await loadHandler()
         const response = await handler({} as never)
 
+        expect(findUserByUsername).toHaveBeenCalledWith('admin')
         expect(createSession).toHaveBeenCalledWith(
             expect.objectContaining({
                 id: expect.any(String),

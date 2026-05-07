@@ -1,31 +1,23 @@
-import { createError, readBody } from 'h3'
+import { createError } from 'h3'
+import { z } from 'zod'
 import { getSettings } from '../repositories/settings-repository'
 import { createScreenshots } from '../services/screenshot'
 import { isWithinAnyRoot } from '../utils/file-system'
 import { logger } from '../utils/logger'
-import { normaliseBoolean, normaliseRequiredString } from '../utils/string'
+import { parseValidatedBody } from '../utils/request-validator'
 
-interface ScreenshotRequest {
-    path?: unknown
-    hdr?: unknown
-    tv?: unknown
-}
+const screenshotRequestSchema = z.object({
+    path: z.string().trim().min(1),
+    hdr: z.boolean(),
+    tv: z.boolean(),
+})
 
 export default defineEventHandler(async (event) => {
     logger.debug('Screenshot request received.')
 
-    const request = await readBody<ScreenshotRequest>(event)
-    const path = normaliseRequiredString(request.path)
-    const hdr = normaliseBoolean(request.hdr)
-    const tv = normaliseBoolean(request.tv)
-
-    if (!path || hdr === null || tv === null) {
-        logger.warn('Rejected screenshot request with invalid payload.')
-        throw createError({
-            statusCode: 400,
-            message: 'invalid_request',
-        })
-    }
+    const { path, hdr, tv } = await parseValidatedBody(event, screenshotRequestSchema, {
+        onInvalid: (issues) => logger.warn('Rejected screenshot request with invalid payload.', { issues }),
+    })
 
     const settings = await getSettings()
     if (!isWithinAnyRoot(path, settings.mediaPaths)) {

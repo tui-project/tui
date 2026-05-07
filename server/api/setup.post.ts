@@ -1,15 +1,17 @@
 import { randomBytes, randomUUID, scrypt as scryptCallback } from 'node:crypto'
 import { promisify } from 'node:util'
-import { createError, readBody } from 'h3'
+import { createError } from 'h3'
+import { z } from 'zod'
 import { userCount, createUser } from '../repositories/user-repository'
 import { logger } from '../utils/logger'
+import { parseValidatedBody } from '../utils/request-validator'
 
 const scrypt = promisify(scryptCallback)
 
-interface SetupRequest {
-    username?: string
-    password?: string
-}
+const setupRequestSchema = z.object({
+    username: z.string().trim().min(1),
+    password: z.string().trim().min(1),
+})
 
 function isStrongPassword(password: string) {
     const hasLower = /[a-z]/.test(password)
@@ -39,17 +41,9 @@ export default defineEventHandler(async (event) => {
         })
     }
 
-    const request = await readBody<SetupRequest>(event)
-    const username = request.username?.trim()
-    const password = request.password?.trim()
-
-    if (!username || !password) {
-        logger.warn('Rejected setup request with missing required fields.', { hasUsername: Boolean(username), hasPassword: Boolean(password) })
-        throw createError({
-            statusCode: 400,
-            message: 'invalid_request',
-        })
-    }
+    const { username, password } = await parseValidatedBody(event, setupRequestSchema, {
+        onInvalid: (issues) => logger.warn('Rejected setup request with invalid payload.', { issues }),
+    })
 
     if (!isStrongPassword(password)) {
         logger.warn('Rejected setup request because password does not meet strength requirements.', { username })

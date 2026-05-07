@@ -1,5 +1,6 @@
-import { createError, getQuery } from 'h3'
+import { createError } from 'h3'
 import { basename } from 'node:path'
+import { z } from 'zod'
 import { getSettings } from '../repositories/settings-repository'
 import { logger } from '../utils/logger'
 import { parseMetadataFromName, type ParsedNameMetadata } from '../services/media-name-parser'
@@ -7,26 +8,19 @@ import { parseMetadataFromMediainfo, type ParsedMediainfoMetadata } from '../ser
 import { findByExternalID, findByTitle, getDetails, getExternalIDs, ID_TYPES } from '../services/tmdb'
 import { isWithinAnyRoot, resolveMediaFilePath } from '../utils/file-system'
 import type { Metadata } from '../model/metadata'
-import { normaliseRequiredString } from '../utils/string'
+import { parseValidatedQuery } from '../utils/request-validator'
 
-interface MetadataQuery {
-    path: string
-}
+const metadataQuerySchema = z.object({
+    path: z.string().trim().min(1),
+})
 
 export default defineEventHandler(async (event) => {
     logger.debug('Metadata request received.')
 
-    const query = getQuery(event) as MetadataQuery
-    const path = normaliseRequiredString(query.path)
-
-    if (!path) {
-        logger.warn('Rejected metadata request with missing path query.', { hasPath: Boolean(query.path) })
-
-        throw createError({
-            statusCode: 400,
-            message: 'invalid_path',
-        })
-    }
+    const { path } = parseValidatedQuery(event, metadataQuerySchema, {
+        errorMessage: 'invalid_path',
+        onInvalid: (issues) => logger.warn('Rejected metadata request with invalid path query.', { issues }),
+    })
 
     const settings = await getSettings()
     if (!isWithinAnyRoot(path, settings.mediaPaths)) {

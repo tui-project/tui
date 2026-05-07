@@ -1,19 +1,20 @@
 import { readFile } from 'node:fs/promises'
 import { createError } from 'h3'
+import { z } from 'zod'
 import { logger } from '../../utils/logger'
 import type { ImageUploadProvider, UploadedImage } from './types'
 
-interface ImgbbResponse {
-    data?: {
-        url?: string
-        display_url?: string
-    }
-    success?: boolean
-}
+const imgbbResponseSchema = z.object({
+    data: z.object({
+        url: z.string().trim().min(1),
+        display_url: z.string().trim().min(1),
+    }),
+})
 
 export function createImgbbImageUploadProvider(apiKey: string): ImageUploadProvider {
     async function uploadImage(filePath: string): Promise<UploadedImage> {
         logger.trace('Uploading image to ImgBB.', { filePath })
+        
         const image = await readFile(filePath, { encoding: 'base64' })
         const formData = new FormData()
         formData.set('image', image)
@@ -31,17 +32,18 @@ export function createImgbbImageUploadProvider(apiKey: string): ImageUploadProvi
             })
         }
 
-        const payload = (await response.json()) as ImgbbResponse
-        const url = payload.data?.url?.trim() ?? ''
-        const displayUrl = payload.data?.display_url?.trim() ?? ''
+        const payload = await response.json()
+        const result = imgbbResponseSchema.safeParse(payload)
 
-        if (!url || !displayUrl) {
-            logger.warn('ImgBB upload response missing expected URLs.', { filePath })
+        if (!result.success) {
+            logger.warn('ImgBB upload response missing expected URLs.', { filePath, issues: result.error.issues })
             throw createError({
                 statusCode: 502,
                 message: 'image_upload_failed',
             })
         }
+
+        const { url, display_url: displayUrl } = result.data.data
 
         logger.debug('Image uploaded to ImgBB.', { filePath })
         return {

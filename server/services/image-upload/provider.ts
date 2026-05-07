@@ -6,11 +6,12 @@ import type { ImageUploadProvider } from './types'
 
 export async function createImageUploadProvider(): Promise<ImageUploadProvider> {
     logger.trace('Creating image upload provider.')
+    
     const settings = await getSettings()
-    const imgbbEnabled = settings.imageHostProviders.includes('imgbb')
-    const apiKey = settings.imgbbApiKey.trim()
+    const imgbbSettings = settings.imageHostProviders.imgbb
+    const apiKey = imgbbSettings?.apiKey ?? ''
 
-    if (!imgbbEnabled) {
+    if (!imgbbSettings) {
         logger.warn('Image upload provider could not be created because no image host provider is enabled.')
         throw createError({
             statusCode: 400,
@@ -27,5 +28,6 @@ export async function createImageUploadProvider(): Promise<ImageUploadProvider> 
     }
 
     logger.debug('Image upload provider created.', { provider: 'imgbb' })
+    
     return createImgbbImageUploadProvider(apiKey)
 }
