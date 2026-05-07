@@ -13,7 +13,7 @@ async function loadRepository() {
         settingsCollection: {
             findOneAsync: vi.fn(async () => storedSettings),
             updateAsync: vi.fn(async (_query, settings) => {
-                storedSettings = settings
+                storedSettings = settings as Record<string, unknown>
             }),
         },
     }))
@@ -22,62 +22,57 @@ async function loadRepository() {
 }
 
 describe('settings repository', () => {
-    it('returns empty settings before settings are saved', async () => {
+    it('returns default settings when nothing is stored', async () => {
+        const { getSettings, DEFAULT_SETTINGS } = await loadRepository()
+
+        await expect(getSettings()).resolves.toEqual(DEFAULT_SETTINGS)
+    })
+
+    it('merges saved provider and tracker values into defaults by code', async () => {
+        storedSettings = {
+            id: 'app-settings',
+            mediaPaths: ['/media/a'],
+            tmdbApiKey: 'abc',
+            imageHostProviders: [{ code: 'imgbb', selected: true, apiKey: 'imgbb-key' }],
+            trackers: [{ code: 'ATH', selected: true, apiKey: 'ath-api', passKey: 'ath-pass' }],
+        }
         const { getSettings } = await loadRepository()
+
         await expect(getSettings()).resolves.toMatchObject({
             id: 'app-settings',
-            mediaPaths: [],
-            tmdbApiKey: '',
+            mediaPaths: ['/media/a'],
+            tmdbApiKey: 'abc',
+            imageHostProviders: expect.arrayContaining([{ code: 'imgbb', name: 'ImgBB', url: 'https://api.imgbb.com/1/upload?key=', selected: true, apiKey: 'imgbb-key' }]),
+            trackers: expect.arrayContaining([{ code: 'ATH', name: 'Aither', selected: true, apiKey: 'ath-api', passKey: 'ath-pass', url: 'https://aither.cc' }]),
+            ffmpegPath: 'ffmpeg',
+            ffprobePath: 'ffprobe',
         })
     })
 
-    it('saves and returns settings', async () => {
-        const { getSettings, saveSettings } = await loadRepository()
+    it('saves only the whitelisted fields', async () => {
+        const { saveSettings } = await loadRepository()
+
         await saveSettings({
-            mediaPaths: ['/media/a', '/media/b'],
+            mediaPaths: ['/media/a'],
             tmdbApiKey: 'abc',
-            imageHostProviders: ['imgbb'],
-            ffmpegPath: '',
-            ffprobePath: '',
-            movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 1,
-            imgbbApiKey: '',
+            imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', url: 'https://example.com', selected: true, apiKey: 'imgbb-key' }],
+            trackers: [{ code: 'FNP', name: 'FearNoPeer', url: 'https://fearnopeer.com', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
+            ffmpegPath: '/custom/ffmpeg',
+            ffprobePath: '/custom/ffprobe',
+            movieScreenshotCount: 9,
+            tvEpisodeScreenshotCount: 2,
         })
 
-        await expect(getSettings()).resolves.toMatchObject({
+        expect(storedSettings).toEqual({
             id: 'app-settings',
-            mediaPaths: ['/media/a', '/media/b'],
+            mediaPaths: ['/media/a'],
             tmdbApiKey: 'abc',
-        })
-    })
-
-    it('overwrites settings on save', async () => {
-        const { getSettings, saveSettings } = await loadRepository()
-        await saveSettings({
-            mediaPaths: ['/media/old'],
-            tmdbApiKey: 'old',
-            imageHostProviders: [],
-            ffmpegPath: '',
-            ffprobePath: '',
-            movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 1,
-            imgbbApiKey: '',
-        })
-        await saveSettings({
-            mediaPaths: ['/media/new'],
-            tmdbApiKey: 'new',
-            imageHostProviders: ['imgbb'],
-            ffmpegPath: '',
-            ffprobePath: '',
-            movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 1,
-            imgbbApiKey: '',
-        })
-
-        await expect(getSettings()).resolves.toMatchObject({
-            id: 'app-settings',
-            mediaPaths: ['/media/new'],
-            tmdbApiKey: 'new',
+            imageHostProviders: [{ code: 'imgbb', selected: true, apiKey: 'imgbb-key' }],
+            trackers: [{ code: 'FNP', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
+            ffmpegPath: '/custom/ffmpeg',
+            ffprobePath: '/custom/ffprobe',
+            movieScreenshotCount: 9,
+            tvEpisodeScreenshotCount: 2,
         })
     })
 })

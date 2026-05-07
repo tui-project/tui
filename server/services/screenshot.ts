@@ -52,7 +52,7 @@ export async function createScreenshots(inputPath: string, hdr: boolean, tv: boo
             ...screenshot,
             order: index + 1,
         }))
-        
+
         logger.trace('Generated local screenshots.', { count: localScreenshots.length, tempDir })
         const uploadedScreenshots = await Promise.all(
             localScreenshots.map(async (screenshot) => {
@@ -93,7 +93,7 @@ async function removeTempDir(tempDir: string) {
 }
 
 function validatSettings(settings: Settings) {
-    const imgbbSettings = settings.imageHostProviders.imgbb
+    const imgbbSettings = settings.imageHostProviders.find((provider) => provider.code === 'imgbb' && provider.selected)
 
     if (!imgbbSettings) {
         logger.warn('Screenshot generation blocked because no image host provider is enabled.')
@@ -106,9 +106,11 @@ function validatSettings(settings: Settings) {
         })
     }
 
-    const missingFields = [settings.ffmpegPath ? null : 'FFmpeg Path', settings.ffprobePath ? null : 'FFprobe Path', imgbbSettings.apiKey ? null : 'ImgBB API Key'].filter(
-        (field): field is string => field !== null
-    )
+    const missingFields = [
+        settings.ffmpegPath?.trim() ? null : 'FFmpeg Path',
+        settings.ffprobePath?.trim() ? null : 'FFprobe Path',
+        imgbbSettings.apiKey?.trim() ? null : 'ImgBB API Key',
+    ].filter((field): field is string => field !== null)
 
     if (missingFields.length === 0) {
         logger.trace('Screenshot settings validated successfully.')

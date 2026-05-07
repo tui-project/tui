@@ -37,6 +37,8 @@
     "devDependencies": {
         "@bbob/types": "4.3.1",
         "@iconify-json/lucide": "^1.2.105",
+        "@iconify-json/material-symbols": "^1.2.70",
+        "@iconify-json/qlementine-icons": "^1.2.15",
         "@nuxt/test-utils": "4.0.2",
         "@testing-library/user-event": "14.6.1",
         "@testing-library/vue": "8.1.0",

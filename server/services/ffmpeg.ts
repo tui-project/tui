@@ -4,11 +4,6 @@ import { runCommand } from '../utils/process'
 import { logger } from '../utils/logger'
 import { getSettings } from '../repositories/settings-repository'
 
-export interface FfmpegVersion {
-    version: string
-    major: number | null
-}
-
 export interface ScreenshotJob {
     order: number
     outputPath: string
@@ -52,6 +47,7 @@ export async function generateScreenshotsWithFfmpeg(filePath: string, outputDir:
     }
 
     logger.debug('Generated screenshots with FFmpeg.', { filePath, jobCount: jobs.length, outputDir })
+
     return jobs.map(({ order, outputPath }) => ({
         order,
         outputPath,

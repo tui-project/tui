@@ -1,52 +1,84 @@
 import { stat } from 'node:fs/promises'
-import { createError, readBody } from 'h3'
-import { saveSettings } from '../repositories/settings-repository'
+import { createError } from 'h3'
+import { z } from 'zod'
+import { getSettings, saveSettings } from '../repositories/settings-repository'
 import { logger } from '../utils/logger'
-import { normalisePositiveInteger, normaliseString } from '../utils/string'
+import { parseValidatedBody } from '../utils/request-validator'
+import { toSettingsResponse } from './settings-response'
 
-interface SettingsRequest {
-    mediaPaths?: unknown
-    tmdbApiKey?: unknown
-    imageHostProviders?: unknown
-    ffmpegPath?: unknown
-    ffprobePath?: unknown
-    movieScreenshotCount?: unknown
-    tvEpisodeScreenshotCount?: unknown
-    imgbbApiKey?: unknown
-}
+const trimmedRequiredStringSchema = z.string().trim().min(1)
+const trimmedOptionalStringSchema = z.string().trim().min(1).optional()
+
+const imageHostProviderSchema = z
+    .object({
+        code: trimmedRequiredStringSchema,
+        name: trimmedRequiredStringSchema,
+        selected: z.boolean(),
+        apiKey: trimmedOptionalStringSchema,
+    })
+    .superRefine((provider, context) => {
+        if (provider.selected && !provider.apiKey) {
+            context.addIssue({
+                code: 'custom',
+                path: ['apiKey'],
+                message: 'apiKey is required when provider is selected',
+            })
+        }
+    })
+    .transform((provider) => ({
+        ...provider,
+        url: '',
+    }))
+
+const trackerSchema = z
+    .object({
+        code: trimmedRequiredStringSchema,
+        name: trimmedRequiredStringSchema,
+        selected: z.boolean(),
+        apiKey: trimmedOptionalStringSchema,
+        passKey: trimmedOptionalStringSchema,
+    })
+    .superRefine((tracker, context) => {
+        if (tracker.selected && !tracker.apiKey) {
+            context.addIssue({
+                code: 'custom',
+                path: ['apiKey'],
+                message: 'apiKey is required when tracker is selected',
+            })
+        }
+
+        if (tracker.selected && !tracker.passKey) {
+            context.addIssue({
+                code: 'custom',
+                path: ['passKey'],
+                message: 'passKey is required when tracker is selected',
+            })
+        }
+    })
+    .transform((tracker) => ({
+        ...tracker,
+        url: '',
+    }))
+
+const settingsRequestSchema = z.object({
+    mediaPaths: z.array(trimmedRequiredStringSchema).transform((mediaPaths) => [...new Set(mediaPaths)]),
+    tmdbApiKey: trimmedRequiredStringSchema,
+    imageHostProviders: z.array(imageHostProviderSchema),
+    trackers: z.array(trackerSchema),
+    ffmpegPath: trimmedRequiredStringSchema,
+    ffprobePath: trimmedRequiredStringSchema,
+    movieScreenshotCount: z.number().int().positive(),
+    tvEpisodeScreenshotCount: z.number().int().positive(),
+})
 
 export default defineEventHandler(async (event) => {
     logger.debug('Settings update request received.')
 
-    const request = await readBody<SettingsRequest>(event)
-    const mediaPaths = normaliseMediaPaths(request.mediaPaths)
-    const tmdbApiKey = normaliseString(request.tmdbApiKey)
-    const imageHostProviders = normaliseImageHostProviders(request.imageHostProviders)
-    const ffmpegPath = normaliseString(request.ffmpegPath)
-    const ffprobePath = normaliseString(request.ffprobePath)
-    const movieScreenshotCount = normalisePositiveInteger(request.movieScreenshotCount)
-    const tvEpisodeScreenshotCount = normalisePositiveInteger(request.tvEpisodeScreenshotCount)
-    const imgbbApiKey = normaliseString(request.imgbbApiKey)
+    const request = await parseValidatedBody(event, settingsRequestSchema, {
+        onInvalid: (issues) => logger.warn('Rejected settings update with invalid payload.', { issues }),
+    })
 
-    if (
-        !mediaPaths ||
-        tmdbApiKey === null ||
-        !imageHostProviders ||
-        ffmpegPath === null ||
-        ffprobePath === null ||
-        movieScreenshotCount === null ||
-        tvEpisodeScreenshotCount === null ||
-        imgbbApiKey === null
-    ) {
-        logger.warn('Rejected settings update with invalid payload.')
-
-        throw createError({
-            statusCode: 400,
-            message: 'invalid_request',
-        })
-    }
-
-    for (const mediaPath of mediaPaths) {
+    for (const mediaPath of request.mediaPaths) {
         const exists = await pathExists(mediaPath)
         if (!exists) {
             logger.warn('Rejected settings update due to non-existent media path.', { mediaPath })
@@ -58,82 +90,12 @@ export default defineEventHandler(async (event) => {
         }
     }
 
-    const settings = await saveSettings(
-        sanitiseProviderSettings({
-            mediaPaths,
-            tmdbApiKey,
-            imageHostProviders,
-            ffmpegPath,
-            ffprobePath,
-            movieScreenshotCount,
-            tvEpisodeScreenshotCount,
-            imgbbApiKey,
-        })
-    )
+    await saveSettings(request)
     logger.info('Settings updated.')
 
-    return settings
+    const savedSettings = await getSettings()
+    return toSettingsResponse(savedSettings)
 })
-
-function normaliseMediaPaths(input: unknown) {
-    if (!Array.isArray(input)) {
-        return null
-    }
-
-    const trimmed = input
-        .filter((value): value is string => typeof value === 'string')
-        .map((value) => value.trim())
-        .filter((value) => value.length > 0)
-
-    if (trimmed.length !== input.length) {
-        return null
-    }
-
-    return [...new Set(trimmed)]
-}
-
-function normaliseImageHostProviders(input: unknown) {
-    if (!Array.isArray(input)) {
-        return null
-    }
-
-    const providers = input.map((value) => normaliseString(value))
-
-    if (providers.some((provider) => provider === null || provider.length === 0)) {
-        return null
-    }
-
-    const uniqueProviders = [...new Set(providers.filter((provider): provider is string => provider !== null))]
-    const supportedProviders = new Set(['imgbb'])
-
-    if (uniqueProviders.some((provider) => !supportedProviders.has(provider))) {
-        return null
-    }
-
-    return uniqueProviders
-}
-
-function sanitiseProviderSettings(
-    settings: Omit<SettingsRequest, 'mediaPaths' | 'movieScreenshotCount' | 'tvEpisodeScreenshotCount'> & {
-        mediaPaths: string[]
-        imageHostProviders: string[]
-        ffmpegPath: string
-        ffprobePath: string
-        movieScreenshotCount: number
-        tvEpisodeScreenshotCount: number
-        imgbbApiKey: string
-        tmdbApiKey: string
-    }
-) {
-    if (settings.imageHostProviders.includes('imgbb')) {
-        return settings
-    }
-
-    return {
-        ...settings,
-        imgbbApiKey: '',
-    }
-}
 
 async function pathExists(path: string) {
     try {

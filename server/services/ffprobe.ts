@@ -15,6 +15,7 @@ export interface MediaProbeResult {
 export async function probeMediaDuration(filePath: string): Promise<MediaProbeResult> {
     const settings = await getSettings()
     const ffprobePath = settings.ffprobePath
+
     logger.trace('Probing media duration with FFprobe.', { ffprobePath, filePath })
 
     try {
@@ -26,7 +27,10 @@ export async function probeMediaDuration(filePath: string): Promise<MediaProbeRe
         }
 
         logger.debug('Probed media duration with FFprobe.', { filePath, durationSeconds })
-        return { durationSeconds }
+
+        return {
+            durationSeconds,
+        }
     } catch {
         logger.warn('Failed to probe media duration.', { ffprobePath, filePath })
         throw createError({

@@ -1,16 +1,30 @@
 import { readonly, ref } from 'vue'
 
 export type ImageHostProvider = 'imgbb'
+export interface ImageHostProviderSettings {
+    selected: boolean
+    code: string
+    name: string
+    apiKey?: string
+}
+
+export interface TrackerSettings {
+    selected: boolean
+    code: string
+    name: string
+    apiKey?: string
+    passKey?: string
+}
 
 export interface AppSettings {
     mediaPaths: string[]
     tmdbApiKey: string
-    imageHostProviders: ImageHostProvider[]
+    imageHostProviders: ImageHostProviderSettings[]
+    trackers: TrackerSettings[]
     ffmpegPath: string
     ffprobePath: string
     movieScreenshotCount: number
     tvEpisodeScreenshotCount: number
-    imgbbApiKey: string
 }
 
 export function useSettings() {

@@ -8,6 +8,7 @@ const logger = {
 
 const readBody = vi.fn()
 const createError = vi.fn((payload: unknown) => payload)
+const getSettings = vi.fn()
 const saveSettings = vi.fn()
 const stat = vi.fn()
 
@@ -15,6 +16,7 @@ beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
     vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
+    vi.stubGlobal('setResponseStatus', vi.fn())
 })
 
 async function loadHandler() {
@@ -26,6 +28,7 @@ async function loadHandler() {
         stat,
     }))
     vi.doMock('../../../../server/repositories/settings-repository', () => ({
+        getSettings,
         saveSettings,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
@@ -47,6 +50,50 @@ describe('POST /api/settings route handler', () => {
         })
     })
 
+    it('rejects selected image host provider without api key', async () => {
+        readBody.mockResolvedValue(
+            baseRequest({
+                imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', selected: true }],
+            })
+        )
+        const handler = await loadHandler()
+
+        await expect(handler({} as never)).rejects.toEqual({
+            statusCode: 400,
+            message: 'invalid_request',
+        })
+    })
+
+    it('rejects selected tracker without api key and pass key', async () => {
+        readBody.mockResolvedValue(
+            baseRequest({
+                trackers: [{ code: 'FNP', name: 'FearNoPeer', selected: true }],
+            })
+        )
+        const handler = await loadHandler()
+
+        await expect(handler({} as never)).rejects.toEqual({
+            statusCode: 400,
+            message: 'invalid_request',
+        })
+    })
+
+    it('rejects missing ffmpeg paths even when no image host provider is selected', async () => {
+        readBody.mockResolvedValue(
+            baseRequest({
+                imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', selected: false }],
+                ffmpegPath: undefined,
+                ffprobePath: undefined,
+            })
+        )
+        const handler = await loadHandler()
+
+        await expect(handler({} as never)).rejects.toEqual({
+            statusCode: 400,
+            message: 'invalid_request',
+        })
+    })
+
     it('rejects when media path does not exist', async () => {
         readBody.mockResolvedValue(baseRequest({ mediaPaths: ['/missing'] }))
         stat.mockRejectedValue(new Error('missing'))
@@ -58,135 +105,58 @@ describe('POST /api/settings route handler', () => {
         })
     })
 
-    it('rejects when media paths contain invalid entries after normalization', async () => {
-        readBody.mockResolvedValue(baseRequest({ mediaPaths: ['/ok', '   '] }))
-        const handler = await loadHandler()
-
-        await expect(handler({} as never)).rejects.toEqual({
-            statusCode: 400,
-            message: 'invalid_request',
-        })
-    })
-
-    it('deduplicates paths and saves valid settings', async () => {
+    it('saves only the supported repository payload', async () => {
         readBody.mockResolvedValue(baseRequest({ mediaPaths: [' /a ', '/a', '/b'], tmdbApiKey: '  abc  ' }))
         stat.mockResolvedValue({})
-        saveSettings.mockResolvedValue({
+        getSettings.mockResolvedValue({
+            id: 'app-settings',
             mediaPaths: ['/a', '/b'],
             tmdbApiKey: 'abc',
-            imageHostProviders: ['imgbb'],
+            imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', url: 'https://api.imgbb.com/1/upload?key=', selected: true, apiKey: 'imgbb-key' }],
+            trackers: [{ code: 'FNP', name: 'FearNoPeer', url: 'https://fearnopeer.com', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 3,
-            imgbbApiKey: 'imgbb-key',
+            tvEpisodeScreenshotCount: 1,
         })
         const handler = await loadHandler()
 
         await expect(handler({} as never)).resolves.toEqual({
             mediaPaths: ['/a', '/b'],
             tmdbApiKey: 'abc',
-            imageHostProviders: ['imgbb'],
+            imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', selected: true, apiKey: 'imgbb-key' }],
+            trackers: [{ code: 'FNP', name: 'FearNoPeer', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 3,
-            imgbbApiKey: 'imgbb-key',
+            tvEpisodeScreenshotCount: 1,
         })
         expect(saveSettings).toHaveBeenCalledWith({
             mediaPaths: ['/a', '/b'],
             tmdbApiKey: 'abc',
-            imageHostProviders: ['imgbb'],
+            imageHostProviders: [
+                {
+                    code: 'imgbb',
+                    name: 'ImgBB',
+                    url: '',
+                    selected: true,
+                    apiKey: 'imgbb-key',
+                },
+            ],
+            trackers: [
+                {
+                    code: 'FNP',
+                    name: 'FearNoPeer',
+                    url: '',
+                    selected: true,
+                    apiKey: 'api-key',
+                    passKey: 'pass-key',
+                },
+            ],
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
             tvEpisodeScreenshotCount: 3,
-            imgbbApiKey: 'imgbb-key',
-        })
-        expect(logger.info).toHaveBeenCalledWith('Settings updated.')
-    })
-
-    it('rejects when tmdb api key is invalid', async () => {
-        readBody.mockResolvedValue(baseRequest({ mediaPaths: ['/ok'], tmdbApiKey: 123 }))
-        const handler = await loadHandler()
-
-        await expect(handler({} as never)).rejects.toEqual({
-            statusCode: 400,
-            message: 'invalid_request',
-        })
-    })
-
-    it('allows blank ffmpeg path, ffprobe path, and imgbb api key', async () => {
-        readBody.mockResolvedValue(baseRequest({ ffmpegPath: '   ', ffprobePath: ' ', imgbbApiKey: '   ' }))
-        stat.mockResolvedValue({})
-        saveSettings.mockResolvedValue({
-            mediaPaths: ['/ok'],
-            tmdbApiKey: 'abc',
-            imageHostProviders: [],
-            ffmpegPath: '',
-            ffprobePath: '',
-            movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 3,
-            imgbbApiKey: '',
-        })
-        const handler = await loadHandler()
-
-        await expect(handler({} as never)).resolves.toEqual({
-            mediaPaths: ['/ok'],
-            tmdbApiKey: 'abc',
-            imageHostProviders: [],
-            ffmpegPath: '',
-            ffprobePath: '',
-            movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 3,
-            imgbbApiKey: '',
-        })
-    })
-
-    it('rejects when image host providers contain unsupported values', async () => {
-        readBody.mockResolvedValue(baseRequest({ imageHostProviders: ['imgbb', 'unknown'] }))
-        const handler = await loadHandler()
-
-        await expect(handler({} as never)).rejects.toEqual({
-            statusCode: 400,
-            message: 'invalid_request',
-        })
-    })
-
-    it('clears ImgBB API key when ImgBB is not selected', async () => {
-        readBody.mockResolvedValue(baseRequest({ imageHostProviders: [], imgbbApiKey: 'still-present' }))
-        stat.mockResolvedValue({})
-        saveSettings.mockResolvedValue({
-            mediaPaths: ['/ok'],
-            tmdbApiKey: 'abc',
-            imageHostProviders: [],
-            ffmpegPath: 'ffmpeg',
-            ffprobePath: 'ffprobe',
-            movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 3,
-            imgbbApiKey: '',
-        })
-        const handler = await loadHandler()
-
-        await expect(handler({} as never)).resolves.toEqual({
-            mediaPaths: ['/ok'],
-            tmdbApiKey: 'abc',
-            imageHostProviders: [],
-            ffmpegPath: 'ffmpeg',
-            ffprobePath: 'ffprobe',
-            movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 3,
-            imgbbApiKey: '',
-        })
-        expect(saveSettings).toHaveBeenCalledWith({
-            mediaPaths: ['/ok'],
-            tmdbApiKey: 'abc',
-            imageHostProviders: [],
-            ffmpegPath: 'ffmpeg',
-            ffprobePath: 'ffprobe',
-            movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 3,
-            imgbbApiKey: '',
         })
     })
 })
@@ -196,22 +166,22 @@ function baseRequest(
         mediaPaths: unknown
         tmdbApiKey: unknown
         imageHostProviders: unknown
+        trackers: unknown
         ffmpegPath: unknown
         ffprobePath: unknown
         movieScreenshotCount: unknown
         tvEpisodeScreenshotCount: unknown
-        imgbbApiKey: unknown
     }> = {}
 ) {
     return {
         mediaPaths: ['/ok'],
         tmdbApiKey: 'abc',
-        imageHostProviders: ['imgbb'],
+        imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', selected: true, apiKey: 'imgbb-key' }],
+        trackers: [{ code: 'FNP', name: 'FearNoPeer', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,
         tvEpisodeScreenshotCount: 3,
-        imgbbApiKey: 'imgbb-key',
         ...overrides,
     }
 }

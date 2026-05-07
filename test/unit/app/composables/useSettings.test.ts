@@ -4,23 +4,27 @@ function buildSettings(
     overrides: Partial<{
         mediaPaths: string[]
         tmdbApiKey: string
-        imageHostProviders: string[]
+        imageHostProviders: Record<string, { selected: boolean; code: string; name: string; apiKey: string | null }>
+        trackers: Record<string, { selected: boolean; code: string; name: string; url: string; apiKey: string | null; passKey: string | null }>
         ffmpegPath: string
         ffprobePath: string
         movieScreenshotCount: number
         tvEpisodeScreenshotCount: number
-        imgbbApiKey: string
     }> = {}
 ) {
     return {
         mediaPaths: ['/media/a'],
         tmdbApiKey: '',
-        imageHostProviders: [],
+        imageHostProviders: {
+            imgbb: { selected: false, code: 'imgbb', name: 'ImgBB', apiKey: null },
+        },
+        trackers: {
+            FNP: { selected: false, code: 'FNP', name: 'FearNoPeer', url: 'https://fearnopeer.com', apiKey: null, passKey: null },
+        },
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,
         tvEpisodeScreenshotCount: 3,
-        imgbbApiKey: 'imgbb-key',
         ...overrides,
     }
 }

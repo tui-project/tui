@@ -35,7 +35,7 @@ export async function resolveMediaFilePath(inputPath: string): Promise<string> {
 
 export async function resolveMediaFilePaths(inputPath: string): Promise<string[]> {
     logger.trace('Resolving media file paths.', { inputPath })
-    
+
     const pathStats = await stat(inputPath)
     if (pathStats.isFile()) {
         logger.debug('Resolved media file path directly from file input.', { inputPath })

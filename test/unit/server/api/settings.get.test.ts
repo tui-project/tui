@@ -8,19 +8,7 @@ const logger = {
     error: vi.fn(),
 }
 
-const getSettings = vi.fn<
-    () => Promise<{
-        id: string
-        mediaPaths: string[]
-        tmdbApiKey: string
-        imageHostProviders: string[]
-        ffmpegPath: string
-        ffprobePath: string
-        movieScreenshotCount: number
-        tvEpisodeScreenshotCount: number
-        imgbbApiKey: string
-    }>
->()
+const getSettings = vi.fn()
 
 beforeEach(() => {
     vi.resetModules()
@@ -41,55 +29,29 @@ async function loadHandler() {
 }
 
 describe('GET /api/settings route handler', () => {
-    it('returns empty list when settings are missing', async () => {
+    it('removes id and urls from the response', async () => {
         getSettings.mockResolvedValue({
             id: 'app-settings',
-            mediaPaths: [],
-            tmdbApiKey: '',
-            imageHostProviders: [],
+            mediaPaths: ['/a'],
+            tmdbApiKey: 'abc',
+            imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', url: 'https://api.imgbb.com/1/upload?key=', selected: true, apiKey: 'imgbb-key' }],
+            trackers: [{ code: 'FNP', name: 'FearNoPeer', url: 'https://fearnopeer.com', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 3,
-            imgbbApiKey: '',
+            tvEpisodeScreenshotCount: 1,
         })
         const handler = await loadHandler()
 
         await expect(handler({} as never)).resolves.toEqual({
-            mediaPaths: [],
-            tmdbApiKey: '',
-            imageHostProviders: [],
+            mediaPaths: ['/a'],
+            tmdbApiKey: 'abc',
+            imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', selected: true, apiKey: 'imgbb-key' }],
+            trackers: [{ code: 'FNP', name: 'FearNoPeer', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 3,
-            imgbbApiKey: '',
-        })
-    })
-
-    it('returns stored media paths', async () => {
-        getSettings.mockResolvedValue({
-            id: 'app-settings',
-            mediaPaths: ['/a', '/b'],
-            tmdbApiKey: 'abc',
-            imageHostProviders: ['imgbb'],
-            ffmpegPath: '/usr/local/bin/ffmpeg',
-            ffprobePath: '/usr/local/bin/ffprobe',
-            movieScreenshotCount: 8,
-            tvEpisodeScreenshotCount: 4,
-            imgbbApiKey: 'imgbb-key',
-        })
-        const handler = await loadHandler()
-
-        await expect(handler({} as never)).resolves.toEqual({
-            mediaPaths: ['/a', '/b'],
-            tmdbApiKey: 'abc',
-            imageHostProviders: ['imgbb'],
-            ffmpegPath: '/usr/local/bin/ffmpeg',
-            ffprobePath: '/usr/local/bin/ffprobe',
-            movieScreenshotCount: 8,
-            tvEpisodeScreenshotCount: 4,
-            imgbbApiKey: 'imgbb-key',
+            tvEpisodeScreenshotCount: 1,
         })
     })
 })

@@ -7,9 +7,8 @@ const logger = {
     error: vi.fn(),
 }
 
-const getQuery = vi.fn<() => { parent?: string }>()
+const getQuery = vi.fn<() => { parent?: unknown }>()
 const createError = vi.fn<(payload: { statusCode: number; message: string }) => { statusCode: number; message: string }>()
-const realpath = vi.fn<(target: string) => Promise<string>>()
 const stat = vi.fn<(target: string) => Promise<{ isDirectory: () => boolean }>>()
 const getSettings = vi.fn<() => Promise<{ id: string; mediaPaths: string[] }>>()
 const listChildren = vi.fn<() => Promise<Array<{ path: string; folder: boolean }>>>()
@@ -20,7 +19,6 @@ beforeEach(() => {
     vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
     createError.mockImplementation((payload) => payload)
     getSettings.mockResolvedValue({ id: 'app-settings', mediaPaths: ['/media'] })
-    realpath.mockImplementation(async (target) => target)
 })
 
 async function loadHandler() {
@@ -29,7 +27,6 @@ async function loadHandler() {
         createError,
     }))
     vi.doMock('node:fs/promises', () => ({
-        realpath,
         stat,
     }))
     vi.doMock('../../../../server/repositories/settings-repository', () => ({ getSettings }))
@@ -52,6 +49,15 @@ describe('GET /api/paths route handler', () => {
         expect(stat).toHaveBeenCalledWith('/media')
     })
 
+    it('treats blank parent values as a root listing request', async () => {
+        getQuery.mockReturnValue({ parent: '   ' })
+        stat.mockResolvedValue({ isDirectory: () => true })
+        const handler = await loadHandler()
+
+        await expect(handler({} as never)).resolves.toEqual([{ path: '/media', folder: true }])
+        expect(listChildren).not.toHaveBeenCalled()
+    })
+
     it('sorts root entries with folders first and alphabetically within type', async () => {
         getQuery.mockReturnValue({})
         getSettings.mockResolvedValue({ id: 'app-settings', mediaPaths: ['/b-file.mkv', '/a-folder', '/a-file.mkv', '/b-folder'] })
@@ -68,9 +74,8 @@ describe('GET /api/paths route handler', () => {
         ])
     })
 
-    it('returns children for allowed parent', async () => {
-        getQuery.mockReturnValue({ parent: '/media' })
-        realpath.mockImplementation(async (target) => target)
+    it('returns children for an allowed trimmed parent', async () => {
+        getQuery.mockReturnValue({ parent: '  /media  ' })
         listChildren.mockResolvedValue([{ path: '/media/file.mkv', folder: false }])
         const handler = await loadHandler()
 
@@ -80,12 +85,47 @@ describe('GET /api/paths route handler', () => {
 
     it('returns invalid_parent_path when parent is outside configured roots', async () => {
         getQuery.mockReturnValue({ parent: '/etc' })
-        realpath.mockImplementation(async (target) => target)
         const handler = await loadHandler()
 
         await expect(handler({} as never)).rejects.toEqual({
             statusCode: 400,
             message: 'invalid_parent_path',
         })
+        expect(logger.warn).toHaveBeenCalledWith(
+            'Rejected directory browse because parent path is outside configured roots.',
+            { parent: '/etc' }
+        )
+        expect(logger.error).toHaveBeenCalledWith('Unable to load paths', {
+            statusCode: 400,
+            message: 'invalid_parent_path',
+        })
+    })
+
+    it('returns invalid_parent_path when query validation fails', async () => {
+        getQuery.mockReturnValue({ parent: 123 })
+        const handler = await loadHandler()
+
+        await expect(handler({} as never)).rejects.toEqual({
+            statusCode: 400,
+            message: 'invalid_parent_path',
+        })
+        expect(logger.warn).toHaveBeenCalledWith(
+            'Rejected directory browse with invalid parent query.',
+            expect.objectContaining({
+                issues: expect.any(Array),
+            })
+        )
+    })
+
+    it('returns invalid_parent_path when listing children fails', async () => {
+        getQuery.mockReturnValue({ parent: '/media' })
+        listChildren.mockRejectedValue(new Error('boom'))
+        const handler = await loadHandler()
+
+        await expect(handler({} as never)).rejects.toEqual({
+            statusCode: 400,
+            message: 'invalid_parent_path',
+        })
+        expect(logger.error).toHaveBeenCalledWith('Unable to load paths', expect.any(Error))
     })
 })

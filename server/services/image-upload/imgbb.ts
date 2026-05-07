@@ -14,7 +14,7 @@ const imgbbResponseSchema = z.object({
 export function createImgbbImageUploadProvider(apiKey: string): ImageUploadProvider {
     async function uploadImage(filePath: string): Promise<UploadedImage> {
         logger.trace('Uploading image to ImgBB.', { filePath })
-        
+
         const image = await readFile(filePath, { encoding: 'base64' })
         const formData = new FormData()
         formData.set('image', image)
