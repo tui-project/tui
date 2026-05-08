@@ -1,0 +1,143 @@
+import { describe, expect, it } from 'vitest'
+
+describe('tracker upload request repository', () => {
+    it('creates and finds tracker upload requests', async () => {
+        const { createTrackerUploadRequest, findTrackerUploadRequestById, findAllTrackerUploadRequests } =
+            await import('../../../../server/repositories/tracker-upload-request-repository')
+
+        await createTrackerUploadRequest({
+            id: 'upload-1',
+            filepath: '/media/Movie.2024.1080p.mkv',
+            metadata: {
+                releaseGroup: 'GROUP',
+                mediaType: 'movie',
+                title: 'Movie',
+                originalTitle: 'Movie',
+                year: 2024,
+                language: ['English'],
+                originalLanguage: 'English',
+                sourceType: 'ENCODE',
+                source: 'BluRay',
+                repack: false,
+                proper: false,
+                hybrid: false,
+                resolution: '1080p',
+                hdr: [],
+                videoCodec: 'H.264',
+                audioCodec: 'DTS-HD MA',
+                audioChannels: '5.1',
+                tmdbId: 1,
+                imdbId: 'tt1234567',
+            },
+            description: 'Release description',
+            trackerCodes: ['FNP', 'ATH'],
+            status: 'pending',
+        })
+
+        const byId = await findTrackerUploadRequestById('upload-1')
+        const all = await findAllTrackerUploadRequests()
+
+        expect(byId).toMatchObject({
+            id: 'upload-1',
+            filepath: '/media/Movie.2024.1080p.mkv',
+            trackerCodes: ['FNP', 'ATH'],
+            status: 'pending',
+        })
+        expect(all).toHaveLength(1)
+        expect(all[0]).toMatchObject({
+            id: 'upload-1',
+            status: 'pending',
+        })
+    })
+
+    it('updates partial success status with failed tracker codes', async () => {
+        const { createTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestStatus } =
+            await import('../../../../server/repositories/tracker-upload-request-repository')
+
+        await createTrackerUploadRequest({
+            id: 'upload-2',
+            filepath: '/media/Show.S01E01.2024.1080p.mkv',
+            metadata: {
+                releaseGroup: 'GROUP',
+                mediaType: 'tv',
+                title: 'Show',
+                originalTitle: 'Show',
+                year: 2024,
+                season: 1,
+                episode: 1,
+                language: ['English'],
+                originalLanguage: 'English',
+                sourceType: 'WEB-DL',
+                source: 'Web',
+                service: 'NF',
+                repack: false,
+                proper: false,
+                hybrid: false,
+                resolution: '1080p',
+                hdr: [],
+                videoCodec: 'H.264',
+                audioCodec: 'DD+',
+                audioChannels: '5.1',
+                tmdbId: 10,
+                imdbId: 'tt7654321',
+                tvdbId: 20,
+            },
+            description: '',
+            trackerCodes: ['FNP', 'ATH'],
+            status: 'uploading',
+        })
+
+        await updateTrackerUploadRequestStatus('upload-2', 'partial_success', ['ATH'])
+        const updated = await findTrackerUploadRequestById('upload-2')
+
+        expect(updated).toMatchObject({
+            id: 'upload-2',
+            status: 'partial_success',
+            failedTrackerCodes: ['ATH'],
+        })
+    })
+
+    it('clears failed tracker codes when leaving partial success', async () => {
+        const { createTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestStatus } =
+            await import('../../../../server/repositories/tracker-upload-request-repository')
+
+        await createTrackerUploadRequest({
+            id: 'upload-3',
+            filepath: '/media/Movie.2024.1080p.mkv',
+            metadata: {
+                releaseGroup: 'GROUP',
+                mediaType: 'movie',
+                title: 'Movie',
+                originalTitle: 'Movie',
+                year: 2024,
+                language: ['English'],
+                originalLanguage: 'English',
+                sourceType: 'ENCODE',
+                source: 'BluRay',
+                repack: false,
+                proper: false,
+                hybrid: false,
+                resolution: '1080p',
+                hdr: [],
+                videoCodec: 'H.264',
+                audioCodec: 'DTS-HD MA',
+                audioChannels: '5.1',
+                tmdbId: 1,
+                imdbId: 'tt1234567',
+            },
+            description: 'Release description',
+            trackerCodes: ['FNP'],
+            status: 'partial_success',
+            failedTrackerCodes: ['FNP'],
+        })
+
+        await updateTrackerUploadRequestStatus('upload-3', 'success')
+        const updated = await findTrackerUploadRequestById('upload-3')
+
+        expect(updated).toMatchObject({
+            id: 'upload-3',
+            status: 'success',
+        })
+        expect(updated?.failedTrackerCodes).toBeUndefined()
+    })
+})

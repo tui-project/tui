@@ -8,6 +8,7 @@ const logger = {
 const readBody = vi.fn()
 const createError = vi.fn((payload: unknown) => payload)
 const setResponseStatus = vi.fn()
+const createTrackerUploadRequest = vi.fn()
 
 beforeEach(() => {
     vi.resetModules()
@@ -24,6 +25,9 @@ async function loadHandler() {
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
         logger,
+    }))
+    vi.doMock('../../../../server/repositories/tracker-upload-request-repository', () => ({
+        createTrackerUploadRequest,
     }))
 
     const { default: handler } = await import('../../../../server/api/tracker/upload.post')
@@ -80,15 +84,31 @@ describe('POST /api/tracker/upload route handler', () => {
 
     it('accepts valid upload requests', async () => {
         readBody.mockResolvedValue(buildRequest())
+        createTrackerUploadRequest.mockResolvedValue({
+            id: 'upload-1',
+            ...buildRequest(),
+            status: 'pending',
+        })
         const handler = await loadHandler()
 
-        await expect(handler({} as never)).resolves.toBeUndefined()
+        await expect(handler({} as never)).resolves.toEqual({
+            id: 'upload-1',
+            status: 'pending',
+        })
         expect(setResponseStatus).toHaveBeenCalledWith({}, 201)
-        expect(logger.info).toHaveBeenCalledWith('Tracker upload request accepted.', {
+        expect(createTrackerUploadRequest).toHaveBeenCalledWith({
+            id: expect.any(String),
             description: 'Release description',
             filepath: '/media/Movie.2024.1080p.mkv',
             metadata: buildRequest().metadata,
             trackerCodes: ['FNP'],
+            status: 'pending',
+        })
+        expect(logger.info).toHaveBeenCalledWith('Tracker upload request accepted.', {
+            id: 'upload-1',
+            filepath: '/media/Movie.2024.1080p.mkv',
+            trackerCodes: ['FNP'],
+            status: 'pending',
         })
     })
 

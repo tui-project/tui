@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { getDataDir } from '../../setupFile'
 
 describe('server db', () => {
-    it('creates user, session, settings, and directory cache datastores in the configured data directory', async () => {
+    it('creates user, session, settings, directory cache, and tracker upload request datastores in the configured data directory', async () => {
         const db = await import('../../../../server/utils/db')
         await db.initDatastores()
 
@@ -14,11 +14,13 @@ describe('server db', () => {
         const sessionDatafile = await stat(join(getDataDir(), 'sessions.db'))
         const settingsDatafile = await stat(join(getDataDir(), 'settings.db'))
         const directoryCacheDatafile = await stat(join(getDataDir(), 'directory-cache.db'))
+        const trackerUploadRequestDatafile = await stat(join(getDataDir(), 'tracker-upload-requests.db'))
 
         expect(userDatafile.isFile()).toBe(true)
         expect(sessionDatafile.isFile()).toBe(true)
         expect(settingsDatafile.isFile()).toBe(true)
         expect(directoryCacheDatafile.isFile()).toBe(true)
+        expect(trackerUploadRequestDatafile.isFile()).toBe(true)
     })
 
     it('persists user documents to the users datafile', async () => {

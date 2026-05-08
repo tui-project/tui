@@ -1,4 +1,7 @@
+import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
+import { TRACKER_UPLOAD_STATUSES } from '../../model/tracker-upload-request'
+import { createTrackerUploadRequest } from '../../repositories/tracker-upload-request-repository'
 import { logger } from '../../utils/logger'
 import { parseValidatedBody } from '../../utils/request-validator'
 import { AUDIO_CHANNELS, AUDIO_CODECS, AUDIO_METADATA_TYPES, CUTS, HDR_TYPES, MEDIA_TYPES, RESOLUTIONS, SERVICES, SOURCES, SOURCE_TYPES, VIDEO_CODECS } from '../../model/metadata'
@@ -81,12 +84,26 @@ export default defineEventHandler(async (event) => {
         onInvalid: (issues) => logger.warn('Rejected tracker upload request with invalid payload.', { issues }),
     })
 
-    logger.info('Tracker upload request accepted.', {
+    const uploadRequest = await createTrackerUploadRequest({
+        id: randomUUID(),
         filepath: request.filepath,
-        trackerCodes: request.trackerCodes,
         metadata: request.metadata,
         description: request.description,
+        trackerCodes: request.trackerCodes,
+        status: TRACKER_UPLOAD_STATUSES.PENDING,
+    })
+
+    logger.info('Tracker upload request accepted.', {
+        id: uploadRequest.id,
+        filepath: request.filepath,
+        trackerCodes: request.trackerCodes,
+        status: uploadRequest.status,
     })
 
     setResponseStatus(event, 201)
+
+    return {
+        id: uploadRequest.id,
+        status: uploadRequest.status,
+    }
 })

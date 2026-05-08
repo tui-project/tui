@@ -4,6 +4,7 @@ import Datastore, { type Document } from '@seald-io/nedb'
 import type { Session } from '../model/session'
 import type { DirectoryCache } from '../model/directory-cache'
 import type { Settings } from '../model/settings'
+import type { TrackerUploadRequest } from '../model/tracker-upload-request'
 import type { User } from '../model/user'
 import { logger } from './logger'
 
@@ -11,6 +12,7 @@ export type UserDocument = Document<User>
 export type SessionDocument = Document<Session>
 export type SettingsDocument = Document<Settings>
 export type DirectoryCacheDocument = Document<DirectoryCache>
+export type TrackerUploadRequestDocument = Document<TrackerUploadRequest>
 
 const dataDir = process.env.DATABASE_DIR ?? join(process.cwd(), 'config', 'database')
 
@@ -45,6 +47,13 @@ export const directoryCacheCollection = new Datastore<DirectoryCache>({
     timestampData: true,
 })
 
+const trackerUploadRequestCollectionDataDir = join(dataDir, 'tracker-upload-requests.db')
+export const trackerUploadRequestCollection = new Datastore<TrackerUploadRequest>({
+    filename: trackerUploadRequestCollectionDataDir,
+    autoload: true,
+    timestampData: true,
+})
+
 export async function initDatastores() {
     await userCollection.autoloadPromise
     logger.debug(`Users datastore initialized: ${userCollectionDataDir}`)
@@ -57,4 +66,7 @@ export async function initDatastores() {
 
     await directoryCacheCollection.autoloadPromise
     logger.debug(`Directory cache datastore initialized: ${directoryCacheCollectionDataDir}`)
+
+    await trackerUploadRequestCollection.autoloadPromise
+    logger.debug(`Tracker upload request datastore initialized: ${trackerUploadRequestCollectionDataDir}`)
 }
