@@ -27,7 +27,7 @@ const nextType = computed(() => props.next?.type ?? 'button')
 </script>
 
 <template>
-    <div class="flex justify-between pt-2">
+    <div class="flex justify-between pt-2 mt-3">
         <UButton variant="outline" size="xl" :disabled="backDisabled" :loading="backLoading" :type="backType" @click="emit('back')">
             {{ backLabel }}
         </UButton>

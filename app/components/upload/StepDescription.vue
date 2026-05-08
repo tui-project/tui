@@ -190,6 +190,6 @@ async function addScreenshots() {
             </div>
         </div>
 
-        <StepNavigationButtons class="mt-5" @back="emit('back')" @next="emit('next')" />
+        <StepNavigationButtons @back="emit('back')" @next="emit('next')" />
     </UCard>
 </template>

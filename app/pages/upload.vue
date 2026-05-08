@@ -30,6 +30,7 @@ const currentStep = ref(0)
 const selectedPath = ref<Path>()
 const reviewedMetadata = ref<Metadata>()
 const description = ref('')
+const selectedTrackers = ref<string[]>([])
 
 watch(
     () => selectedPath.value?.value?.trim() ?? '',
@@ -61,7 +62,6 @@ function goToPrevStep() {
             <template #review-metadata>
                 <UploadStepReviewMetadata v-model="reviewedMetadata" :selected-path="selectedPath" @back="goToPrevStep" @next="goToNextStep" />
             </template>
-
             <template #description>
                 <UploadStepDescription
                     v-model="description"
@@ -72,8 +72,9 @@ function goToPrevStep() {
                     @next="goToNextStep"
                 />
             </template>
-
-            <template #upload> </template>
+            <template #upload>
+                <UploadStepUpload v-model="selectedTrackers" :source-path="selectedPath?.value" :metadata="reviewedMetadata" :description="description" @back="goToPrevStep" />
+            </template>
         </UStepper>
     </PageContainer>
 </template>

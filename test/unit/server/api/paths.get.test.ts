@@ -91,10 +91,7 @@ describe('GET /api/paths route handler', () => {
             statusCode: 400,
             message: 'invalid_parent_path',
         })
-        expect(logger.warn).toHaveBeenCalledWith(
-            'Rejected directory browse because parent path is outside configured roots.',
-            { parent: '/etc' }
-        )
+        expect(logger.warn).toHaveBeenCalledWith('Rejected directory browse because parent path is outside configured roots.', { parent: '/etc' })
         expect(logger.error).toHaveBeenCalledWith('Unable to load paths', {
             statusCode: 400,
             message: 'invalid_parent_path',
