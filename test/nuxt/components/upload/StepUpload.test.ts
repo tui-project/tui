@@ -7,14 +7,25 @@ import StepUpload from '~/components/upload/StepUpload.vue'
 import type { Metadata } from '~/components/upload/upload.types'
 
 const getSettingsMock = vi.fn()
+const uploadTorrentMock = vi.fn()
 const loading = ref(false)
 const error = ref(false)
+const uploadLoading = ref(false)
+const uploadError = ref(false)
 
 vi.mock('~/composables/useSettings', () => ({
     useSettings: () => ({
         getSettings: getSettingsMock,
         loading,
         error,
+    }),
+}))
+
+vi.mock('~/composables/useTrackerUpload', () => ({
+    useTrackerUpload: () => ({
+        uploadTorrent: uploadTorrentMock,
+        loading: uploadLoading,
+        error: uploadError,
     }),
 }))
 
@@ -50,8 +61,11 @@ const metadata: Metadata = {
 describe('StepUpload', () => {
     beforeEach(() => {
         getSettingsMock.mockReset()
+        uploadTorrentMock.mockReset()
         loading.value = false
         error.value = false
+        uploadLoading.value = false
+        uploadError.value = false
     })
 
     it('loads only selected trackers from settings and toggles upload targets', async () => {
@@ -118,5 +132,28 @@ describe('StepUpload', () => {
         })
 
         expect(await screen.findByText('Failed to load trackers from settings. Please try again.')).toBeTruthy()
+    })
+
+    it('submits the upload request from the final step', async () => {
+        const user = userEvent.setup()
+        getSettingsMock.mockResolvedValue({
+            trackers: [{ selected: true, code: 'FNP', name: 'FearNoPeer' }],
+        })
+        uploadTorrentMock.mockResolvedValue({ ok: true })
+
+        await renderSuspended(StepUpload, {
+            props: {
+                sourcePath: '/media/movie.mkv',
+                metadata,
+                description: 'Release description',
+            },
+        })
+
+        await user.click(await screen.findByRole('checkbox', { name: 'FearNoPeer (FNP)' }))
+        await user.click(screen.getByRole('button', { name: 'Upload' }))
+
+        await waitFor(() => {
+            expect(uploadTorrentMock).toHaveBeenCalledWith('/media/movie.mkv', metadata, 'Release description', ['FNP'])
+        })
     })
 })

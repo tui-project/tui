@@ -2,6 +2,7 @@
 import StepNavigationButtons from './StepNavigationButtons.vue'
 import type { Metadata } from './upload.types'
 import { useSettings } from '~/composables/useSettings'
+import { useTrackerUpload } from '~/composables/useTrackerUpload'
 
 const selectedTrackers = defineModel<string[]>({ default: [] })
 const props = defineProps<{
@@ -15,9 +16,10 @@ const emit = defineEmits<{
 }>()
 
 const { getSettings, loading, error } = useSettings()
+const { uploadTorrent, loading: uploadLoading, error: uploadError } = useTrackerUpload()
 const trackers = ref<Array<{ name: string; code: string }>>([])
 const hasRequiredData = computed(() => Boolean(props.sourcePath?.trim()) && Boolean(props.metadata))
-const canUpload = computed(() => trackers.value.length > 0 && selectedTrackers.value.length > 0 && hasRequiredData.value)
+const canUpload = computed(() => trackers.value.length > 0 && selectedTrackers.value.length > 0 && hasRequiredData.value && !uploadLoading.value)
 
 onMounted(async () => {
     await loadTrackers()
@@ -51,7 +53,13 @@ function toggleTracker(code: string) {
     selectedTrackers.value = [...selectedTrackers.value, code]
 }
 
-async function submitUpload() {}
+async function onSubmit() {
+    if (!props.sourcePath || !props.metadata || uploadLoading.value || !canUpload.value) {
+        return
+    }
+
+    await uploadTorrent(props.sourcePath, props.metadata, props.description, selectedTrackers.value)
+}
 </script>
 
 <template>
@@ -63,7 +71,7 @@ async function submitUpload() {}
             </div>
         </template>
         <UAlert v-if="error" color="error" variant="soft" title="Failed to load trackers from settings. Please try again." class="mb-4" />
-
+        <UAlert v-if="uploadError" color="error" variant="soft" title="Failed to submit upload request. Please try again." class="mb-4" />
         <div v-if="loading" class="space-y-2">
             <USkeleton class="h-8 w-full" />
             <USkeleton class="h-8 w-full" />
@@ -97,6 +105,6 @@ async function submitUpload() {}
             <p class="text-xs text-muted">Selected trackers: {{ selectedTrackers.length }}</p>
         </div>
 
-        <StepNavigationButtons class="mt-5" :next="{ label: 'Upload', disabled: !canUpload || loading, loading: loading }" @back="emit('back')" @next="submitUpload" />
+        <StepNavigationButtons class="mt-5" :next="{ label: 'Upload', disabled: !canUpload || loading, loading: uploadLoading }" @back="emit('back')" @next="onSubmit" />
     </UCard>
 </template>
