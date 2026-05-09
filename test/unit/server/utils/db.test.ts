@@ -6,6 +6,25 @@ import { describe, expect, it, vi } from 'vitest'
 import { getDataDir } from '../../setupFile'
 
 describe('server db', () => {
+    it('enables datastore autocompaction during initialization', async () => {
+        const db = await import('../../../../server/utils/db')
+        const userAutocompactionSpy = vi.spyOn(db.userCollection, 'setAutocompactionInterval')
+        const sessionAutocompactionSpy = vi.spyOn(db.sessionCollection, 'setAutocompactionInterval')
+        const settingsAutocompactionSpy = vi.spyOn(db.settingsCollection, 'setAutocompactionInterval')
+        const directoryCacheAutocompactionSpy = vi.spyOn(db.directoryCacheCollection, 'setAutocompactionInterval')
+        const genericTorrentCacheAutocompactionSpy = vi.spyOn(db.genericTorrentCacheCollection, 'setAutocompactionInterval')
+        const trackerUploadRequestAutocompactionSpy = vi.spyOn(db.trackerUploadRequestCollection, 'setAutocompactionInterval')
+
+        await db.initDatastores()
+
+        expect(userAutocompactionSpy).toHaveBeenCalledWith(60_000)
+        expect(sessionAutocompactionSpy).toHaveBeenCalledWith(60_000)
+        expect(settingsAutocompactionSpy).toHaveBeenCalledWith(60_000)
+        expect(directoryCacheAutocompactionSpy).toHaveBeenCalledWith(60_000)
+        expect(genericTorrentCacheAutocompactionSpy).toHaveBeenCalledWith(60_000)
+        expect(trackerUploadRequestAutocompactionSpy).toHaveBeenCalledWith(60_000)
+    })
+
     it('creates user, session, settings, directory cache, and tracker upload request datastores in the configured data directory', async () => {
         const db = await import('../../../../server/utils/db')
         await db.initDatastores()

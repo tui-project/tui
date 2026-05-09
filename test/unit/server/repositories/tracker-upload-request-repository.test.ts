@@ -140,4 +140,92 @@ describe('tracker upload request repository', () => {
         })
         expect(updated?.failedTrackerCodes).toBeUndefined()
     })
+
+    it('stores torrent creation progress updates', async () => {
+        const {
+            createTrackerUploadRequest,
+            findTrackerUploadRequestById,
+            updateTrackerUploadRequestTorrentCreationProgress,
+        } = await import('../../../../server/repositories/tracker-upload-request-repository')
+
+        await createTrackerUploadRequest({
+            id: 'upload-4',
+            filepath: '/media/Movie.2024.1080p.mkv',
+            metadata: {
+                releaseGroup: 'GROUP',
+                mediaType: 'movie',
+                title: 'Movie',
+                originalTitle: 'Movie',
+                year: 2024,
+                language: ['English'],
+                originalLanguage: 'English',
+                sourceType: 'ENCODE',
+                source: 'BluRay',
+                repack: false,
+                proper: false,
+                hybrid: false,
+                resolution: '1080p',
+                hdr: [],
+                videoCodec: 'H.264',
+                audioCodec: 'DTS-HD MA',
+                audioChannels: '5.1',
+                tmdbId: 1,
+                imdbId: 'tt1234567',
+            },
+            description: 'Release description',
+            trackerCodes: ['FNP'],
+            status: 'torrent_creation',
+        })
+
+        await updateTrackerUploadRequestTorrentCreationProgress('upload-4', 67)
+        const updated = await findTrackerUploadRequestById('upload-4')
+
+        expect(updated).toMatchObject({
+            id: 'upload-4',
+            torrentCreationProgress: 67,
+        })
+    })
+
+    it('defaults failed tracker codes to an empty list for partial success', async () => {
+        const { createTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestStatus } =
+            await import('../../../../server/repositories/tracker-upload-request-repository')
+
+        await createTrackerUploadRequest({
+            id: 'upload-5',
+            filepath: '/media/Movie.2024.1080p.mkv',
+            metadata: {
+                releaseGroup: 'GROUP',
+                mediaType: 'movie',
+                title: 'Movie',
+                originalTitle: 'Movie',
+                year: 2024,
+                language: ['English'],
+                originalLanguage: 'English',
+                sourceType: 'ENCODE',
+                source: 'BluRay',
+                repack: false,
+                proper: false,
+                hybrid: false,
+                resolution: '1080p',
+                hdr: [],
+                videoCodec: 'H.264',
+                audioCodec: 'DTS-HD MA',
+                audioChannels: '5.1',
+                tmdbId: 1,
+                imdbId: 'tt1234567',
+            },
+            description: 'Release description',
+            trackerCodes: ['FNP'],
+            status: 'uploading',
+        })
+
+        await updateTrackerUploadRequestStatus('upload-5', 'partial_success')
+        const updated = await findTrackerUploadRequestById('upload-5')
+
+        expect(updated).toMatchObject({
+            id: 'upload-5',
+            status: 'partial_success',
+            failedTrackerCodes: [],
+        })
+    })
 })

@@ -24,3 +24,7 @@ export async function updateTrackerUploadRequestStatus(id: string, status: Track
 
     await trackerUploadRequestCollection.updateAsync({ id }, { $set: update }, {})
 }
+
+export async function updateTrackerUploadRequestTorrentCreationProgress(id: string, torrentCreationProgress: number) {
+    await trackerUploadRequestCollection.updateAsync({ id }, { $set: { torrentCreationProgress } }, {})
+}

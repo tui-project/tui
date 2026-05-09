@@ -37,13 +37,13 @@ describe('useTrackerUpload composable', () => {
     })
 
     it('removes null and empty-string metadata fields before upload', async () => {
-        const fetchMock = vi.fn().mockResolvedValue({ ok: true })
+        const fetchMock = vi.fn().mockResolvedValue(undefined)
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useTrackerUpload } = await import('../../../../app/composables/useTrackerUpload')
         const { uploadTorrent, loading, error } = useTrackerUpload()
 
-        await uploadTorrent('/media/movie.mkv', buildMetadata(), 'Release description', ['FNP'])
+        await expect(uploadTorrent('/media/movie.mkv', buildMetadata(), 'Release description', ['FNP'])).resolves.toBeUndefined()
 
         expect(fetchMock).toHaveBeenCalledWith('/api/tracker/upload', {
             method: 'POST',
@@ -74,6 +74,46 @@ describe('useTrackerUpload composable', () => {
                 trackerCodes: ['FNP'],
             },
         })
+        expect(loading.value).toBe(false)
+        expect(error.value).toBe(false)
+    })
+
+    it('sets an error flag when the upload request fails', async () => {
+        const fetchMock = vi.fn().mockRejectedValue(new Error('upload failed'))
+        vi.stubGlobal('$fetch', fetchMock)
+
+        const { useTrackerUpload } = await import('../../../../app/composables/useTrackerUpload')
+        const { uploadTorrent, loading, error } = useTrackerUpload()
+
+        await expect(uploadTorrent('/media/movie.mkv', buildMetadata(), undefined, ['FNP'])).resolves.toBeUndefined()
+
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+        expect(loading.value).toBe(false)
+        expect(error.value).toBe(true)
+    })
+
+    it('ignores duplicate submissions while an upload is already in progress', async () => {
+        let resolveUpload: (() => void) | undefined
+        const fetchMock = vi.fn().mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    resolveUpload = () => resolve(undefined)
+                })
+        )
+        vi.stubGlobal('$fetch', fetchMock)
+
+        const { useTrackerUpload } = await import('../../../../app/composables/useTrackerUpload')
+        const { uploadTorrent, loading, error } = useTrackerUpload()
+
+        const firstUpload = uploadTorrent('/media/movie.mkv', buildMetadata(), undefined, ['FNP'])
+        expect(loading.value).toBe(true)
+
+        await expect(uploadTorrent('/media/movie.mkv', buildMetadata(), undefined, ['FNP'])).resolves.toBeUndefined()
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+
+        resolveUpload?.()
+        await firstUpload
+
         expect(loading.value).toBe(false)
         expect(error.value).toBe(false)
     })

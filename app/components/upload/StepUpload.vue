@@ -15,6 +15,7 @@ const emit = defineEmits<{
     back: []
 }>()
 
+const toast = useToast()
 const { getSettings, loading, error } = useSettings()
 const { uploadTorrent, loading: uploadLoading, error: uploadError } = useTrackerUpload()
 const trackers = ref<Array<{ name: string; code: string }>>([])
@@ -59,6 +60,18 @@ async function onSubmit() {
     }
 
     await uploadTorrent(props.sourcePath, props.metadata, props.description, selectedTrackers.value)
+
+    if (uploadError.value) {
+        return
+    }
+
+    toast.add({
+        title: 'Upload request submitted.',
+        description: 'Your torrent is queued and available from the dashboard.',
+        color: 'success',
+    })
+
+    await navigateTo('/')
 }
 </script>
 

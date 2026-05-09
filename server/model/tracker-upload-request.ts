@@ -18,5 +18,6 @@ export interface TrackerUploadRequest {
     description: string
     trackerCodes: string[]
     status: TrackerUploadStatus
+    torrentCreationProgress?: number
     failedTrackerCodes?: string[]
 }

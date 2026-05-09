@@ -1,10 +1,15 @@
-import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StepUpload from '~/components/upload/StepUpload.vue'
 import type { Metadata } from '~/components/upload/upload.types'
+
+const { toastAddMock, navigateToMock } = vi.hoisted(() => ({
+    toastAddMock: vi.fn(),
+    navigateToMock: vi.fn(),
+}))
 
 const getSettingsMock = vi.fn()
 const uploadTorrentMock = vi.fn()
@@ -28,6 +33,14 @@ vi.mock('~/composables/useTrackerUpload', () => ({
         error: uploadError,
     }),
 }))
+
+mockNuxtImport('useToast', () => {
+    return () => ({
+        add: toastAddMock,
+    })
+})
+
+mockNuxtImport('navigateTo', () => navigateToMock)
 
 const metadata: Metadata = {
     fileName: 'Movie.2024.1080p.mkv',
@@ -62,6 +75,8 @@ describe('StepUpload', () => {
     beforeEach(() => {
         getSettingsMock.mockReset()
         uploadTorrentMock.mockReset()
+        toastAddMock.mockReset()
+        navigateToMock.mockReset()
         loading.value = false
         error.value = false
         uploadLoading.value = false
@@ -101,8 +116,15 @@ describe('StepUpload', () => {
             expect(screen.getByText('Selected trackers: 1')).toBeTruthy()
         })
 
+        await user.click(screen.getByRole('checkbox', { name: 'FearNoPeer (FNP)' }))
+
+        await waitFor(() => {
+            expect(screen.getByText('Selected trackers: 0')).toBeTruthy()
+        })
+
         const updateModelValueEvents = emitted()['update:modelValue'] as string[][] | undefined
-        expect(updateModelValueEvents?.at(-1)?.[0]).toEqual(['FNP'])
+        expect(updateModelValueEvents?.at(-2)?.[0]).toEqual(['FNP'])
+        expect(updateModelValueEvents?.at(-1)?.[0]).toEqual([])
     })
 
     it('shows an empty state when no trackers are enabled in settings', async () => {
@@ -134,12 +156,12 @@ describe('StepUpload', () => {
         expect(await screen.findByText('Failed to load trackers from settings. Please try again.')).toBeTruthy()
     })
 
-    it('submits the upload request from the final step', async () => {
+    it('shows a success toast and redirects to the dashboard when the upload request is accepted', async () => {
         const user = userEvent.setup()
         getSettingsMock.mockResolvedValue({
             trackers: [{ selected: true, code: 'FNP', name: 'FearNoPeer' }],
         })
-        uploadTorrentMock.mockResolvedValue({ ok: true })
+        uploadTorrentMock.mockResolvedValue(undefined)
 
         await renderSuspended(StepUpload, {
             props: {
@@ -155,5 +177,62 @@ describe('StepUpload', () => {
         await waitFor(() => {
             expect(uploadTorrentMock).toHaveBeenCalledWith('/media/movie.mkv', metadata, 'Release description', ['FNP'])
         })
+
+        expect(toastAddMock).toHaveBeenCalledWith({
+            title: 'Upload request submitted.',
+            description: 'Your torrent is queued and available from the dashboard.',
+            color: 'success',
+        })
+        expect(navigateToMock).toHaveBeenCalledWith('/')
+    })
+
+    it('stays on the upload step when the upload request fails', async () => {
+        const user = userEvent.setup()
+        getSettingsMock.mockResolvedValue({
+            trackers: [{ selected: true, code: 'FNP', name: 'FearNoPeer' }],
+        })
+        uploadTorrentMock.mockImplementation(async () => {
+            uploadError.value = true
+        })
+
+        await renderSuspended(StepUpload, {
+            props: {
+                sourcePath: '/media/movie.mkv',
+                metadata,
+                description: 'Release description',
+            },
+        })
+
+        await user.click(await screen.findByRole('checkbox', { name: 'FearNoPeer (FNP)' }))
+        await user.click(screen.getByRole('button', { name: 'Upload' }))
+
+        await waitFor(() => {
+            expect(uploadTorrentMock).toHaveBeenCalledWith('/media/movie.mkv', metadata, 'Release description', ['FNP'])
+        })
+
+        expect(toastAddMock).not.toHaveBeenCalled()
+        expect(navigateToMock).not.toHaveBeenCalled()
+        expect(screen.getByText('Failed to submit upload request. Please try again.')).toBeTruthy()
+    })
+
+    it('does not submit when the required upload data is missing', async () => {
+        getSettingsMock.mockResolvedValue({
+            trackers: [{ selected: true, code: 'FNP', name: 'FearNoPeer' }],
+        })
+
+        await renderSuspended(StepUpload, {
+            props: {
+                sourcePath: '   ',
+            },
+        })
+
+        const uploadButton = await screen.findByRole('button', { name: 'Upload' })
+        expect(uploadButton).toHaveProperty('disabled', true)
+
+        await userEvent.click(uploadButton)
+
+        expect(uploadTorrentMock).not.toHaveBeenCalled()
+        expect(toastAddMock).not.toHaveBeenCalled()
+        expect(navigateToMock).not.toHaveBeenCalled()
     })
 })

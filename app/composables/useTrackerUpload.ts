@@ -14,7 +14,7 @@ export function useTrackerUpload() {
         error.value = false
 
         try {
-            return await $fetch('/api/tracker/upload', {
+            await $fetch('/api/tracker/upload', {
                 method: 'POST',
                 body: {
                     filepath,
@@ -25,7 +25,6 @@ export function useTrackerUpload() {
             })
         } catch {
             error.value = true
-            return
         } finally {
             loading.value = false
         }
