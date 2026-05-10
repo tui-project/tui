@@ -36,7 +36,7 @@ async function loadHandler() {
         findGenericTorrentCacheByFilepath,
         saveGenericTorrentCache,
     }))
-    vi.doMock('../../../../server/repositories/tracker-upload-request-repository', () => ({
+    vi.doMock('../../../../server/repositories/tracker-request-repository', () => ({
         createTrackerUploadRequest,
         updateTrackerUploadRequestStatus,
         updateTrackerUploadRequestTorrentCreationProgress,
@@ -45,7 +45,7 @@ async function loadHandler() {
         createGenericTorrent,
     }))
 
-    const { default: handler } = await import('../../../../server/api/tracker/upload.post')
+    const { default: handler } = await import('../../../../server/api/tracker/requests.post')
     return handler
 }
 
@@ -90,7 +90,7 @@ async function flushPromises() {
     await Promise.resolve()
 }
 
-describe('POST /api/tracker/upload route handler', () => {
+describe('POST /api/tracker/requests route handler', () => {
     it('rejects invalid request payload', async () => {
         readBody.mockResolvedValue(buildRequest({ filepath: '   ', trackerCodes: [] }))
         const handler = await loadHandler()

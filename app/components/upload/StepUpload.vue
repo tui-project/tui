@@ -2,7 +2,7 @@
 import StepNavigationButtons from './StepNavigationButtons.vue'
 import type { Metadata } from './upload.types'
 import { useSettings } from '~/composables/useSettings'
-import { useTrackerUpload } from '~/composables/useTrackerUpload'
+import { useTrackerRequests } from '~/composables/useTrackerRequests'
 
 const selectedTrackers = defineModel<string[]>({ default: [] })
 const props = defineProps<{
@@ -17,7 +17,7 @@ const emit = defineEmits<{
 
 const toast = useToast()
 const { getSettings, loading, error } = useSettings()
-const { uploadTorrent, loading: uploadLoading, error: uploadError } = useTrackerUpload()
+const { uploadTorrent, loading: uploadLoading, error: uploadError } = useTrackerRequests()
 const trackers = ref<Array<{ name: string; code: string }>>([])
 const hasRequiredData = computed(() => Boolean(props.sourcePath?.trim()) && Boolean(props.metadata))
 const canUpload = computed(() => trackers.value.length > 0 && selectedTrackers.value.length > 0 && hasRequiredData.value && !uploadLoading.value)

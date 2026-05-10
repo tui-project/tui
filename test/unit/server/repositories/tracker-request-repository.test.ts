@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 describe('tracker upload request repository', () => {
     it('creates and finds tracker upload requests', async () => {
         const { createTrackerUploadRequest, findTrackerUploadRequestById, findAllTrackerUploadRequests } =
-            await import('../../../../server/repositories/tracker-upload-request-repository')
+            await import('../../../../server/repositories/tracker-request-repository')
 
         await createTrackerUploadRequest({
             id: 'upload-1',
@@ -52,7 +52,7 @@ describe('tracker upload request repository', () => {
 
     it('updates partial success status with failed tracker codes', async () => {
         const { createTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestStatus } =
-            await import('../../../../server/repositories/tracker-upload-request-repository')
+            await import('../../../../server/repositories/tracker-request-repository')
 
         await createTrackerUploadRequest({
             id: 'upload-2',
@@ -99,7 +99,7 @@ describe('tracker upload request repository', () => {
 
     it('clears failed tracker codes when leaving partial success', async () => {
         const { createTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestStatus } =
-            await import('../../../../server/repositories/tracker-upload-request-repository')
+            await import('../../../../server/repositories/tracker-request-repository')
 
         await createTrackerUploadRequest({
             id: 'upload-3',
@@ -142,11 +142,8 @@ describe('tracker upload request repository', () => {
     })
 
     it('stores torrent creation progress updates', async () => {
-        const {
-            createTrackerUploadRequest,
-            findTrackerUploadRequestById,
-            updateTrackerUploadRequestTorrentCreationProgress,
-        } = await import('../../../../server/repositories/tracker-upload-request-repository')
+        const { createTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestTorrentCreationProgress } =
+            await import('../../../../server/repositories/tracker-request-repository')
 
         await createTrackerUploadRequest({
             id: 'upload-4',
@@ -188,7 +185,7 @@ describe('tracker upload request repository', () => {
 
     it('defaults failed tracker codes to an empty list for partial success', async () => {
         const { createTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestStatus } =
-            await import('../../../../server/repositories/tracker-upload-request-repository')
+            await import('../../../../server/repositories/tracker-request-repository')
 
         await createTrackerUploadRequest({
             id: 'upload-5',
@@ -227,5 +224,47 @@ describe('tracker upload request repository', () => {
             status: 'partial_success',
             failedTrackerCodes: [],
         })
+    })
+
+    it('returns only the most recent tracker upload requests up to the limit when provided', async () => {
+        const { createTrackerUploadRequest, findAllTrackerUploadRequests } = await import('../../../../server/repositories/tracker-request-repository')
+
+        for (const id of ['upload-6', 'upload-7', 'upload-8']) {
+            await createTrackerUploadRequest({
+                id,
+                filepath: `/media/${id}.mkv`,
+                metadata: {
+                    releaseGroup: 'GROUP',
+                    mediaType: 'movie',
+                    title: 'Movie',
+                    originalTitle: 'Movie',
+                    year: 2024,
+                    language: ['English'],
+                    originalLanguage: 'English',
+                    sourceType: 'ENCODE',
+                    source: 'BluRay',
+                    repack: false,
+                    proper: false,
+                    hybrid: false,
+                    resolution: '1080p',
+                    hdr: [],
+                    videoCodec: 'H.264',
+                    audioCodec: 'DTS-HD MA',
+                    audioChannels: '5.1',
+                    tmdbId: 1,
+                    imdbId: 'tt1234567',
+                },
+                description: 'Release description',
+                trackerCodes: ['FNP'],
+                status: 'pending',
+            })
+
+            await new Promise((resolve) => setTimeout(resolve, 5))
+        }
+
+        const recent = await findAllTrackerUploadRequests(2)
+
+        expect(recent).toHaveLength(2)
+        expect(recent.map((request) => request.id)).toEqual(['upload-8', 'upload-7'])
     })
 })

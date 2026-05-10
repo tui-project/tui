@@ -131,12 +131,10 @@ describe('torrent service', () => {
                 infoHash: `hash-${pieceLength}`,
                 files: [{ path: 'movie.mkv' }],
             })
-            createTorrent.mockImplementationOnce(
-                (_sourcePath: string, options: { pieceLength: number }, callback: (error: Error | null, torrent: Buffer) => void) => {
-                    expect(options.pieceLength).toBe(pieceLength)
-                    callback(null, Buffer.from('torrent-data'))
-                }
-            )
+            createTorrent.mockImplementationOnce((_sourcePath: string, options: { pieceLength: number }, callback: (error: Error | null, torrent: Buffer) => void) => {
+                expect(options.pieceLength).toBe(pieceLength)
+                callback(null, Buffer.from('torrent-data'))
+            })
 
             const { createGenericTorrent } = await import('../../../../server/services/torrent')
 

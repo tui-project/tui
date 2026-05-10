@@ -2,11 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { TRACKER_UPLOAD_STATUSES } from '../../model/tracker-upload-request'
 import { findGenericTorrentCacheByFilepath, saveGenericTorrentCache } from '../../repositories/generic-torrent-cache-repository'
-import {
-    createTrackerUploadRequest,
-    updateTrackerUploadRequestStatus,
-    updateTrackerUploadRequestTorrentCreationProgress,
-} from '../../repositories/tracker-upload-request-repository'
+import { createTrackerUploadRequest, updateTrackerUploadRequestStatus, updateTrackerUploadRequestTorrentCreationProgress } from '../../repositories/tracker-request-repository'
 import { createGenericTorrent } from '../../services/torrent'
 import { logger } from '../../utils/logger'
 import { parseValidatedBody } from '../../utils/request-validator'

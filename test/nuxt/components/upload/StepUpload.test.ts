@@ -26,8 +26,8 @@ vi.mock('~/composables/useSettings', () => ({
     }),
 }))
 
-vi.mock('~/composables/useTrackerUpload', () => ({
-    useTrackerUpload: () => ({
+vi.mock('~/composables/useTrackerRequests', () => ({
+    useTrackerRequests: () => ({
         uploadTorrent: uploadTorrentMock,
         loading: uploadLoading,
         error: uploadError,
