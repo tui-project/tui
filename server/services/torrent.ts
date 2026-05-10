@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { basename, extname, join } from 'node:path'
 import createTorrent from 'create-torrent'
-import parseTorrent from 'parse-torrent'
+import parseTorrent, { toTorrentFile } from 'parse-torrent'
 import { logger } from '../utils/logger'
 
 interface CreateGenericTorrentOptions {
@@ -14,12 +14,25 @@ interface GenericTorrentResult {
     genericTorrentPath: string
 }
 
+interface CreateTrackerTorrentOptions {
+    genericTorrentPath: string
+    trackerCode: string
+    announceUrl: string
+    sourcePath: string
+}
+
+interface TrackerTorrentResult {
+    trackerTorrentPath: string
+}
+
 interface ParsedTorrentFileDetails {
     pieceLength?: number
     files?: unknown[]
+    announce?: string[]
 }
 
 const torrentsDirectory = join(process.cwd(), 'config', 'torrents')
+const tempDirectory = join(process.cwd(), 'config', 'tmp', 'torrents')
 
 export async function createGenericTorrent(options: CreateGenericTorrentOptions): Promise<GenericTorrentResult> {
     const torrentId = randomUUID()
@@ -124,4 +137,34 @@ function toProgressPercent(hashedBytes: number, totalBytes: number) {
     }
 
     return Math.min(100, Math.floor((hashedBytes / totalBytes) * 100))
+}
+
+export async function createTrackerTorrent(options: CreateTrackerTorrentOptions): Promise<TrackerTorrentResult> {
+    const sourceStat = await stat(options.sourcePath)
+    const base = basename(options.sourcePath)
+    const sourceName = sourceStat.isFile() ? basename(base, extname(base)) : base
+    const trackerTempDirectory = join(tempDirectory, options.trackerCode)
+    const trackerTorrentPath = join(trackerTempDirectory, `${sourceName}.torrent`)
+
+    logger.info('Creating tracker-specific torrent.', {
+        genericTorrentPath: options.genericTorrentPath,
+        trackerTorrentPath,
+        trackerCode: options.trackerCode,
+    })
+
+    await mkdir(trackerTempDirectory, { recursive: true })
+
+    const genericBuffer = await readFile(options.genericTorrentPath)
+    const parsed = (await Promise.resolve(parseTorrent(genericBuffer))) as ParsedTorrentFileDetails
+    parsed.announce = [options.announceUrl]
+
+    const trackerBuffer = Buffer.from(toTorrentFile(parsed as Parameters<typeof toTorrentFile>[0]))
+    await writeFile(trackerTorrentPath, trackerBuffer)
+
+    logger.info('Tracker-specific torrent created successfully.', {
+        trackerTorrentPath,
+        trackerCode: options.trackerCode,
+    })
+
+    return { trackerTorrentPath }
 }

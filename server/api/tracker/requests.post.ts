@@ -3,7 +3,8 @@ import { z } from 'zod'
 import { TRACKER_UPLOAD_STATUSES } from '../../model/tracker-upload-request'
 import { findGenericTorrentCacheByFilepath, saveGenericTorrentCache } from '../../repositories/generic-torrent-cache-repository'
 import { createTrackerUploadRequest, updateTrackerUploadRequestStatus, updateTrackerUploadRequestTorrentCreationProgress } from '../../repositories/tracker-request-repository'
-import { createGenericTorrent } from '../../services/torrent'
+import { getSettings } from '../../repositories/settings-repository'
+import { createGenericTorrent, createTrackerTorrent } from '../../services/torrent'
 import { logger } from '../../utils/logger'
 import { parseValidatedBody } from '../../utils/request-validator'
 import { AUDIO_CHANNELS, AUDIO_CODECS, AUDIO_METADATA_TYPES, CUTS, HDR_TYPES, MEDIA_TYPES, RESOLUTIONS, SERVICES, SOURCES, SOURCE_TYPES, VIDEO_CODECS } from '../../model/metadata'
@@ -137,14 +138,16 @@ async function processTrackerUploadRequest(uploadRequestId: string, filepath: st
             await saveGenericTorrentCache({ filepath, genericTorrentPath })
         }
 
-        await updateTrackerUploadRequestStatus(uploadRequestId, TRACKER_UPLOAD_STATUSES.UPLOADING)
+        const trackerTorrentPaths = await createTrackerTorrents(genericTorrentPath, filepath, trackerCodes)
 
+        await updateTrackerUploadRequestStatus(uploadRequestId, TRACKER_UPLOAD_STATUSES.UPLOADING)
         logger.info('Tracker upload request ready for tracker uploads.', {
             id: uploadRequestId,
             filepath,
             trackerCodes,
             status: TRACKER_UPLOAD_STATUSES.UPLOADING,
             genericTorrentPath,
+            trackerTorrentPaths,
         })
     } catch (error: unknown) {
         await updateTrackerUploadRequestStatus(uploadRequestId, TRACKER_UPLOAD_STATUSES.FAIL)
@@ -162,4 +165,31 @@ async function createGenericTorrentForUploadRequest(uploadRequestId: string, fil
     })
 
     return genericTorrentPath
+}
+
+async function createTrackerTorrents(genericTorrentPath: string, filepath: string, trackerCodes: string[]): Promise<Record<string, string>> {
+    const settings = await getSettings()
+    const trackersByCode = Object.fromEntries(settings.trackers.map((t) => [t.code, t]))
+    const results: Record<string, string> = {}
+
+    for (const code of trackerCodes) {
+        const tracker = trackersByCode[code]
+
+        if (!tracker?.passKey) {
+            logger.warn('Skipping tracker-specific torrent: passKey not configured.', { trackerCode: code })
+            continue
+        }
+
+        const announceUrl = `${tracker.url}/announce/${tracker.passKey}`
+        const { trackerTorrentPath } = await createTrackerTorrent({
+            genericTorrentPath,
+            trackerCode: code,
+            announceUrl,
+            sourcePath: filepath,
+        })
+
+        results[code] = trackerTorrentPath
+    }
+
+    return results
 }

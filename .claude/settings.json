@@ -1,5 +1,11 @@
 {
-    "permissions": {
-        "allow": ["Bash(npx vitest *)", "Bash(pnpm vitest *)", "Bash(pnpm typecheck *)", "Bash(echo \"EXIT:$?\")"]
-    }
+  "permissions": {
+    "allow": [
+      "Bash(npx vitest *)",
+      "Bash(pnpm vitest *)",
+      "Bash(pnpm typecheck *)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(node -e ' *)"
+    ]
+  }
 }

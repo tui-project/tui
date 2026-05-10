@@ -7,6 +7,7 @@ const stat = vi.fn()
 const writeFile = vi.fn()
 const createTorrent = vi.fn()
 const parseTorrent = vi.fn()
+const toTorrentFile = vi.fn()
 const logger = {
     debug: vi.fn(),
     info: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock('create-torrent', () => ({
 
 vi.mock('parse-torrent', () => ({
     default: parseTorrent,
+    toTorrentFile,
 }))
 
 vi.mock('../../../../server/utils/logger', () => ({
@@ -218,5 +220,52 @@ describe('torrent service', () => {
             })
         ).rejects.toThrow('torrent failed')
         expect(writeFile).not.toHaveBeenCalled()
+    })
+
+    describe('createTrackerTorrent', () => {
+        it('derives the torrent name by stripping the extension for a file source', async () => {
+            const parsedObject = { pieceLength: 1 * 1024 * 1024 }
+            stat.mockResolvedValue({ isFile: () => true })
+            readFile.mockResolvedValue(Buffer.from('generic-data'))
+            parseTorrent.mockReturnValue(parsedObject)
+            toTorrentFile.mockReturnValue(Buffer.from('tracker-data'))
+            mkdir.mockResolvedValue(undefined)
+            writeFile.mockResolvedValue(undefined)
+
+            const { createTrackerTorrent } = await import('../../../../server/services/torrent')
+
+            const result = await createTrackerTorrent({
+                genericTorrentPath: '/config/torrents/generic.torrent',
+                trackerCode: 'FNP',
+                announceUrl: 'https://tracker.example.com/announce/key',
+                sourcePath: '/media/Movie.2024.1080p.mkv',
+            })
+
+            expect(result.trackerTorrentPath).toMatch(/FNP[/\\]Movie\.2024\.1080p\.torrent$/)
+            expect(toTorrentFile).toHaveBeenCalledWith(expect.objectContaining({ announce: ['https://tracker.example.com/announce/key'] }))
+            expect(writeFile).toHaveBeenCalledWith(expect.stringMatching(/FNP[/\\]Movie\.2024\.1080p\.torrent$/), expect.any(Buffer))
+        })
+
+        it('uses the folder name as-is for a directory source', async () => {
+            const parsedObject = { pieceLength: 1 * 1024 * 1024 }
+            stat.mockResolvedValue({ isFile: () => false })
+            readFile.mockResolvedValue(Buffer.from('generic-data'))
+            parseTorrent.mockReturnValue(parsedObject)
+            toTorrentFile.mockReturnValue(Buffer.from('tracker-data'))
+            mkdir.mockResolvedValue(undefined)
+            writeFile.mockResolvedValue(undefined)
+
+            const { createTrackerTorrent } = await import('../../../../server/services/torrent')
+
+            const result = await createTrackerTorrent({
+                genericTorrentPath: '/config/torrents/generic.torrent',
+                trackerCode: 'FNP',
+                announceUrl: 'https://tracker.example.com/announce/key',
+                sourcePath: '/media/MyShow.S01.2024.1080p',
+            })
+
+            expect(result.trackerTorrentPath).toMatch(/FNP[/\\]MyShow\.S01\.2024\.1080p\.torrent$/)
+            expect(writeFile).toHaveBeenCalledWith(expect.stringMatching(/FNP[/\\]MyShow\.S01\.2024\.1080p\.torrent$/), expect.any(Buffer))
+        })
     })
 })

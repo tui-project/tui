@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const logger = {
+    trace: vi.fn(),
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
@@ -15,12 +16,15 @@ const saveGenericTorrentCache = vi.fn()
 const updateTrackerUploadRequestStatus = vi.fn()
 const updateTrackerUploadRequestTorrentCreationProgress = vi.fn()
 const createGenericTorrent = vi.fn()
+const createTrackerTorrent = vi.fn()
+const getSettings = vi.fn()
 
 beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
     vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
     vi.stubGlobal('setResponseStatus', setResponseStatus)
+    getSettings.mockResolvedValue({ trackers: [] })
 })
 
 async function loadHandler() {
@@ -41,8 +45,12 @@ async function loadHandler() {
         updateTrackerUploadRequestStatus,
         updateTrackerUploadRequestTorrentCreationProgress,
     }))
+    vi.doMock('../../../../server/repositories/settings-repository', () => ({
+        getSettings,
+    }))
     vi.doMock('../../../../server/services/torrent', () => ({
         createGenericTorrent,
+        createTrackerTorrent,
     }))
 
     const { default: handler } = await import('../../../../server/api/tracker/requests.post')
@@ -86,8 +94,9 @@ function buildRequest(overrides: Partial<Record<string, unknown>> = {}) {
 }
 
 async function flushPromises() {
-    await Promise.resolve()
-    await Promise.resolve()
+    for (let i = 0; i < 10; i++) {
+        await Promise.resolve()
+    }
 }
 
 describe('POST /api/tracker/requests route handler', () => {
@@ -151,6 +160,7 @@ describe('POST /api/tracker/requests route handler', () => {
             trackerCodes: ['FNP'],
             status: 'uploading',
             genericTorrentPath: '/repo/config/torrents/generic-1.torrent',
+            trackerTorrentPaths: {},
         })
     })
 
@@ -224,6 +234,45 @@ describe('POST /api/tracker/requests route handler', () => {
             message: 'invalid_request',
         })
         expect(logger.warn).toHaveBeenCalled()
+    })
+
+    it('creates tracker-specific torrents when a configured tracker has a passKey', async () => {
+        readBody.mockResolvedValue(buildRequest())
+        findGenericTorrentCacheByFilepath.mockResolvedValue(null)
+        createTrackerUploadRequest.mockResolvedValue({
+            id: 'upload-1',
+            ...buildRequest(),
+            status: 'pending',
+        })
+        createGenericTorrent.mockResolvedValue({
+            genericTorrentPath: '/repo/config/torrents/generic-1.torrent',
+        })
+        getSettings.mockResolvedValue({
+            trackers: [{ code: 'FNP', url: 'https://fnp.example.com', passKey: 'secret123' }],
+        })
+        createTrackerTorrent.mockResolvedValue({
+            trackerTorrentPath: '/config/tmp/torrents/FNP/Movie.2024.1080p.torrent',
+        })
+        const handler = await loadHandler()
+
+        await expect(handler({} as never)).resolves.toEqual({ id: 'upload-1', status: 'pending' })
+        await flushPromises()
+
+        expect(createTrackerTorrent).toHaveBeenCalledWith({
+            genericTorrentPath: '/repo/config/torrents/generic-1.torrent',
+            trackerCode: 'FNP',
+            announceUrl: 'https://fnp.example.com/announce/secret123',
+            sourcePath: '/media/Movie.2024.1080p.mkv',
+        })
+        expect(updateTrackerUploadRequestStatus).toHaveBeenLastCalledWith('upload-1', 'uploading')
+        expect(logger.info).toHaveBeenLastCalledWith('Tracker upload request ready for tracker uploads.', {
+            id: 'upload-1',
+            filepath: '/media/Movie.2024.1080p.mkv',
+            trackerCodes: ['FNP'],
+            status: 'uploading',
+            genericTorrentPath: '/repo/config/torrents/generic-1.torrent',
+            trackerTorrentPaths: { FNP: '/config/tmp/torrents/FNP/Movie.2024.1080p.torrent' },
+        })
     })
 
     it('marks the request as failed when torrent creation fails', async () => {
