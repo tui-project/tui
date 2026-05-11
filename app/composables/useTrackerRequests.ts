@@ -1,11 +1,18 @@
 import type { Metadata } from '~/components/upload/upload.types'
 import { readonly, ref } from 'vue'
 
+export interface TrackerItem {
+    code: string
+    title: string
+    titleModified: boolean
+    anonymous: boolean
+}
+
 export interface TrackerRequest {
     id: string
     filepath: string
     status: string
-    trackerCodes: string[]
+    trackers: TrackerItem[]
     torrentCreationProgress?: number
     failedTrackerCodes?: string[]
     createdAt?: string
@@ -36,7 +43,7 @@ export function useTrackerRequests() {
         }
     }
 
-    async function uploadTorrent(filepath: string, metadata: Metadata, description: string | undefined, trackerCodes: string[]): Promise<void> {
+    async function uploadTorrent(filepath: string, metadata: Metadata, description: string | undefined, trackers: TrackerItem[]): Promise<void> {
         if (loading.value) {
             return
         }
@@ -51,7 +58,7 @@ export function useTrackerRequests() {
                     filepath,
                     metadata: sanitizeMetadataForUpload(metadata),
                     description,
-                    trackerCodes,
+                    trackers,
                 },
             })
         } catch {

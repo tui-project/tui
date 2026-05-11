@@ -1,7 +1,7 @@
 import type { TrackerUploadRequest, TrackerUploadStatus } from '../model/tracker-upload-request'
 import { trackerUploadRequestCollection } from '../utils/db'
 
-export async function createTrackerUploadRequest(request: TrackerUploadRequest) {
+export async function saveTrackerUploadRequest(request: TrackerUploadRequest) {
     return await trackerUploadRequestCollection.insertAsync(request)
 }
 

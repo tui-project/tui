@@ -32,14 +32,17 @@ describe('index page', () => {
                 id: 'upload-2',
                 filepath: '/media/Show.S01E01.mkv',
                 status: 'torrent_creation',
-                trackerCodes: ['FNP', 'ATH'],
+                trackers: [
+                    { code: 'FNP', title: 'T', titleModified: false, anonymous: false },
+                    { code: 'ATH', title: 'T', titleModified: false, anonymous: false },
+                ],
                 torrentCreationProgress: 42,
             },
             {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'success',
-                trackerCodes: ['BHD'],
+                trackers: [{ code: 'BHD', title: 'T', titleModified: false, anonymous: false }],
                 torrentCreationProgress: 100,
             },
         ])
@@ -80,7 +83,10 @@ describe('index page', () => {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'fail',
-                trackerCodes: ['FNP', 'ATH'],
+                trackers: [
+                    { code: 'FNP', title: 'T', titleModified: false, anonymous: false },
+                    { code: 'ATH', title: 'T', titleModified: false, anonymous: false },
+                ],
                 failedTrackerCodes: ['FNP', 'ATH'],
             },
         ])
@@ -97,7 +103,10 @@ describe('index page', () => {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'partial_success',
-                trackerCodes: ['FNP', 'ATH'],
+                trackers: [
+                    { code: 'FNP', title: 'T', titleModified: false, anonymous: false },
+                    { code: 'ATH', title: 'T', titleModified: false, anonymous: false },
+                ],
                 failedTrackerCodes: ['ATH'],
             },
         ])
@@ -123,7 +132,7 @@ describe('index page', () => {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'torrent_creation',
-                trackerCodes: ['FNP'],
+                trackers: [{ code: 'FNP', title: 'T', titleModified: false, anonymous: false }],
             },
         ])
 
@@ -161,7 +170,7 @@ describe('index page', () => {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'pending',
-                trackerCodes: ['FNP'],
+                trackers: [{ code: 'FNP', title: 'T', titleModified: false, anonymous: false }],
             },
         ])
 
@@ -178,7 +187,7 @@ describe('index page', () => {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'uploading',
-                trackerCodes: ['FNP'],
+                trackers: [{ code: 'FNP', title: 'T', titleModified: false, anonymous: false }],
             },
         ])
 

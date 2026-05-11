@@ -1,84 +1,35 @@
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
-import { TRACKER_UPLOAD_STATUSES } from '../../model/tracker-upload-request'
+import { TRACKER_UPLOAD_STATUSES, type TrackerItem } from '../../model/tracker-upload-request'
 import { findGenericTorrentCacheByFilepath, saveGenericTorrentCache } from '../../repositories/generic-torrent-cache-repository'
-import { createTrackerUploadRequest, updateTrackerUploadRequestStatus, updateTrackerUploadRequestTorrentCreationProgress } from '../../repositories/tracker-request-repository'
+import { saveTrackerUploadRequest, updateTrackerUploadRequestStatus, updateTrackerUploadRequestTorrentCreationProgress } from '../../repositories/tracker-request-repository'
 import { getSettings } from '../../repositories/settings-repository'
 import { createGenericTorrent, createTrackerTorrent } from '../../services/torrent'
+import { analyzeMediaFileAsText } from '../../services/mediainfo'
+import { resolveMediaFilePath } from '../../utils/file-system'
+import { createTrackerService } from '../../services/tracker/tracker-factory'
+import type { TrackerUploadMetadata } from '../../services/tracker/tracker'
 import { logger } from '../../utils/logger'
 import { parseValidatedBody } from '../../utils/request-validator'
-import { AUDIO_CHANNELS, AUDIO_CODECS, AUDIO_METADATA_TYPES, CUTS, HDR_TYPES, MEDIA_TYPES, RESOLUTIONS, SERVICES, SOURCES, SOURCE_TYPES, VIDEO_CODECS } from '../../model/metadata'
+import { MetadataSchema } from '../../model/metadata'
 
-const trimmedRequiredStringSchema = z.string().trim().min(1)
-const trimmedOptionalStringSchema = z.string().trim().min(1).optional()
-const optionalIntegerSchema = z.number().int().optional()
-const requiredYearSchema = z
-    .number()
-    .int()
-    .refine((value) => /^\d{4}$/.test(String(value)), {
-        message: 'Invalid year format',
-    })
-
-const MetadataSchema = z
-    .object({
-        title: trimmedRequiredStringSchema,
-        originalTitle: trimmedOptionalStringSchema,
-        releaseGroup: trimmedOptionalStringSchema,
-        mediaType: z.enum(MEDIA_TYPES),
-        year: requiredYearSchema,
-        season: optionalIntegerSchema,
-        episode: optionalIntegerSchema,
-        language: z.array(trimmedRequiredStringSchema),
-        originalLanguage: trimmedRequiredStringSchema,
-        source: z.enum(SOURCES),
-        sourceType: z.enum(SOURCE_TYPES),
-        service: z.enum(SERVICES).optional(),
-        repack: z.boolean(),
-        proper: z.boolean(),
-        cut: z.enum(CUTS).optional(),
-        hybrid: z.boolean(),
-        resolution: z.enum(RESOLUTIONS),
-        hdr: z.array(z.enum(HDR_TYPES)).optional(),
-        videoCodec: z.enum(VIDEO_CODECS),
-        audioCodec: z.enum(AUDIO_CODECS),
-        audioChannels: z.enum(AUDIO_CHANNELS),
-        audioMetadata: z.enum(AUDIO_METADATA_TYPES).optional(),
-        tmdbId: z.number().int(),
-        imdbId: trimmedOptionalStringSchema,
-        tvdbId: optionalIntegerSchema,
-    })
-    .superRefine((metadata, ctx) => {
-        if (metadata.mediaType === MEDIA_TYPES.TV && metadata.season == null) {
-            ctx.addIssue({
-                code: 'custom',
-                path: ['season'],
-                message: 'Season is required for TV media',
-            })
-        }
-
-        if (metadata.mediaType === MEDIA_TYPES.TV && metadata.tvdbId == null) {
-            ctx.addIssue({
-                code: 'custom',
-                path: ['tvdbId'],
-                message: 'TVDB ID is required for TV media',
-            })
-        }
-
-        if (metadata.source === SOURCES.WEB && metadata.service == null) {
-            ctx.addIssue({
-                code: 'custom',
-                path: ['service'],
-                message: 'Service is required for Web sources',
-            })
-        }
-    })
+const trackerItemSchema = z.object({
+    code: z.string().trim().min(1),
+    title: z.string().trim().min(1),
+    titleModified: z.boolean(),
+    anonymous: z.boolean(),
+})
 
 const trackerUploadRequestSchema = z.object({
-    filepath: trimmedRequiredStringSchema,
+    filepath: z.string().trim().min(1),
     metadata: MetadataSchema,
     description: z.string(),
-    trackerCodes: z.array(trimmedRequiredStringSchema).min(1),
+    trackers: z.array(trackerItemSchema).min(1),
 })
+
+function getTrackerCodes(trackers: TrackerItem[]) {
+    return trackers.map((t) => t.code)
+}
 
 export default defineEventHandler(async (event) => {
     logger.debug('Tracker upload request received.')
@@ -88,24 +39,24 @@ export default defineEventHandler(async (event) => {
     })
 
     const uploadRequestId = randomUUID()
-    const uploadRequest = await createTrackerUploadRequest({
+    const uploadRequest = await saveTrackerUploadRequest({
         id: uploadRequestId,
         filepath: request.filepath,
         metadata: request.metadata,
         description: request.description,
-        trackerCodes: request.trackerCodes,
+        trackers: request.trackers,
         status: TRACKER_UPLOAD_STATUSES.PENDING,
         torrentCreationProgress: 0,
     })
 
     logger.info('Tracker upload request queued.', {
         id: uploadRequest.id,
-        filepath: request.filepath,
-        trackerCodes: request.trackerCodes,
+        filepath: uploadRequest.filepath,
+        trackerCodes: getTrackerCodes(uploadRequest.trackers),
         status: uploadRequest.status,
     })
 
-    processTrackerUploadRequest(uploadRequest.id, request.filepath, request.trackerCodes)
+    processTrackerUploadRequest(uploadRequest.id, request.filepath, request.trackers, request.metadata, request.description)
     setResponseStatus(event, 201)
 
     return {
@@ -114,7 +65,9 @@ export default defineEventHandler(async (event) => {
     }
 })
 
-async function processTrackerUploadRequest(uploadRequestId: string, filepath: string, trackerCodes: string[]) {
+async function processTrackerUploadRequest(uploadRequestId: string, filepath: string, trackers: TrackerItem[], metadata: TrackerUploadMetadata, description: string) {
+    const trackerCodes = getTrackerCodes(trackers)
+
     try {
         await updateTrackerUploadRequestStatus(uploadRequestId, TRACKER_UPLOAD_STATUSES.TORRENT_CREATION)
         logger.info('Tracker upload request started generic torrent creation.', {
@@ -141,7 +94,7 @@ async function processTrackerUploadRequest(uploadRequestId: string, filepath: st
         const trackerTorrentPaths = await createTrackerTorrents(genericTorrentPath, filepath, trackerCodes)
 
         await updateTrackerUploadRequestStatus(uploadRequestId, TRACKER_UPLOAD_STATUSES.UPLOADING)
-        logger.info('Tracker upload request ready for tracker uploads.', {
+        logger.info('Tracker upload request uploading to trackers.', {
             id: uploadRequestId,
             filepath,
             trackerCodes,
@@ -149,9 +102,26 @@ async function processTrackerUploadRequest(uploadRequestId: string, filepath: st
             genericTorrentPath,
             trackerTorrentPaths,
         })
+
+        const mediaFilePath = await resolveMediaFilePath(filepath)
+        const mediainfoText = await analyzeMediaFileAsText(mediaFilePath)
+        logger.debug('Mediainfo text ready for tracker upload.', { id: uploadRequestId, mediaFilePath })
+
+        const failedTrackerCodes = await uploadToTrackers(trackerTorrentPaths, trackers, metadata, description, mediainfoText)
+
+        if (failedTrackerCodes.length === 0) {
+            await updateTrackerUploadRequestStatus(uploadRequestId, TRACKER_UPLOAD_STATUSES.SUCCESS)
+            logger.info('Tracker upload request completed successfully.', { id: uploadRequestId, trackerCodes })
+        } else if (failedTrackerCodes.length < trackerCodes.length) {
+            await updateTrackerUploadRequestStatus(uploadRequestId, TRACKER_UPLOAD_STATUSES.PARTIAL_SUCCESS, failedTrackerCodes)
+            logger.warn('Tracker upload request completed with partial success.', { id: uploadRequestId, failedTrackerCodes })
+        } else {
+            await updateTrackerUploadRequestStatus(uploadRequestId, TRACKER_UPLOAD_STATUSES.FAIL)
+            logger.error('Tracker upload request failed for all trackers.', undefined, { id: uploadRequestId, trackerCodes })
+        }
     } catch (error: unknown) {
         await updateTrackerUploadRequestStatus(uploadRequestId, TRACKER_UPLOAD_STATUSES.FAIL)
-        logger.error('Failed to create generic torrent for tracker upload request.', error, {
+        logger.error('Failed to process tracker upload request.', error, {
             id: uploadRequestId,
             filepath,
         })
@@ -165,6 +135,30 @@ async function createGenericTorrentForUploadRequest(uploadRequestId: string, fil
     })
 
     return genericTorrentPath
+}
+
+async function uploadToTrackers(trackerTorrentPaths: Record<string, string>, trackers: TrackerItem[], metadata: TrackerUploadMetadata, description: string, mediainfoText: string) {
+    const failedTrackerCodes: string[] = []
+
+    for (const tracker of trackers) {
+        const torrentPath = trackerTorrentPaths[tracker.code]
+        if (!torrentPath) {
+            logger.warn('Skipping tracker upload: no torrent path found.', { trackerCode: tracker.code })
+            failedTrackerCodes.push(tracker.code)
+
+            continue
+        }
+
+        try {
+            const trackerService = await createTrackerService(tracker.code)
+            await trackerService.upload(torrentPath, metadata, description, mediainfoText, { title: tracker.title, anonymous: tracker.anonymous })
+        } catch (error: unknown) {
+            logger.error('Failed to upload to tracker.', error, { trackerCode: tracker.code })
+            failedTrackerCodes.push(tracker.code)
+        }
+    }
+
+    return failedTrackerCodes
 }
 
 async function createTrackerTorrents(genericTorrentPath: string, filepath: string, trackerCodes: string[]): Promise<Record<string, string>> {

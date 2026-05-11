@@ -1,26 +1,17 @@
 <script setup lang="ts">
 import StepNavigationButtons from './StepNavigationButtons.vue'
-import type { Metadata } from './upload.types'
 import { useSettings } from '~/composables/useSettings'
-import { useTrackerRequests } from '~/composables/useTrackerRequests'
 
 const selectedTrackers = defineModel<string[]>({ default: [] })
-const props = defineProps<{
-    sourcePath?: string
-    metadata?: Metadata
-    description?: string
-}>()
 
 const emit = defineEmits<{
     back: []
+    next: []
 }>()
 
-const toast = useToast()
 const { getSettings, loading, error } = useSettings()
-const { uploadTorrent, loading: uploadLoading, error: uploadError } = useTrackerRequests()
 const trackers = ref<Array<{ name: string; code: string }>>([])
-const hasRequiredData = computed(() => Boolean(props.sourcePath?.trim()) && Boolean(props.metadata))
-const canUpload = computed(() => trackers.value.length > 0 && selectedTrackers.value.length > 0 && hasRequiredData.value && !uploadLoading.value)
+const canProceed = computed(() => selectedTrackers.value.length > 0)
 
 onMounted(async () => {
     await loadTrackers()
@@ -50,28 +41,7 @@ function toggleTracker(code: string) {
         selectedTrackers.value = selectedTrackers.value.filter((value) => value !== code)
         return
     }
-
     selectedTrackers.value = [...selectedTrackers.value, code]
-}
-
-async function onSubmit() {
-    if (!props.sourcePath || !props.metadata || uploadLoading.value || !canUpload.value) {
-        return
-    }
-
-    await uploadTorrent(props.sourcePath, props.metadata, props.description, selectedTrackers.value)
-
-    if (uploadError.value) {
-        return
-    }
-
-    toast.add({
-        title: 'Upload request submitted.',
-        description: 'Your torrent is queued and available from the dashboard.',
-        color: 'success',
-    })
-
-    await navigateTo('/')
 }
 </script>
 
@@ -79,12 +49,13 @@ async function onSubmit() {
     <UCard>
         <template #header>
             <div class="space-y-2">
-                <h2 class="text-lg font-medium">Upload</h2>
-                <p class="text-sm text-muted">Select the trackers you want to upload this torrent to.</p>
+                <h2 class="text-lg font-medium">Select Trackers</h2>
+                <p class="text-sm text-muted">Choose which trackers you want to upload this torrent to.</p>
             </div>
         </template>
+
         <UAlert v-if="error" color="error" variant="soft" title="Failed to load trackers from settings. Please try again." class="mb-4" />
-        <UAlert v-if="uploadError" color="error" variant="soft" title="Failed to submit upload request. Please try again." class="mb-4" />
+
         <div v-if="loading" class="space-y-2">
             <USkeleton class="h-8 w-full" />
             <USkeleton class="h-8 w-full" />
@@ -101,7 +72,7 @@ async function onSubmit() {
         />
 
         <div v-else class="space-y-2">
-            <label class="text-sm font-medium text-highlighted"> Tracker targets </label>
+            <label class="text-sm font-medium text-highlighted">Tracker targets</label>
             <div class="rounded-xl border border-default/70 bg-elevated/30 p-4 shadow-xs">
                 <div class="space-y-3">
                     <UCheckbox
@@ -115,9 +86,9 @@ async function onSubmit() {
                     />
                 </div>
             </div>
-            <p class="text-xs text-muted">Selected trackers: {{ selectedTrackers.length }}</p>
+            <p class="text-xs text-muted">Selected: {{ selectedTrackers.length }}</p>
         </div>
 
-        <StepNavigationButtons class="mt-5" :next="{ label: 'Upload', disabled: !canUpload || loading, loading: uploadLoading }" @back="emit('back')" @next="onSubmit" />
+        <StepNavigationButtons class="mt-5" :next="{ disabled: !canProceed || loading }" @back="emit('back')" @next="emit('next')" />
     </UCard>
 </template>

@@ -11,12 +11,19 @@ export const TRACKER_UPLOAD_STATUSES = {
 
 export type TrackerUploadStatus = (typeof TRACKER_UPLOAD_STATUSES)[keyof typeof TRACKER_UPLOAD_STATUSES]
 
+export interface TrackerItem {
+    code: string
+    title: string
+    titleModified: boolean
+    anonymous: boolean
+}
+
 export interface TrackerUploadRequest {
     id: string
     filepath: string
     metadata: Omit<Metadata, 'fileName'>
     description: string
-    trackerCodes: string[]
+    trackers: TrackerItem[]
     status: TrackerUploadStatus
     torrentCreationProgress?: number
     failedTrackerCodes?: string[]

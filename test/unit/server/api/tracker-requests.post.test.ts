@@ -10,7 +10,7 @@ const logger = {
 const readBody = vi.fn()
 const createError = vi.fn((payload: unknown) => payload)
 const setResponseStatus = vi.fn()
-const createTrackerUploadRequest = vi.fn()
+const saveTrackerUploadRequest = vi.fn()
 const findGenericTorrentCacheByFilepath = vi.fn()
 const saveGenericTorrentCache = vi.fn()
 const updateTrackerUploadRequestStatus = vi.fn()
@@ -18,6 +18,9 @@ const updateTrackerUploadRequestTorrentCreationProgress = vi.fn()
 const createGenericTorrent = vi.fn()
 const createTrackerTorrent = vi.fn()
 const getSettings = vi.fn()
+const createTrackerService = vi.fn()
+const resolveMediaFilePath = vi.fn()
+const analyzeMediaFileAsText = vi.fn()
 
 beforeEach(() => {
     vi.resetModules()
@@ -25,6 +28,9 @@ beforeEach(() => {
     vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
     vi.stubGlobal('setResponseStatus', setResponseStatus)
     getSettings.mockResolvedValue({ trackers: [] })
+    createTrackerService.mockResolvedValue({ upload: vi.fn().mockResolvedValue(undefined) })
+    resolveMediaFilePath.mockResolvedValue('/media/Movie.2024.1080p.mkv')
+    analyzeMediaFileAsText.mockResolvedValue('mediainfo output')
 })
 
 async function loadHandler() {
@@ -41,7 +47,7 @@ async function loadHandler() {
         saveGenericTorrentCache,
     }))
     vi.doMock('../../../../server/repositories/tracker-request-repository', () => ({
-        createTrackerUploadRequest,
+        saveTrackerUploadRequest,
         updateTrackerUploadRequestStatus,
         updateTrackerUploadRequestTorrentCreationProgress,
     }))
@@ -51,6 +57,15 @@ async function loadHandler() {
     vi.doMock('../../../../server/services/torrent', () => ({
         createGenericTorrent,
         createTrackerTorrent,
+    }))
+    vi.doMock('../../../../server/services/tracker/tracker-factory', () => ({
+        createTrackerService,
+    }))
+    vi.doMock('../../../../server/utils/file-system', () => ({
+        resolveMediaFilePath,
+    }))
+    vi.doMock('../../../../server/services/mediainfo', () => ({
+        analyzeMediaFileAsText,
     }))
 
     const { default: handler } = await import('../../../../server/api/tracker/requests.post')
@@ -88,7 +103,7 @@ function buildRequest(overrides: Partial<Record<string, unknown>> = {}) {
             tvdbId: undefined,
         },
         description: 'Release description',
-        trackerCodes: ['FNP'],
+        trackers: [{ code: 'FNP', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP', titleModified: false, anonymous: false }],
         ...overrides,
     }
 }
@@ -101,7 +116,7 @@ async function flushPromises() {
 
 describe('POST /api/tracker/requests route handler', () => {
     it('rejects invalid request payload', async () => {
-        readBody.mockResolvedValue(buildRequest({ filepath: '   ', trackerCodes: [] }))
+        readBody.mockResolvedValue(buildRequest({ filepath: '   ', trackers: [] }))
         const handler = await loadHandler()
 
         await expect(handler({} as never)).rejects.toEqual({
@@ -114,7 +129,7 @@ describe('POST /api/tracker/requests route handler', () => {
     it('accepts valid upload requests', async () => {
         readBody.mockResolvedValue(buildRequest())
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
-        createTrackerUploadRequest.mockResolvedValue({
+        saveTrackerUploadRequest.mockResolvedValue({
             id: 'upload-1',
             ...buildRequest(),
             status: 'pending',
@@ -137,12 +152,12 @@ describe('POST /api/tracker/requests route handler', () => {
         await flushPromises()
 
         expect(setResponseStatus).toHaveBeenCalledWith({}, 201)
-        expect(createTrackerUploadRequest).toHaveBeenCalledWith({
+        expect(saveTrackerUploadRequest).toHaveBeenCalledWith({
             id: expect.any(String),
             description: 'Release description',
             filepath: '/media/Movie.2024.1080p.mkv',
             metadata: buildRequest().metadata,
-            trackerCodes: ['FNP'],
+            trackers: [{ code: 'FNP', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP', titleModified: false, anonymous: false }],
             status: 'pending',
             torrentCreationProgress: 0,
         })
@@ -154,7 +169,7 @@ describe('POST /api/tracker/requests route handler', () => {
             genericTorrentPath: '/repo/config/torrents/generic-1.torrent',
         })
         expect(updateTrackerUploadRequestStatus).toHaveBeenNthCalledWith(2, 'upload-1', 'uploading')
-        expect(logger.info).toHaveBeenLastCalledWith('Tracker upload request ready for tracker uploads.', {
+        expect(logger.info).toHaveBeenCalledWith('Tracker upload request uploading to trackers.', {
             id: 'upload-1',
             filepath: '/media/Movie.2024.1080p.mkv',
             trackerCodes: ['FNP'],
@@ -170,7 +185,7 @@ describe('POST /api/tracker/requests route handler', () => {
             filepath: '/media/Movie.2024.1080p.mkv',
             genericTorrentPath: '/repo/config/torrents/cached.torrent',
         })
-        createTrackerUploadRequest.mockResolvedValue({
+        saveTrackerUploadRequest.mockResolvedValue({
             id: 'upload-1',
             ...buildRequest(),
             status: 'pending',
@@ -239,7 +254,7 @@ describe('POST /api/tracker/requests route handler', () => {
     it('creates tracker-specific torrents when a configured tracker has a passKey', async () => {
         readBody.mockResolvedValue(buildRequest())
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
-        createTrackerUploadRequest.mockResolvedValue({
+        saveTrackerUploadRequest.mockResolvedValue({
             id: 'upload-1',
             ...buildRequest(),
             status: 'pending',
@@ -264,21 +279,150 @@ describe('POST /api/tracker/requests route handler', () => {
             announceUrl: 'https://fnp.example.com/announce/secret123',
             sourcePath: '/media/Movie.2024.1080p.mkv',
         })
-        expect(updateTrackerUploadRequestStatus).toHaveBeenLastCalledWith('upload-1', 'uploading')
-        expect(logger.info).toHaveBeenLastCalledWith('Tracker upload request ready for tracker uploads.', {
+        expect(updateTrackerUploadRequestStatus).toHaveBeenLastCalledWith('upload-1', 'success')
+        expect(logger.info).toHaveBeenLastCalledWith('Tracker upload request completed successfully.', {
             id: 'upload-1',
-            filepath: '/media/Movie.2024.1080p.mkv',
             trackerCodes: ['FNP'],
-            status: 'uploading',
-            genericTorrentPath: '/repo/config/torrents/generic-1.torrent',
-            trackerTorrentPaths: { FNP: '/config/tmp/torrents/FNP/Movie.2024.1080p.torrent' },
         })
+    })
+
+    it('passes tracker override title and anonymous flag to service.upload', async () => {
+        const uploadMock = vi.fn().mockResolvedValue(undefined)
+        createTrackerService.mockResolvedValue({ upload: uploadMock })
+        readBody.mockResolvedValue(buildRequest({ trackers: [{ code: 'FNP', title: 'Custom Title', titleModified: true, anonymous: true }] }))
+        findGenericTorrentCacheByFilepath.mockResolvedValue(null)
+        saveTrackerUploadRequest.mockResolvedValue({
+            id: 'upload-1',
+            ...buildRequest(),
+            status: 'pending',
+        })
+        createGenericTorrent.mockResolvedValue({ genericTorrentPath: '/repo/config/torrents/generic-1.torrent' })
+        getSettings.mockResolvedValue({
+            trackers: [{ code: 'FNP', url: 'https://fnp.example.com', passKey: 'secret123' }],
+        })
+        createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/FNP/Movie.torrent' })
+        const handler = await loadHandler()
+
+        await handler({} as never)
+        await flushPromises()
+
+        expect(uploadMock).toHaveBeenCalledWith('/config/tmp/torrents/FNP/Movie.torrent', expect.any(Object), expect.any(String), expect.any(String), {
+            title: 'Custom Title',
+            anonymous: true,
+        })
+    })
+
+    it('passes tracker title and anonymous flag from tracker item to service.upload', async () => {
+        const uploadMock = vi.fn().mockResolvedValue(undefined)
+        createTrackerService.mockResolvedValue({ upload: uploadMock })
+        readBody.mockResolvedValue(buildRequest())
+        findGenericTorrentCacheByFilepath.mockResolvedValue(null)
+        saveTrackerUploadRequest.mockResolvedValue({
+            id: 'upload-1',
+            ...buildRequest(),
+            status: 'pending',
+        })
+        createGenericTorrent.mockResolvedValue({ genericTorrentPath: '/repo/config/torrents/generic-1.torrent' })
+        getSettings.mockResolvedValue({
+            trackers: [{ code: 'FNP', url: 'https://fnp.example.com', passKey: 'secret123' }],
+        })
+        createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/FNP/Movie.torrent' })
+        const handler = await loadHandler()
+
+        await handler({} as never)
+        await flushPromises()
+
+        expect(uploadMock).toHaveBeenCalledWith('/config/tmp/torrents/FNP/Movie.torrent', expect.any(Object), expect.any(String), expect.any(String), {
+            title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP',
+            anonymous: false,
+        })
+    })
+
+    it('rejects request with empty trackers array', async () => {
+        readBody.mockResolvedValue(buildRequest({ trackers: [] }))
+        const handler = await loadHandler()
+
+        await expect(handler({} as never)).rejects.toEqual({
+            statusCode: 400,
+            message: 'invalid_request',
+        })
+        expect(logger.warn).toHaveBeenCalled()
+    })
+
+    it('marks the request as partial_success when some trackers fail', async () => {
+        const uploadMock = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('upload failed'))
+        createTrackerService.mockResolvedValue({ upload: uploadMock })
+        readBody.mockResolvedValue(
+            buildRequest({
+                trackers: [
+                    { code: 'FNP', title: 'Title', titleModified: false, anonymous: false },
+                    { code: 'ATH', title: 'Title', titleModified: false, anonymous: false },
+                ],
+            })
+        )
+        findGenericTorrentCacheByFilepath.mockResolvedValue(null)
+        saveTrackerUploadRequest.mockResolvedValue({
+            id: 'upload-1',
+            ...buildRequest(),
+            status: 'pending',
+        })
+        createGenericTorrent.mockResolvedValue({ genericTorrentPath: '/repo/config/torrents/generic-1.torrent' })
+        getSettings.mockResolvedValue({
+            trackers: [
+                { code: 'FNP', url: 'https://fnp.example.com', passKey: 'secret' },
+                { code: 'ATH', url: 'https://ath.example.com', passKey: 'secret' },
+            ],
+        })
+        createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/tracker.torrent' })
+        analyzeMediaFileAsText.mockResolvedValue('mediainfo output')
+        const handler = await loadHandler()
+
+        await handler({} as never)
+        await flushPromises()
+        await flushPromises()
+
+        expect(updateTrackerUploadRequestStatus).toHaveBeenCalledWith('upload-1', 'partial_success', ['ATH'])
+        expect(logger.warn).toHaveBeenCalledWith('Tracker upload request completed with partial success.', {
+            id: 'upload-1',
+            failedTrackerCodes: ['ATH'],
+        })
+    })
+
+    it('marks the request as failed when all trackers fail to upload', async () => {
+        const uploadError = new Error('upload failed')
+        const uploadMock = vi.fn().mockRejectedValue(uploadError)
+        createTrackerService.mockResolvedValue({ upload: uploadMock })
+        readBody.mockResolvedValue(buildRequest())
+        findGenericTorrentCacheByFilepath.mockResolvedValue(null)
+        saveTrackerUploadRequest.mockResolvedValue({
+            id: 'upload-1',
+            ...buildRequest(),
+            status: 'pending',
+        })
+        createGenericTorrent.mockResolvedValue({ genericTorrentPath: '/repo/config/torrents/generic-1.torrent' })
+        getSettings.mockResolvedValue({
+            trackers: [{ code: 'FNP', url: 'https://fnp.example.com', passKey: 'secret' }],
+        })
+        createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/tracker.torrent' })
+        analyzeMediaFileAsText.mockResolvedValue('mediainfo output')
+        const handler = await loadHandler()
+
+        await handler({} as never)
+        await flushPromises()
+        await flushPromises()
+
+        expect(updateTrackerUploadRequestStatus).toHaveBeenCalledWith('upload-1', 'fail')
+        expect(logger.error).toHaveBeenCalledWith('Tracker upload request failed for all trackers.', undefined, {
+            id: 'upload-1',
+            trackerCodes: ['FNP'],
+        })
+        expect(logger.error).toHaveBeenCalledWith('Failed to upload to tracker.', uploadError, { trackerCode: 'FNP' })
     })
 
     it('marks the request as failed when torrent creation fails', async () => {
         readBody.mockResolvedValue(buildRequest())
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
-        createTrackerUploadRequest.mockResolvedValue({
+        saveTrackerUploadRequest.mockResolvedValue({
             id: 'upload-1',
             ...buildRequest(),
             status: 'pending',
@@ -296,7 +440,7 @@ describe('POST /api/tracker/requests route handler', () => {
 
         expect(updateTrackerUploadRequestStatus).toHaveBeenNthCalledWith(1, 'upload-1', 'torrent_creation')
         expect(updateTrackerUploadRequestStatus).toHaveBeenCalledWith('upload-1', 'fail')
-        expect(logger.error).toHaveBeenCalledWith('Failed to create generic torrent for tracker upload request.', error, {
+        expect(logger.error).toHaveBeenCalledWith('Failed to process tracker upload request.', error, {
             id: 'upload-1',
             filepath: '/media/Movie.2024.1080p.mkv',
         })

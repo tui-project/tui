@@ -35,7 +35,7 @@ const buildRequest = (): TrackerRequest => ({
     id: 'req-1',
     filepath: '/media/movie.mkv',
     status: 'pending',
-    trackerCodes: ['FNP'],
+    trackers: [{ code: 'FNP', title: 'Title', titleModified: false, anonymous: false }],
 })
 
 describe('useTrackerRequests composable', () => {
@@ -110,7 +110,8 @@ describe('useTrackerRequests composable', () => {
             const { useTrackerRequests } = await import('../../../../app/composables/useTrackerRequests')
             const { uploadTorrent, loading, error } = useTrackerRequests()
 
-            await expect(uploadTorrent('/media/movie.mkv', buildMetadata(), 'Release description', ['FNP'])).resolves.toBeUndefined()
+            const trackers = [{ code: 'FNP', title: 'Title', titleModified: false, anonymous: false }]
+            await expect(uploadTorrent('/media/movie.mkv', buildMetadata(), 'Release description', trackers)).resolves.toBeUndefined()
 
             expect(fetchMock).toHaveBeenCalledWith('/api/tracker/requests', {
                 method: 'POST',
@@ -138,7 +139,7 @@ describe('useTrackerRequests composable', () => {
                         tmdbId: 1,
                     },
                     description: 'Release description',
-                    trackerCodes: ['FNP'],
+                    trackers,
                 },
             })
             expect(loading.value).toBe(false)
@@ -152,7 +153,9 @@ describe('useTrackerRequests composable', () => {
             const { useTrackerRequests } = await import('../../../../app/composables/useTrackerRequests')
             const { uploadTorrent, loading, error } = useTrackerRequests()
 
-            await expect(uploadTorrent('/media/movie.mkv', buildMetadata(), undefined, ['FNP'])).resolves.toBeUndefined()
+            await expect(
+                uploadTorrent('/media/movie.mkv', buildMetadata(), undefined, [{ code: 'FNP', title: 'Title', titleModified: false, anonymous: false }])
+            ).resolves.toBeUndefined()
 
             expect(fetchMock).toHaveBeenCalledTimes(1)
             expect(loading.value).toBe(false)
@@ -172,10 +175,12 @@ describe('useTrackerRequests composable', () => {
             const { useTrackerRequests } = await import('../../../../app/composables/useTrackerRequests')
             const { uploadTorrent, loading, error } = useTrackerRequests()
 
-            const firstUpload = uploadTorrent('/media/movie.mkv', buildMetadata(), undefined, ['FNP'])
+            const firstUpload = uploadTorrent('/media/movie.mkv', buildMetadata(), undefined, [{ code: 'FNP', title: 'Title', titleModified: false, anonymous: false }])
             expect(loading.value).toBe(true)
 
-            await expect(uploadTorrent('/media/movie.mkv', buildMetadata(), undefined, ['FNP'])).resolves.toBeUndefined()
+            await expect(
+                uploadTorrent('/media/movie.mkv', buildMetadata(), undefined, [{ code: 'FNP', title: 'Title', titleModified: false, anonymous: false }])
+            ).resolves.toBeUndefined()
             expect(fetchMock).toHaveBeenCalledTimes(1)
 
             resolveUpload?.()

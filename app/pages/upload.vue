@@ -9,9 +9,14 @@ const stepItems: StepperItem[] = [
         slot: 'select-media',
     },
     {
-        title: 'Review Metadata',
+        title: 'Select Trackers',
+        icon: 'i-lucide-server',
+        slot: 'select-trackers',
+    },
+    {
+        title: 'Metadata',
         icon: 'i-lucide-file-pen-line',
-        slot: 'review-metadata',
+        slot: 'metadata',
     },
     {
         title: 'Description',
@@ -19,18 +24,18 @@ const stepItems: StepperItem[] = [
         slot: 'description',
     },
     {
-        title: 'Upload',
-        icon: 'i-lucide-cloud-upload',
-        slot: 'upload',
+        title: 'Review',
+        icon: 'i-lucide-eye',
+        slot: 'review',
     },
 ]
 
 const stepper = useTemplateRef('stepper')
 const currentStep = ref(0)
 const selectedPath = ref<Path>()
+const selectedTrackers = ref<string[]>([])
 const reviewedMetadata = ref<Metadata>()
 const description = ref('')
-const selectedTrackers = ref<string[]>([])
 
 watch(
     () => selectedPath.value?.value?.trim() ?? '',
@@ -38,7 +43,6 @@ watch(
         if (!path || !previousPath || path === previousPath) {
             return
         }
-
         reviewedMetadata.value = undefined
     }
 )
@@ -55,12 +59,15 @@ function goToPrevStep() {
 <template>
     <PageContainer>
         <PageHeader title="Upload" description="Create torrents and upload to private trackers." />
-        <UStepper ref="stepper" v-model="currentStep" :items="stepItems" class="w-full" size="lg">
+        <UStepper ref="stepper" v-model="currentStep" :items="stepItems" class="w-full" size="lg" disabled>
             <template #select-media>
                 <UploadStepSelectMedia v-model="selectedPath" @next="goToNextStep" />
             </template>
-            <template #review-metadata>
-                <UploadStepReviewMetadata v-model="reviewedMetadata" :selected-path="selectedPath" @back="goToPrevStep" @next="goToNextStep" />
+            <template #select-trackers>
+                <UploadStepSelectTrackers v-model="selectedTrackers" @back="goToPrevStep" @next="goToNextStep" />
+            </template>
+            <template #metadata>
+                <UploadStepMetadata v-model="reviewedMetadata" :selected-path="selectedPath" @back="goToPrevStep" @next="goToNextStep" />
             </template>
             <template #description>
                 <UploadStepDescription
@@ -72,8 +79,14 @@ function goToPrevStep() {
                     @next="goToNextStep"
                 />
             </template>
-            <template #upload>
-                <UploadStepUpload v-model="selectedTrackers" :source-path="selectedPath?.value" :metadata="reviewedMetadata" :description="description" @back="goToPrevStep" />
+            <template #review>
+                <UploadStepReview
+                    :selected-trackers="selectedTrackers"
+                    :metadata="reviewedMetadata"
+                    :source-path="selectedPath?.value"
+                    :description="description"
+                    @back="goToPrevStep"
+                />
             </template>
         </UStepper>
     </PageContainer>

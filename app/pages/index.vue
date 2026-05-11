@@ -104,8 +104,8 @@ function shouldAnimateIcon(status: string) {
                             {{ getRequestLabel(request.filepath) }}
                         </div>
                         <div class="flex flex-wrap gap-1">
-                            <UBadge v-for="code in request.trackerCodes" :key="code" color="neutral" variant="soft" size="lg">
-                                {{ code }}
+                            <UBadge v-for="tracker in request.trackers" :key="tracker.code" color="neutral" variant="soft" size="lg">
+                                {{ tracker.code }}
                             </UBadge>
                         </div>
 

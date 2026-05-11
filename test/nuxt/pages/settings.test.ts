@@ -78,9 +78,7 @@ describe('settings page', () => {
         await user.click(screen.getByRole('button', { name: /save/i }))
 
         await waitFor(() => {
-            expect(toastAddMock).toHaveBeenCalledWith(
-                expect.objectContaining({ title: 'Settings successfully saved.', color: 'success' })
-            )
+            expect(toastAddMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'Settings successfully saved.', color: 'success' }))
         })
     })
 

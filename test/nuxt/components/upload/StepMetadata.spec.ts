@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import StepReviewMetadata from '~/components/upload/StepReviewMetadata.vue'
+import StepMetadata from '~/components/upload/StepMetadata.vue'
 import type { Metadata, Path } from '~/components/upload/upload.types'
 
 const selectedPath: Path = {
@@ -45,7 +45,7 @@ function createMetadata(overrides: Partial<Metadata> = {}): Metadata {
     }
 }
 
-describe('StepReviewMetadata', () => {
+describe('StepMetadata', () => {
     beforeEach(() => {
         vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata()))
     })
@@ -56,14 +56,14 @@ describe('StepReviewMetadata', () => {
     })
 
     it('asks for path when no path is provided', async () => {
-        await renderSuspended(StepReviewMetadata)
+        await renderSuspended(StepMetadata)
 
         expect(screen.getByText('Select a source path first')).toBeDefined()
         expect($fetch).not.toHaveBeenCalled()
     })
 
     it('loads media info and renders expected movie labels/values', async () => {
-        await renderSuspended(StepReviewMetadata, {
+        await renderSuspended(StepMetadata, {
             props: {
                 selectedPath,
             },
@@ -138,7 +138,7 @@ describe('StepReviewMetadata', () => {
     it('shows error when media info request fails', async () => {
         vi.stubGlobal('$fetch', vi.fn().mockRejectedValue({ status: 500 }))
 
-        await renderSuspended(StepReviewMetadata, {
+        await renderSuspended(StepMetadata, {
             props: {
                 selectedPath,
             },
@@ -148,7 +148,7 @@ describe('StepReviewMetadata', () => {
     })
 
     it('allows user edits after loading detected values', async () => {
-        await renderSuspended(StepReviewMetadata, {
+        await renderSuspended(StepMetadata, {
             props: {
                 selectedPath,
             },
@@ -163,7 +163,7 @@ describe('StepReviewMetadata', () => {
     })
 
     it('shows folder label when selected path is a folder', async () => {
-        await renderSuspended(StepReviewMetadata, {
+        await renderSuspended(StepMetadata, {
             props: {
                 selectedPath: {
                     label: '/media/nas',
@@ -190,7 +190,7 @@ describe('StepReviewMetadata', () => {
             )
         )
 
-        await renderSuspended(StepReviewMetadata, {
+        await renderSuspended(StepMetadata, {
             props: {
                 selectedPath,
             },
@@ -269,7 +269,7 @@ describe('StepReviewMetadata', () => {
             )
         )
 
-        await renderSuspended(StepReviewMetadata, {
+        await renderSuspended(StepMetadata, {
             props: {
                 selectedPath,
             },
@@ -288,9 +288,9 @@ describe('StepReviewMetadata', () => {
                 error: ref(false),
             }),
         }))
-        const { default: LoadingStepReviewMetadata } = await import('~/components/upload/StepReviewMetadata.vue')
+        const { default: LoadingStepMetadata } = await import('~/components/upload/StepMetadata.vue')
 
-        const { container } = await renderSuspended(LoadingStepReviewMetadata, {
+        const { container } = await renderSuspended(LoadingStepMetadata, {
             props: {
                 selectedPath,
             },
@@ -315,7 +315,7 @@ describe('StepReviewMetadata', () => {
             folder: false,
         }
 
-        const { rerender } = await renderSuspended(StepReviewMetadata, {
+        const { rerender } = await renderSuspended(StepMetadata, {
             props: {
                 selectedPath,
                 modelValue: model,
@@ -350,7 +350,7 @@ describe('StepReviewMetadata', () => {
             )
         )
 
-        await renderSuspended(StepReviewMetadata, {
+        await renderSuspended(StepMetadata, {
             props: {
                 selectedPath,
             },
@@ -380,7 +380,7 @@ describe('StepReviewMetadata', () => {
             )
         )
 
-        await renderSuspended(StepReviewMetadata, {
+        await renderSuspended(StepMetadata, {
             props: {
                 selectedPath,
             },
@@ -427,7 +427,7 @@ describe('StepReviewMetadata', () => {
             )
         )
 
-        await renderSuspended(StepReviewMetadata, {
+        await renderSuspended(StepMetadata, {
             props: {
                 selectedPath,
                 onNext,
@@ -447,7 +447,7 @@ describe('StepReviewMetadata', () => {
         const onBack = vi.fn()
         const onNext = vi.fn()
 
-        await renderSuspended(StepReviewMetadata, {
+        await renderSuspended(StepMetadata, {
             props: {
                 selectedPath,
                 onBack,

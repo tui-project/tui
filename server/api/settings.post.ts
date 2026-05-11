@@ -6,15 +6,12 @@ import { logger } from '../utils/logger'
 import { parseValidatedBody } from '../utils/request-validator'
 import { toSettingsResponse } from './settings-response'
 
-const trimmedRequiredStringSchema = z.string().trim().min(1)
-const trimmedOptionalStringSchema = z.string().trim().min(1).optional()
-
 const imageHostProviderSchema = z
     .object({
-        code: trimmedRequiredStringSchema,
-        name: trimmedRequiredStringSchema,
+        code: z.string().trim().min(1),
+        name: z.string().trim().min(1),
         selected: z.boolean(),
-        apiKey: trimmedOptionalStringSchema,
+        apiKey: z.string().trim().min(1).optional(),
     })
     .superRefine((provider, context) => {
         if (provider.selected && !provider.apiKey) {
@@ -32,11 +29,11 @@ const imageHostProviderSchema = z
 
 const trackerSchema = z
     .object({
-        code: trimmedRequiredStringSchema,
-        name: trimmedRequiredStringSchema,
+        code: z.string().trim().min(1),
+        name: z.string().trim().min(1),
         selected: z.boolean(),
-        apiKey: trimmedOptionalStringSchema,
-        passKey: trimmedOptionalStringSchema,
+        apiKey: z.string().trim().min(1).optional(),
+        passKey: z.string().trim().min(1).optional(),
     })
     .superRefine((tracker, context) => {
         if (tracker.selected && !tracker.apiKey) {
@@ -61,13 +58,13 @@ const trackerSchema = z
     }))
 
 const settingsRequestSchema = z.object({
-    mediaPaths: z.array(trimmedRequiredStringSchema).transform((mediaPaths) => [...new Set(mediaPaths)]),
-    tmdbApiKey: trimmedRequiredStringSchema,
+    mediaPaths: z.array(z.string().trim().min(1)).transform((mediaPaths) => [...new Set(mediaPaths)]),
+    tmdbApiKey: z.string().trim().min(1),
     imageHostProviders: z.array(imageHostProviderSchema),
     trackers: z.array(trackerSchema),
-    mediainfoPath: trimmedRequiredStringSchema,
-    ffmpegPath: trimmedRequiredStringSchema,
-    ffprobePath: trimmedRequiredStringSchema,
+    mediainfoPath: z.string().trim().min(1),
+    ffmpegPath: z.string().trim().min(1),
+    ffprobePath: z.string().trim().min(1),
     movieScreenshotCount: z.number().int().positive(),
     tvEpisodeScreenshotCount: z.number().int().positive(),
 })

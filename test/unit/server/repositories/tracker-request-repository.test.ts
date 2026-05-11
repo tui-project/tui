@@ -2,10 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 describe('tracker upload request repository', () => {
     it('creates and finds tracker upload requests', async () => {
-        const { createTrackerUploadRequest, findTrackerUploadRequestById, findAllTrackerUploadRequests } =
-            await import('../../../../server/repositories/tracker-request-repository')
+        const { saveTrackerUploadRequest, findTrackerUploadRequestById, findAllTrackerUploadRequests } = await import('../../../../server/repositories/tracker-request-repository')
 
-        await createTrackerUploadRequest({
+        await saveTrackerUploadRequest({
             id: 'upload-1',
             filepath: '/media/Movie.2024.1080p.mkv',
             metadata: {
@@ -30,7 +29,10 @@ describe('tracker upload request repository', () => {
                 imdbId: 'tt1234567',
             },
             description: 'Release description',
-            trackerCodes: ['FNP', 'ATH'],
+            trackers: [
+                { code: 'FNP', title: 'Title FNP', titleModified: false, anonymous: false },
+                { code: 'ATH', title: 'Title ATH', titleModified: false, anonymous: false },
+            ],
             status: 'pending',
         })
 
@@ -40,7 +42,10 @@ describe('tracker upload request repository', () => {
         expect(byId).toMatchObject({
             id: 'upload-1',
             filepath: '/media/Movie.2024.1080p.mkv',
-            trackerCodes: ['FNP', 'ATH'],
+            trackers: [
+                { code: 'FNP', title: 'Title FNP', titleModified: false, anonymous: false },
+                { code: 'ATH', title: 'Title ATH', titleModified: false, anonymous: false },
+            ],
             status: 'pending',
         })
         expect(all).toHaveLength(1)
@@ -51,10 +56,10 @@ describe('tracker upload request repository', () => {
     })
 
     it('updates partial success status with failed tracker codes', async () => {
-        const { createTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestStatus } =
+        const { saveTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestStatus } =
             await import('../../../../server/repositories/tracker-request-repository')
 
-        await createTrackerUploadRequest({
+        await saveTrackerUploadRequest({
             id: 'upload-2',
             filepath: '/media/Show.S01E01.2024.1080p.mkv',
             metadata: {
@@ -83,7 +88,10 @@ describe('tracker upload request repository', () => {
                 tvdbId: 20,
             },
             description: '',
-            trackerCodes: ['FNP', 'ATH'],
+            trackers: [
+                { code: 'FNP', title: 'Title FNP', titleModified: false, anonymous: false },
+                { code: 'ATH', title: 'Title ATH', titleModified: false, anonymous: false },
+            ],
             status: 'uploading',
         })
 
@@ -98,10 +106,10 @@ describe('tracker upload request repository', () => {
     })
 
     it('clears failed tracker codes when leaving partial success', async () => {
-        const { createTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestStatus } =
+        const { saveTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestStatus } =
             await import('../../../../server/repositories/tracker-request-repository')
 
-        await createTrackerUploadRequest({
+        await saveTrackerUploadRequest({
             id: 'upload-3',
             filepath: '/media/Movie.2024.1080p.mkv',
             metadata: {
@@ -126,7 +134,7 @@ describe('tracker upload request repository', () => {
                 imdbId: 'tt1234567',
             },
             description: 'Release description',
-            trackerCodes: ['FNP'],
+            trackers: [{ code: 'FNP', title: 'Title FNP', titleModified: false, anonymous: false }],
             status: 'partial_success',
             failedTrackerCodes: ['FNP'],
         })
@@ -142,10 +150,10 @@ describe('tracker upload request repository', () => {
     })
 
     it('stores torrent creation progress updates', async () => {
-        const { createTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestTorrentCreationProgress } =
+        const { saveTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestTorrentCreationProgress } =
             await import('../../../../server/repositories/tracker-request-repository')
 
-        await createTrackerUploadRequest({
+        await saveTrackerUploadRequest({
             id: 'upload-4',
             filepath: '/media/Movie.2024.1080p.mkv',
             metadata: {
@@ -170,7 +178,7 @@ describe('tracker upload request repository', () => {
                 imdbId: 'tt1234567',
             },
             description: 'Release description',
-            trackerCodes: ['FNP'],
+            trackers: [{ code: 'FNP', title: 'Title FNP', titleModified: false, anonymous: false }],
             status: 'torrent_creation',
         })
 
@@ -184,10 +192,10 @@ describe('tracker upload request repository', () => {
     })
 
     it('defaults failed tracker codes to an empty list for partial success', async () => {
-        const { createTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestStatus } =
+        const { saveTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestStatus } =
             await import('../../../../server/repositories/tracker-request-repository')
 
-        await createTrackerUploadRequest({
+        await saveTrackerUploadRequest({
             id: 'upload-5',
             filepath: '/media/Movie.2024.1080p.mkv',
             metadata: {
@@ -212,7 +220,7 @@ describe('tracker upload request repository', () => {
                 imdbId: 'tt1234567',
             },
             description: 'Release description',
-            trackerCodes: ['FNP'],
+            trackers: [{ code: 'FNP', title: 'Title FNP', titleModified: false, anonymous: false }],
             status: 'uploading',
         })
 
@@ -227,10 +235,10 @@ describe('tracker upload request repository', () => {
     })
 
     it('returns only the most recent tracker upload requests up to the limit when provided', async () => {
-        const { createTrackerUploadRequest, findAllTrackerUploadRequests } = await import('../../../../server/repositories/tracker-request-repository')
+        const { saveTrackerUploadRequest, findAllTrackerUploadRequests } = await import('../../../../server/repositories/tracker-request-repository')
 
         for (const id of ['upload-6', 'upload-7', 'upload-8']) {
-            await createTrackerUploadRequest({
+            await saveTrackerUploadRequest({
                 id,
                 filepath: `/media/${id}.mkv`,
                 metadata: {
@@ -255,7 +263,7 @@ describe('tracker upload request repository', () => {
                     imdbId: 'tt1234567',
                 },
                 description: 'Release description',
-                trackerCodes: ['FNP'],
+                trackers: [{ code: 'FNP', title: 'Title FNP', titleModified: false, anonymous: false }],
                 status: 'pending',
             })
 

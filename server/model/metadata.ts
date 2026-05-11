@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 export interface Metadata {
     fileName: string
     releaseGroup?: string
@@ -192,3 +194,46 @@ export const AUDIO_METADATA_TYPES = {
     AURO3D: 'Auro3D',
 } as const
 export type AudioMetadata = (typeof AUDIO_METADATA_TYPES)[keyof typeof AUDIO_METADATA_TYPES] | undefined
+
+export const MetadataSchema = z
+    .object({
+        title: z.string().trim().min(1),
+        originalTitle: z.string().trim().min(1).optional(),
+        releaseGroup: z.string().trim().min(1).optional(),
+        mediaType: z.enum(MEDIA_TYPES),
+        year: z
+            .number()
+            .int()
+            .refine((value) => /^\d{4}$/.test(String(value)), 'Invalid year format'),
+        season: z.number().int().optional(),
+        episode: z.number().int().optional(),
+        language: z.array(z.string().trim().min(1)),
+        originalLanguage: z.string().trim().min(1),
+        source: z.enum(SOURCES),
+        sourceType: z.enum(SOURCE_TYPES),
+        service: z.enum(SERVICES).optional(),
+        repack: z.boolean(),
+        proper: z.boolean(),
+        cut: z.enum(CUTS).optional(),
+        hybrid: z.boolean(),
+        resolution: z.enum(RESOLUTIONS),
+        hdr: z.array(z.enum(HDR_TYPES)).optional(),
+        videoCodec: z.enum(VIDEO_CODECS),
+        audioCodec: z.enum(AUDIO_CODECS),
+        audioChannels: z.enum(AUDIO_CHANNELS),
+        audioMetadata: z.enum(AUDIO_METADATA_TYPES).optional(),
+        tmdbId: z.number().int(),
+        imdbId: z.string().trim().min(1),
+        tvdbId: z.number().int().optional(),
+    })
+    .superRefine((metadata, ctx) => {
+        if (metadata.mediaType === MEDIA_TYPES.TV && metadata.season == null) {
+            ctx.addIssue({ code: 'custom', path: ['season'], message: 'Season is required for TV media' })
+        }
+        if (metadata.mediaType === MEDIA_TYPES.TV && metadata.tvdbId == null) {
+            ctx.addIssue({ code: 'custom', path: ['tvdbId'], message: 'TVDB ID is required for TV media' })
+        }
+        if (metadata.source === SOURCES.WEB && metadata.service == null) {
+            ctx.addIssue({ code: 'custom', path: ['service'], message: 'Service is required for Web sources' })
+        }
+    })

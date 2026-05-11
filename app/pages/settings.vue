@@ -203,7 +203,12 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
                     <template v-for="provider in formState.imageHostProviders" :key="provider.code">
                         <UCheckbox v-model="provider.selected" :label="provider.name" :aria-label="provider.name" />
 
-                        <UFormField v-if="provider.selected" :label="`${provider.name} API Key`" :name="`imageHostProviders.${formState.imageHostProviders.indexOf(provider)}.apiKey`" required>
+                        <UFormField
+                            v-if="provider.selected"
+                            :label="`${provider.name} API Key`"
+                            :name="`imageHostProviders.${formState.imageHostProviders.indexOf(provider)}.apiKey`"
+                            required
+                        >
                             <UInput v-model="provider.apiKey" size="xl" class="w-full" :placeholder="`Enter ${provider.name} API key`" />
                         </UFormField>
 
