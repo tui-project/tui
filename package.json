@@ -28,7 +28,6 @@
         "consola": "3.4.2",
         "create-torrent": "^6.1.0",
         "eslint": "10.2.1",
-        "mediainfo.js": "0.3.7",
         "nuxt": "4.4.2",
         "parse-torrent": "^11.0.19",
         "tailwindcss": "4.2.4",

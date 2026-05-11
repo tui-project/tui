@@ -116,3 +116,4 @@ Coverage expectations:
 - Avoid unrelated refactors while implementing a feature.
 - Keep persisted filenames stable unless a migration is intended. For example, `userCollection` still writes to `users.db`.
 - Use ASCII text unless the surrounding file already uses non-ASCII.
+- Do not add defensive checks for conditions that cannot realistically occur given the inputs the code receives. Only validate at genuine system boundaries (user input, external APIs). Unreachable branches hurt coverage and signal false uncertainty about invariants.

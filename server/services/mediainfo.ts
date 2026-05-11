@@ -1,7 +1,6 @@
-import { open } from 'node:fs/promises'
-import MediaInfoFactory from 'mediainfo.js'
-import type { MediaInfoResult, Track } from 'mediainfo.js'
 import { logger } from '../utils/logger'
+import { runCommand } from '../utils/process'
+import { getSettings } from '../repositories/settings-repository'
 import {
     AUDIO_CHANNELS,
     AUDIO_CODECS,
@@ -19,10 +18,15 @@ import {
     type VideoCodec,
 } from '../model/metadata'
 
-type MediaInfoOutputFormat = 'object' | 'text'
+interface MediaInfoTrack {
+    '@type': string
+    [key: string]: unknown
+}
 
-interface AnalyzeMediaFileOptions {
-    output: MediaInfoOutputFormat
+interface MediaInfoResult {
+    media?: {
+        track: MediaInfoTrack[]
+    }
 }
 
 export interface ParsedMediainfoMetadata {
@@ -41,7 +45,7 @@ export interface ParsedMediainfoMetadata {
 export async function parseMetadataFromMediainfo(filePath: string, sourceType: SourceType): Promise<ParsedMediainfoMetadata> {
     logger.debug('Parsing metadata from mediainfo result.', { filePath, sourceType })
 
-    const mediainfo = await analyzeMediaFile(filePath, { output: 'object' })
+    const mediainfo = await analyzeMediaFile(filePath)
     const tracks = getTracks(mediainfo)
     const general = findTrack(tracks, 'General')
     const video = findTrack(tracks, 'Video')
@@ -72,9 +76,11 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
 
     const language = parseAudioLanguages(tracks)
 
-    const imdbId = toStringValue(general, 'extra.IMDB')
-    const tmdbId = parseIntegerValue(general, 'extra.TMDB')
-    const tvdbId = parseIntegerValue(general, 'extra.TVDB')
+    const extra = getTrackValue(general, 'extra')
+    const extraTrack = extra && typeof extra === 'object' ? (extra as MediaInfoTrack) : undefined
+    const imdbId = toStringValue(extraTrack, 'IMDB')
+    const tmdbId = parseIntegerValue(extraTrack, 'TMDB')
+    const tvdbId = parseIntegerValue(extraTrack, 'TVDB')
 
     const parsedMetadata = {
         resolution,
@@ -107,37 +113,21 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
     return parsedMetadata
 }
 
-function getTracks(result: MediaInfoResult): Track[] {
-    return result.media!.track as Track[]
+function getTracks(result: MediaInfoResult): MediaInfoTrack[] {
+    return result.media!.track as MediaInfoTrack[]
 }
 
-function findTrack(tracks: Track[], type: string) {
+function findTrack(tracks: MediaInfoTrack[], type: string) {
     return tracks.find((track) => String(getTrackValue(track, '@type')).toLowerCase() === type.toLowerCase())
 }
 
-function getTrackValue(track: Track | undefined, key: string): unknown {
+function getTrackValue(track: MediaInfoTrack | undefined, key: string): unknown {
     if (!track) return ''
-
-    const root = track as unknown as Record<string, unknown>
-    if (!key.includes('.')) return root[key] ?? ''
-
-    const path = key.split('.')
-    let current: unknown = root
-
-    for (const part of path) {
-        if (!current || typeof current !== 'object') return ''
-
-        const next = (current as Record<string, unknown>)[part]
-        if (next === undefined || next === null) return ''
-
-        current = next
-    }
-
-    return current
+    return (track as unknown as Record<string, unknown>)[key] ?? ''
 }
 
-function findDefaultAudioTrack(tracks: Track[]) {
-    let firstAudio: Track | undefined
+function findDefaultAudioTrack(tracks: MediaInfoTrack[]) {
+    let firstAudio: MediaInfoTrack | undefined
 
     for (const track of tracks) {
         if (!isTrackType(track, 'Audio')) continue
@@ -148,11 +138,11 @@ function findDefaultAudioTrack(tracks: Track[]) {
     return firstAudio
 }
 
-function isTrackType(track: Track, expectedType: string) {
+function isTrackType(track: MediaInfoTrack, expectedType: string) {
     return toStringValue(track, '@type').toLowerCase() === expectedType.toLowerCase()
 }
 
-function toStringValue(track: Track | undefined, key: string): string {
+function toStringValue(track: MediaInfoTrack | undefined, key: string): string {
     const value = getTrackValue(track, key)
     const stringValue = String(value).trim()
 
@@ -300,7 +290,7 @@ function parseAudioMetadata(formatCommercialIfAny: string, title: string): Audio
     return undefined
 }
 
-function parseAudioLanguages(tracks: Track[]): string[] {
+function parseAudioLanguages(tracks: MediaInfoTrack[]): string[] {
     const unique = new Set<string>()
 
     for (const track of tracks) {
@@ -325,7 +315,7 @@ function normalizeAudioLanguage(value: string) {
     return (dashIndex > 0 ? trimmed.slice(0, dashIndex) : trimmed).trim().toLowerCase()
 }
 
-function parseIntegerValue(track: Track | undefined, key: string): number | undefined {
+function parseIntegerValue(track: MediaInfoTrack | undefined, key: string): number | undefined {
     const stringValue = toStringValue(track, key)
     if (!stringValue) return undefined
 
@@ -336,36 +326,34 @@ function parseIntegerValue(track: Track | undefined, key: string): number | unde
 }
 
 export async function analyzeMediaFileAsText(filePath: string): Promise<string> {
-    return analyzeMediaFile(filePath, { output: 'text' })
-}
+    const settings = await getSettings()
+    const mediainfoPath = settings.mediainfoPath
 
-async function analyzeMediaFile(filePath: string, options: { output: 'object' }): Promise<MediaInfoResult>
-async function analyzeMediaFile(filePath: string, options: { output: 'text' }): Promise<string>
-
-async function analyzeMediaFile(filePath: string, options: AnalyzeMediaFileOptions): Promise<MediaInfoResult | string> {
-    logger.debug('Starting mediainfo analysis.', { filePath, output: options.output })
-
-    const mediaInfo = await MediaInfoFactory({ format: options.output })
-    const fileHandle = await open(filePath, 'r')
+    logger.debug('Starting mediainfo CLI analysis.', { filePath, mediainfoPath })
 
     try {
-        const stats = await fileHandle.stat()
-        const result = await mediaInfo.analyzeData(
-            () => stats.size,
-            async (size: number, offset: number) => {
-                const chunk = Buffer.alloc(size)
-                const { bytesRead } = await fileHandle.read(chunk, 0, size, offset)
-
-                return chunk.subarray(0, bytesRead)
-            }
-        )
-
-        logger.info('Completed mediainfo analysis.', { filePath, output: options.output, fileSize: stats.size })
-        return options.output === 'text' ? String(result) : (result as MediaInfoResult)
+        const { stdout } = await runCommand(mediainfoPath, [filePath])
+        logger.info('Completed mediainfo CLI analysis.', { filePath, mediainfoPath })
+        return stdout
     } catch (error: unknown) {
-        logger.error('Mediainfo analysis failed.', error)
-        return options.output === 'text' ? '' : {}
-    } finally {
-        await fileHandle.close()
+        logger.error('Mediainfo CLI analysis failed.', error, { filePath, mediainfoPath })
+        return ''
+    }
+}
+
+async function analyzeMediaFile(filePath: string): Promise<MediaInfoResult> {
+    const settings = await getSettings()
+    const mediainfoPath = settings.mediainfoPath
+
+    logger.debug('Starting mediainfo analysis.', { filePath, mediainfoPath })
+
+    try {
+        const { stdout } = await runCommand(mediainfoPath, ['--Output=JSON', filePath])
+        const result = JSON.parse(stdout) as MediaInfoResult
+        logger.info('Completed mediainfo analysis.', { filePath, mediainfoPath })
+        return result
+    } catch (error: unknown) {
+        logger.error('Mediainfo analysis failed.', error, { filePath, mediainfoPath })
+        return {}
     }
 }

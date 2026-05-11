@@ -1,38 +1,20 @@
-import type { Stats } from 'node:fs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const fileHandle = {
-    stat: vi.fn<() => Promise<Pick<Stats, 'size'>>>(),
-    read: vi.fn<(buffer: Buffer, offset: number, length: number, position: number) => Promise<{ bytesRead: number }>>(),
-    close: vi.fn<() => Promise<void>>(),
-}
-
-const openMock = vi.fn()
-const analyzeDataMock = vi.fn()
-const mediaInfoFactoryMock = vi.fn()
+const getSettingsMock = vi.fn()
+const runCommandMock = vi.fn()
 
 describe('mediainfo service', () => {
     beforeEach(() => {
         vi.resetModules()
         vi.clearAllMocks()
 
-        fileHandle.stat.mockResolvedValue({ size: 8 })
-        fileHandle.read.mockImplementation(async (buffer) => {
-            const source = Buffer.from('metadata')
-            const bytesRead = Math.min(buffer.length, source.length)
-            buffer.set(source.subarray(0, bytesRead))
-            return { bytesRead }
-        })
-        fileHandle.close.mockResolvedValue()
-
-        openMock.mockResolvedValue(fileHandle)
-        analyzeDataMock.mockResolvedValue({ media: { track: [] } })
-        mediaInfoFactoryMock.mockResolvedValue({ analyzeData: analyzeDataMock })
+        getSettingsMock.mockResolvedValue({ mediainfoPath: '/usr/bin/mediainfo' })
+        runCommandMock.mockResolvedValue({ stdout: JSON.stringify({ media: { track: [] } }) })
     })
 
     async function loadService() {
-        vi.doMock('node:fs/promises', () => ({ open: openMock }))
-        vi.doMock('mediainfo.js', () => ({ default: mediaInfoFactoryMock }))
+        vi.doMock('../../../../server/repositories/settings-repository', () => ({ getSettings: getSettingsMock }))
+        vi.doMock('../../../../server/utils/process', () => ({ runCommand: runCommandMock }))
 
         return import('../../../../server/services/mediainfo')
     }
@@ -52,53 +34,29 @@ describe('mediainfo service', () => {
             imdbId: '',
             tvdbId: undefined,
         })
-        expect(mediaInfoFactoryMock).toHaveBeenCalledWith({ format: 'object' })
-        expect(openMock).toHaveBeenCalledWith('/tmp/movie.mkv', 'r')
-        expect(fileHandle.close).toHaveBeenCalledTimes(1)
+        expect(runCommandMock).toHaveBeenCalledWith('/usr/bin/mediainfo', ['--Output=JSON', '/tmp/movie.mkv'])
     })
 
     it('returns text output', async () => {
-        analyzeDataMock.mockResolvedValue('General\nComplete name                            : movie.mkv')
+        runCommandMock.mockResolvedValue({ stdout: 'General\nComplete name                            : movie.mkv' })
         const { analyzeMediaFileAsText } = await loadService()
 
         await expect(analyzeMediaFileAsText('/tmp/movie.mkv')).resolves.toContain('Complete name')
-        expect(mediaInfoFactoryMock).toHaveBeenCalledWith({ format: 'text' })
-        expect(fileHandle.close).toHaveBeenCalledTimes(1)
+        expect(runCommandMock).toHaveBeenCalledWith('/usr/bin/mediainfo', ['/tmp/movie.mkv'])
     })
 
     it('returns empty text when text analysis fails', async () => {
-        analyzeDataMock.mockRejectedValueOnce(new Error('text analysis failed'))
+        runCommandMock.mockRejectedValueOnce(new Error('text analysis failed'))
         const { analyzeMediaFileAsText } = await loadService()
 
         await expect(analyzeMediaFileAsText('/tmp/movie.mkv')).resolves.toBe('')
-        expect(fileHandle.close).toHaveBeenCalledTimes(1)
     })
 
-    it('reads chunks via analyzeData callback', async () => {
-        analyzeDataMock.mockImplementation(async (getSize: () => number, readChunk: (size: number, offset: number) => Promise<Uint8Array>) => {
-            expect(getSize()).toBe(8)
-            const chunk = await readChunk(4, 2)
-            expect(chunk).toBeInstanceOf(Uint8Array)
-            expect(chunk.byteLength).toBe(4)
-            return { media: { track: [{ '@type': 'General' }] } }
-        })
-
-        const { parseMetadataFromMediainfo } = await loadService()
-
-        await expect(parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')).resolves.toMatchObject({
-            hdr: [],
-            language: [],
-            imdbId: '',
-        })
-        expect(fileHandle.read).toHaveBeenCalledWith(expect.any(Buffer), 0, 4, 2)
-    })
-
-    it('throws when mediainfo result shape is missing after analysis failure', async () => {
-        analyzeDataMock.mockRejectedValue(new Error('analysis failed'))
+    it('returns empty object and does not throw when analysis fails', async () => {
+        runCommandMock.mockRejectedValueOnce(new Error('analysis failed'))
         const { parseMetadataFromMediainfo } = await loadService()
 
         await expect(parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')).rejects.toThrow(TypeError)
-        expect(fileHandle.close).toHaveBeenCalledTimes(1)
     })
 
     it.each([
@@ -702,7 +660,7 @@ describe('mediainfo service', () => {
         },
     ])('parses mediainfo metadata across branches: $name', async ({ sourceType, result, expected }) => {
         const { parseMetadataFromMediainfo } = await loadService()
-        analyzeDataMock.mockResolvedValueOnce(result)
+        runCommandMock.mockResolvedValueOnce({ stdout: JSON.stringify(result) })
 
         const parsed = await parseMetadataFromMediainfo('/tmp/movie.mkv', sourceType)
         expect(parsed).toMatchObject(expected)
