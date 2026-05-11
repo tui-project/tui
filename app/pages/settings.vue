@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import * as z from 'zod'
-import { ref } from 'vue'
 import type { FormErrorEvent, FormSubmitEvent } from '@nuxt/ui'
 import type { AppSettings } from '../composables/useSettings'
 
 type SettingsFormState = z.output<typeof schema>
 
 const { getSettings, saveSettings, loading, error } = useSettings()
+const toast = useToast()
 
 const schema = z
     .object({
@@ -22,10 +22,11 @@ const schema = z
                 passKey: z.string().nullable().optional(),
             })
         ),
+        mediainfoPath: z.string().trim().min(1, 'Mediainfo Path is required.'),
         ffmpegPath: z.string().trim().min(1, 'FFmpeg Path is required.'),
         ffprobePath: z.string().trim().min(1, 'FFprobe Path is required.'),
-        movieScreenshotCount: z.number().int().min(1, 'Movie screenshot count must be at least 1.'),
-        tvEpisodeScreenshotCount: z.number().int().min(1, 'TV episode screenshot count must be at least 1.'),
+        movieScreenshotCount: z.number('Movie Screenshot Count is required.').int().min(1, 'Movie screenshot count must be at least 1.'),
+        tvEpisodeScreenshotCount: z.number('TV Episode Screenshot Count is required.').int().min(1, 'TV episode screenshot count must be at least 1.'),
     })
     .superRefine((value, ctx) => {
         const selectedImageHosts = value.imageHostProviders.filter((provider) => provider.selected)
@@ -58,12 +59,12 @@ const schema = z
         }
     })
 
-const successfullySaved = ref(false)
 const formState = reactive<AppSettings>({
     mediaPaths: [] as string[],
     tmdbApiKey: '',
     imageHostProviders: [] as AppSettings['imageHostProviders'],
     trackers: [] as AppSettings['trackers'],
+    mediainfoPath: 'mediainfo',
     ffmpegPath: 'ffmpeg',
     ffprobePath: 'ffprobe',
     movieScreenshotCount: 6,
@@ -71,8 +72,6 @@ const formState = reactive<AppSettings>({
 })
 
 async function onError(event: FormErrorEvent) {
-    successfullySaved.value = false
-
     const firstError = event?.errors?.[0]
     if (!firstError) {
         return
@@ -85,69 +84,24 @@ async function onError(event: FormErrorEvent) {
     }
 }
 
-function isTrackerSelected(trackerCode: string) {
-    return formState.trackers.find((tracker) => tracker.code === trackerCode)?.selected ?? false
-}
-
-function toggleTracker(trackerCode: string, checked: boolean | 'indeterminate') {
-    const tracker = formState.trackers.find((item) => item.code === trackerCode)
-    if (!tracker) {
-        return
-    }
-
-    tracker.selected = checked === true
-}
-
-function isImageHostSelected(providerCode: string) {
-    return formState.imageHostProviders.find((provider) => provider.code === providerCode)?.selected ?? false
-}
-
-function toggleImageHostProvider(providerCode: string, checked: boolean | 'indeterminate') {
-    const provider = formState.imageHostProviders.find((item) => item.code === providerCode)
-    if (!provider) {
-        return
-    }
-
-    provider.selected = checked === true
-}
-
 async function onSubmit(event: FormSubmitEvent<SettingsFormState>) {
-    successfullySaved.value = false
-
     const response = await saveSettings(buildSaveSettingsRequest(event.data))
 
-    if (response) {
-        formState.mediaPaths = response.mediaPaths
-        formState.tmdbApiKey = response.tmdbApiKey
-        formState.imageHostProviders = response.imageHostProviders
-        formState.trackers = response.trackers
-        formState.ffmpegPath = response.ffmpegPath
-        formState.ffprobePath = response.ffprobePath
-        formState.movieScreenshotCount = response.movieScreenshotCount
-        formState.tvEpisodeScreenshotCount = response.tvEpisodeScreenshotCount
+    if (error.value) {
+        return
     }
 
-    if (!error.value) {
-        successfullySaved.value = true
-    }
+    Object.assign(formState, response)
+
+    toast.add({
+        title: 'Settings successfully saved.',
+        color: 'success',
+    })
 }
 
-async function loadSettings() {
+onMounted(async () => {
     const response = await getSettings()
-    if (response) {
-        formState.mediaPaths = response.mediaPaths
-        formState.tmdbApiKey = response.tmdbApiKey
-        formState.imageHostProviders = response.imageHostProviders
-        formState.trackers = response.trackers
-        formState.ffmpegPath = response.ffmpegPath
-        formState.ffprobePath = response.ffprobePath
-        formState.movieScreenshotCount = response.movieScreenshotCount
-        formState.tvEpisodeScreenshotCount = response.tvEpisodeScreenshotCount
-    }
-}
-
-onMounted(() => {
-    loadSettings()
+    Object.assign(formState, response)
 })
 
 function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
@@ -167,6 +121,7 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
             ...(tracker.selected && tracker.apiKey ? { apiKey: tracker.apiKey } : {}),
             ...(tracker.selected && tracker.passKey ? { passKey: tracker.passKey } : {}),
         })),
+        mediainfoPath: settings.mediainfoPath,
         ffmpegPath: settings.ffmpegPath,
         ffprobePath: settings.ffprobePath,
         movieScreenshotCount: settings.movieScreenshotCount,
@@ -178,15 +133,13 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
 <template>
     <PageContainer>
         <PageHeader title="Settings" description="Configure settings for the application." />
-
-        <UAlert v-if="error" color="error" variant="soft" title="Failed to load settings. Please try again." />
-        <UAlert v-if="successfullySaved" color="success" variant="soft" title="Settings successfully saved." />
-
         <div v-if="loading" class="space-y-2">
             <USkeleton class="h-20 w-full" />
             <USkeleton class="h-20 w-full" />
             <USkeleton class="h-20 w-full" />
         </div>
+
+        <UAlert v-else-if="error" color="error" variant="soft" title="Failed to load settings. Please try again." />
 
         <UForm v-else :schema="schema" :state="formState" @submit="onSubmit" @error="onError">
             <UCard title="Media paths" description="Root directory paths to access media" variant="subtle">
@@ -209,65 +162,30 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
                     <div class="space-y-4">
                         <template v-for="(tracker, index) in formState.trackers" :key="tracker.code">
                             <div class="space-y-4">
-                                <UCheckbox
-                                    :model-value="isTrackerSelected(tracker.code)"
-                                    :label="`${tracker.name} (${tracker.code})`"
-                                    :aria-label="`${tracker.name} (${tracker.code})`"
-                                    @update:model-value="(checked) => toggleTracker(tracker.code, checked)"
-                                />
+                                <UCheckbox v-model="tracker.selected" :label="`${tracker.name} (${tracker.code})`" :aria-label="`${tracker.name} (${tracker.code})`" />
 
-                                <div v-if="isTrackerSelected(tracker.code)" class="space-y-4 pl-6">
+                                <div v-if="tracker.selected" class="space-y-4 pl-6">
                                     <UFormField label="API Key" :name="`trackers.${index}.apiKey`" required>
-                                        <UInput
-                                            :model-value="tracker.apiKey ?? ''"
-                                            size="xl"
-                                            class="w-full"
-                                            :placeholder="`Enter ${tracker.code} API key`"
-                                            @update:model-value="(value) => (tracker.apiKey = value)"
-                                        />
+                                        <UInput v-model="tracker.apiKey" size="xl" class="w-full" :placeholder="`Enter ${tracker.code} API key`" />
                                     </UFormField>
 
                                     <UFormField label="Pass Key" :name="`trackers.${index}.passKey`" required>
-                                        <UInput
-                                            :model-value="tracker.passKey ?? ''"
-                                            size="xl"
-                                            class="w-full"
-                                            :placeholder="`Enter ${tracker.code} pass key`"
-                                            @update:model-value="(value) => (tracker.passKey = value)"
-                                        />
+                                        <UInput v-model="tracker.passKey" size="xl" class="w-full" :placeholder="`Enter ${tracker.code} pass key`" />
                                     </UFormField>
                                 </div>
 
-                                <USeparator v-if="index < formState.trackers.length - 1 && isTrackerSelected(tracker.code)" />
+                                <USeparator v-if="index < formState.trackers.length - 1 && tracker.selected" />
                             </div>
                         </template>
                     </div>
                 </div>
             </UCard>
 
-            <UCard title="Screenshots" description="Configure screenshot generation and upload settings" variant="subtle" class="mt-4">
+            <UCard title="External tools" description="Paths to required system binaries" variant="subtle" class="mt-4">
                 <div class="space-y-4">
-                    <div class="text-sm font-medium text-highlighted">Image Host Providers</div>
-                    <template v-for="(provider, index) in formState.imageHostProviders" :key="provider.code">
-                        <UCheckbox
-                            :model-value="isImageHostSelected(provider.code)"
-                            :label="provider.name"
-                            :aria-label="provider.name"
-                            @update:model-value="(checked) => toggleImageHostProvider(provider.code, checked)"
-                        />
-
-                        <UFormField v-if="isImageHostSelected(provider.code)" :label="`${provider.name} API Key`" :name="`imageHostProviders.${index}.apiKey`" required>
-                            <UInput
-                                :model-value="provider.apiKey ?? ''"
-                                size="xl"
-                                class="w-full"
-                                :placeholder="`Enter ${provider.name} API key`"
-                                @update:model-value="(value) => (provider.apiKey = value)"
-                            />
-                        </UFormField>
-
-                        <USeparator v-if="isImageHostSelected(provider.code)" />
-                    </template>
+                    <UFormField label="Mediainfo Path" name="mediainfoPath" required>
+                        <UInput v-model="formState.mediainfoPath" size="xl" class="w-full" placeholder="mediainfo" />
+                    </UFormField>
 
                     <UFormField label="FFmpeg Path" name="ffmpegPath" required>
                         <UInput v-model="formState.ffmpegPath" size="xl" class="w-full" placeholder="ffmpeg" />
@@ -276,14 +194,44 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
                     <UFormField label="FFprobe Path" name="ffprobePath" required>
                         <UInput v-model="formState.ffprobePath" size="xl" class="w-full" placeholder="ffprobe" />
                     </UFormField>
+                </div>
+            </UCard>
 
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <UFormField label="Movie Screenshot Count" name="movieScreenshotCount">
-                            <UInput v-model.number="formState.movieScreenshotCount" type="number" min="1" size="xl" class="w-full" placeholder="6" />
+            <UCard title="Screenshots" description="Configure screenshot generation and upload settings" variant="subtle" class="mt-4">
+                <div class="space-y-4">
+                    <div class="text-sm font-medium text-highlighted">Image Host Providers</div>
+                    <template v-for="provider in formState.imageHostProviders" :key="provider.code">
+                        <UCheckbox v-model="provider.selected" :label="provider.name" :aria-label="provider.name" />
+
+                        <UFormField v-if="provider.selected" :label="`${provider.name} API Key`" :name="`imageHostProviders.${formState.imageHostProviders.indexOf(provider)}.apiKey`" required>
+                            <UInput v-model="provider.apiKey" size="xl" class="w-full" :placeholder="`Enter ${provider.name} API key`" />
                         </UFormField>
 
-                        <UFormField label="TV Episode Screenshot Count" name="tvEpisodeScreenshotCount">
-                            <UInput v-model.number="formState.tvEpisodeScreenshotCount" type="number" min="1" size="xl" class="w-full" placeholder="3" />
+                        <USeparator v-if="provider.selected" />
+                    </template>
+
+                    <div class="grid gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                        <UFormField label="Movie Screenshot Count" name="movieScreenshotCount" required>
+                            <UInputNumber
+                                v-model="formState.movieScreenshotCount"
+                                size="xl"
+                                placeholder="Movie screenshot count"
+                                :min="1"
+                                :increment="false"
+                                :decrement="false"
+                                :format-options="{ useGrouping: false }"
+                            />
+                        </UFormField>
+                        <UFormField label="Tv Episode Screenshot Count" name="tvEpisodeScreenshotCount" required>
+                            <UInputNumber
+                                v-model="formState.tvEpisodeScreenshotCount"
+                                size="xl"
+                                placeholder="Tv episode screenshot count"
+                                :min="1"
+                                :increment="false"
+                                :decrement="false"
+                                :format-options="{ useGrouping: false }"
+                            />
                         </UFormField>
                     </div>
                 </div>

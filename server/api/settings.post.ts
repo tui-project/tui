@@ -65,6 +65,7 @@ const settingsRequestSchema = z.object({
     tmdbApiKey: trimmedRequiredStringSchema,
     imageHostProviders: z.array(imageHostProviderSchema),
     trackers: z.array(trackerSchema),
+    mediainfoPath: trimmedRequiredStringSchema,
     ffmpegPath: trimmedRequiredStringSchema,
     ffprobePath: trimmedRequiredStringSchema,
     movieScreenshotCount: z.number().int().positive(),

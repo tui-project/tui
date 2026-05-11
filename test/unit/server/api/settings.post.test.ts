@@ -114,6 +114,7 @@ describe('POST /api/settings route handler', () => {
             tmdbApiKey: 'abc',
             imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', url: 'https://api.imgbb.com/1/upload?key=', selected: true, apiKey: 'imgbb-key' }],
             trackers: [{ code: 'FNP', name: 'FearNoPeer', url: 'https://fearnopeer.com', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
+            mediainfoPath: 'mediainfo',
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
@@ -126,6 +127,7 @@ describe('POST /api/settings route handler', () => {
             tmdbApiKey: 'abc',
             imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', selected: true, apiKey: 'imgbb-key' }],
             trackers: [{ code: 'FNP', name: 'FearNoPeer', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
+            mediainfoPath: 'mediainfo',
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
@@ -153,6 +155,7 @@ describe('POST /api/settings route handler', () => {
                     passKey: 'pass-key',
                 },
             ],
+            mediainfoPath: 'mediainfo',
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
@@ -167,6 +170,7 @@ function baseRequest(
         tmdbApiKey: unknown
         imageHostProviders: unknown
         trackers: unknown
+        mediainfoPath: unknown
         ffmpegPath: unknown
         ffprobePath: unknown
         movieScreenshotCount: unknown
@@ -178,6 +182,7 @@ function baseRequest(
         tmdbApiKey: 'abc',
         imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', selected: true, apiKey: 'imgbb-key' }],
         trackers: [{ code: 'FNP', name: 'FearNoPeer', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
+        mediainfoPath: 'mediainfo',
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,

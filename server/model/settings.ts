@@ -4,6 +4,7 @@ export interface Settings {
     tmdbApiKey: string
     imageHostProviders: ImageHostProviderSettings[]
     trackers: TrackerSettings[]
+    mediainfoPath: string
     ffmpegPath: string
     ffprobePath: string
     movieScreenshotCount: number

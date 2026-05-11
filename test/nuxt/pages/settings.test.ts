@@ -9,10 +9,15 @@ import type { AppSettings } from '../../../app/composables/useSettings'
 const loadingRef = ref(false)
 const errorRef = ref(false)
 
-const { getSettingsMock, saveSettingsMock } = vi.hoisted(() => ({
+const { getSettingsMock, saveSettingsMock, toastAddMock } = vi.hoisted(() => ({
     getSettingsMock: vi.fn(),
     saveSettingsMock: vi.fn(),
+    toastAddMock: vi.fn(),
 }))
+
+mockNuxtImport('useToast', () => {
+    return () => ({ add: toastAddMock })
+})
 
 mockNuxtImport('useSettings', () => {
     return () => ({
@@ -29,6 +34,7 @@ function buildSettings(overrides: Partial<AppSettings> = {}) {
         tmdbApiKey: 'tmdb-key',
         imageHostProviders: [{ selected: false, code: 'imgbb', name: 'ImgBB' }],
         trackers: [{ selected: false, code: 'FNP', name: 'FearNoPeer' }],
+        mediainfoPath: 'mediainfo',
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,
@@ -45,6 +51,7 @@ describe('settings page', () => {
     beforeEach(() => {
         getSettingsMock.mockReset()
         saveSettingsMock.mockReset()
+        toastAddMock.mockReset()
         loadingRef.value = false
         errorRef.value = false
     })
@@ -70,7 +77,11 @@ describe('settings page', () => {
         await renderSuspended(SettingsPage)
         await user.click(screen.getByRole('button', { name: /save/i }))
 
-        expect(await screen.findByText('Settings successfully saved.')).toBeDefined()
+        await waitFor(() => {
+            expect(toastAddMock).toHaveBeenCalledWith(
+                expect.objectContaining({ title: 'Settings successfully saved.', color: 'success' })
+            )
+        })
     })
 
     it('loads and submits screenshot settings in nested provider payload', async () => {
@@ -374,10 +385,10 @@ describe('settings page', () => {
 
         await renderSuspended(SettingsPage)
 
-        await user.clear(screen.getByPlaceholderText('6'))
-        await user.type(screen.getByPlaceholderText('6'), '8')
-        await user.clear(screen.getByPlaceholderText('3'))
-        await user.type(screen.getByPlaceholderText('3'), '4')
+        await user.clear(screen.getByLabelText('Movie Screenshot Count'))
+        await user.type(screen.getByLabelText('Movie Screenshot Count'), '8')
+        await user.clear(screen.getByLabelText('Tv Episode Screenshot Count'))
+        await user.type(screen.getByLabelText('Tv Episode Screenshot Count'), '4')
         await user.click(screen.getByRole('button', { name: /save/i }))
 
         expect(saveSettingsMock).toHaveBeenCalledWith(
@@ -389,48 +400,30 @@ describe('settings page', () => {
         )
 
         await waitFor(() => {
-            expect((screen.getByPlaceholderText('6') as HTMLInputElement).value).toBe('8')
-            expect((screen.getByPlaceholderText('3') as HTMLInputElement).value).toBe('4')
+            expect((screen.getByLabelText('Movie Screenshot Count') as HTMLInputElement).value).toBe('8')
+            expect((screen.getByLabelText('Tv Episode Screenshot Count') as HTMLInputElement).value).toBe('4')
         })
     })
 
-    it('handles the tracker and image host toggle helpers directly', async () => {
+    it('refreshes all tool path and screenshot fields from the save response', async () => {
         getSettingsMock.mockResolvedValue(
             buildSettings({
                 mediaPaths: ['/media/a'],
-                imageHostProviders: [{ selected: false, code: 'imgbb', name: 'ImgBB' }],
-                trackers: [{ selected: false, code: 'FNP', name: 'FearNoPeer' }],
-            })
-        )
-
-        const wrapper = await mountSuspended(SettingsPage)
-        const vm = wrapper.vm as unknown as {
-            formState: AppSettings
-            toggleTracker: (trackerCode: string, checked: boolean | 'indeterminate') => void
-            toggleImageHostProvider: (providerCode: string, checked: boolean | 'indeterminate') => void
-            onSubmit: (event: { data: AppSettings }) => Promise<void>
-        }
-
-        vm.toggleTracker('FNP', true)
-        vm.toggleImageHostProvider('imgbb', true)
-
-        expect(vm.formState.trackers[0]?.selected).toBe(true)
-        expect(vm.formState.imageHostProviders[0]?.selected).toBe(true)
-    })
-
-    it('refreshes ffmpeg and ffprobe values when submit resolves with saved settings', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
+                mediainfoPath: 'mediainfo',
                 ffmpegPath: 'ffmpeg',
                 ffprobePath: 'ffprobe',
+                movieScreenshotCount: 6,
+                tvEpisodeScreenshotCount: 3,
             })
         )
         saveSettingsMock.mockResolvedValue(
             buildSettings({
                 mediaPaths: ['/media/a'],
+                mediainfoPath: '/custom/mediainfo',
                 ffmpegPath: '/custom/ffmpeg',
                 ffprobePath: '/custom/ffprobe',
+                movieScreenshotCount: 10,
+                tvEpisodeScreenshotCount: 5,
             })
         )
 
@@ -443,13 +436,42 @@ describe('settings page', () => {
         await vm.onSubmit({
             data: buildSettings({
                 mediaPaths: ['/media/a'],
+                mediainfoPath: '/custom/mediainfo',
                 ffmpegPath: '/custom/ffmpeg',
                 ffprobePath: '/custom/ffprobe',
             }),
         })
 
+        expect(vm.formState.mediainfoPath).toBe('/custom/mediainfo')
         expect(vm.formState.ffmpegPath).toBe('/custom/ffmpeg')
         expect(vm.formState.ffprobePath).toBe('/custom/ffprobe')
+        expect(vm.formState.movieScreenshotCount).toBe(10)
+        expect(vm.formState.tvEpisodeScreenshotCount).toBe(5)
+    })
+
+    it('shows loading skeletons while settings are loading', async () => {
+        loadingRef.value = true
+        getSettingsMock.mockResolvedValue(buildSettings())
+
+        const wrapper = await mountSuspended(SettingsPage)
+
+        expect(wrapper.find('[data-media-paths-input]').exists()).toBe(false)
+    })
+
+    it('blocks submit when mediainfoPath is empty', async () => {
+        getSettingsMock.mockResolvedValue(
+            buildSettings({
+                mediaPaths: ['/media/a'],
+                mediainfoPath: '',
+            })
+        )
+        const user = userEvent.setup()
+
+        await renderSuspended(SettingsPage)
+        await user.click(screen.getByRole('button', { name: /save/i }))
+
+        expect(await screen.findByText('Mediainfo Path is required.')).toBeDefined()
+        expect(saveSettingsMock).not.toHaveBeenCalled()
     })
 
     it('responds to checkbox and input update events from the rendered form controls', async () => {

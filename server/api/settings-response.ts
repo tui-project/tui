@@ -11,6 +11,7 @@ export function toSettingsResponse(settings: Settings): SettingsDto {
         tmdbApiKey: settings.tmdbApiKey,
         imageHostProviders: settings.imageHostProviders.map(({ url: _url, ...provider }) => provider),
         trackers: settings.trackers.map(({ url: _url, ...tracker }) => tracker),
+        mediainfoPath: settings.mediainfoPath,
         ffmpegPath: settings.ffmpegPath,
         ffprobePath: settings.ffprobePath,
         movieScreenshotCount: settings.movieScreenshotCount,
