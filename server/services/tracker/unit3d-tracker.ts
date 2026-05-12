@@ -29,7 +29,7 @@ const RESOLUTION_IDS: Record<Resolution, number> = {
     [RESOLUTIONS['480i']]: 9,
 }
 
-export function createUnit3dService(url: string, apiKey: string, buildTitle?: (metadata: TrackerUploadMetadata) => string): TrackerService {
+export function createUnit3dService(url: string, apiKey: string, buildTitle?: (metadata: TrackerUploadMetadata) => Promise<string>): TrackerService {
     /*
      * refer to: https://hdinnovations.github.io/UNIT3D/torrent_api.html
      */
@@ -76,7 +76,7 @@ export function createUnit3dService(url: string, apiKey: string, buildTitle?: (m
     }
 
     return {
-        getTitle: buildTitle ?? (() => ''),
+        getTitle: buildTitle ?? (() => Promise.resolve('')),
         upload,
     }
 }

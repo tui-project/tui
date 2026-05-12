@@ -1,4 +1,5 @@
 import { MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, SOURCES, type SourceType } from '../../../model/metadata'
+import { getTvdbSeries } from '../../tvdb'
 import type { TrackerService, TrackerUploadMetadata } from '../tracker'
 import { createUnit3dService } from '../unit3d-tracker'
 
@@ -6,7 +7,7 @@ export function createUlcxTrackerService(url: string, apiKey: string): TrackerSe
     return createUnit3dService(url, apiKey, buildTitle)
 }
 
-function buildTitle(metadata: TrackerUploadMetadata) {
+async function buildTitle(metadata: TrackerUploadMetadata) {
     //Refer to: https://upload.cx/wikis/7
 
     const isRemux = metadata.sourceType === SOURCE_TYPES.REMUX
@@ -14,8 +15,12 @@ function buildTitle(metadata: TrackerUploadMetadata) {
 
     if (metadata?.originalTitle !== metadata.title) parts.push(`AKA ${metadata.originalTitle}`)
     // LOCALE — not available in metadata model; skip
-    // Year - needs changes:
-    if (metadata.mediaType === MEDIA_TYPES.MOVIE) parts.push(String(metadata.year))
+    if (metadata.mediaType === MEDIA_TYPES.MOVIE) {
+        parts.push(String(metadata.year))
+    } else if (metadata.mediaType === MEDIA_TYPES.TV && metadata.tvdbId) {
+        const series = await getTvdbSeries(metadata.tvdbId)
+        if (series && hasYearQualifier(series.title)) parts.push(String(metadata.year))
+    }
     parts.push(buildSeasonEpisodeString(metadata.season, metadata.episode))
     if (metadata.cut) parts.push(metadata.cut)
     if (metadata.ratio) parts.push(metadata.ratio)
@@ -47,6 +52,11 @@ function buildTitle(metadata: TrackerUploadMetadata) {
     }
 
     return `${parts.filter(Boolean).join(' ')}-${metadata.releaseGroup ?? 'NOGROUP'}`
+}
+
+function hasYearQualifier(title: string): boolean {
+    const YEAR_QUALIFIER_PATTERN = /\(\d{4}\)$/
+    return YEAR_QUALIFIER_PATTERN.test(title.trim())
 }
 
 function buildSeasonEpisodeString(season?: number, episode?: number): string {

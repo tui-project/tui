@@ -24,6 +24,10 @@ pnpm build                           # typecheck + production build
 
 Run the focused test first after a small change, then the full unit project, then `pnpm typecheck` before wrapping up.
 
+When adding new logic, run `pnpm test:coverage` and verify:
+1. All tests pass
+2. New code has 100% coverage — every branch, including error paths and null guards
+
 ## Architecture
 
 ### Stack

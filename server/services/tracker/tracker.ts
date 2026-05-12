@@ -31,6 +31,6 @@ export interface TrackerUploadOptions {
 }
 
 export interface TrackerService {
-    getTitle(metadata: TrackerUploadMetadata): string
+    getTitle(metadata: TrackerUploadMetadata): Promise<string>
     upload(torrentPath: string, metadata: TrackerUploadMetadata, description: string, mediainfoText: string, options: TrackerUploadOptions): Promise<void>
 }

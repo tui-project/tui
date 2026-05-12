@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
     })
 
     const service = await createTrackerService(trackerCode)
-    const title = service.getTitle(request.metadata)
+    const title = await service.getTitle(request.metadata)
 
     logger.debug('Tracker title built.', { trackerCode, title })
 

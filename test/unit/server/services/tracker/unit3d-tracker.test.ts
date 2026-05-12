@@ -39,15 +39,15 @@ beforeEach(() => {
 })
 
 describe('createUnit3dService — getTitle', () => {
-    it('returns empty string when no buildTitle is provided', () => {
+    it('returns empty string when no buildTitle is provided', async () => {
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
-        expect(service.getTitle(baseMetadata)).toBe('')
+        expect(await service.getTitle(baseMetadata)).toBe('')
     })
 
-    it('uses a custom buildTitle function when provided', () => {
-        const customTitle = vi.fn().mockReturnValue('CUSTOM')
+    it('uses a custom buildTitle function when provided', async () => {
+        const customTitle = vi.fn().mockResolvedValue('CUSTOM')
         const customService = createUnit3dService('https://tracker.example.com', 'apikey', customTitle)
-        expect(customService.getTitle(baseMetadata)).toBe('CUSTOM')
+        expect(await customService.getTitle(baseMetadata)).toBe('CUSTOM')
         expect(customTitle).toHaveBeenCalledWith(baseMetadata)
     })
 })
