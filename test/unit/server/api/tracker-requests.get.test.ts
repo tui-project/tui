@@ -92,9 +92,7 @@ describe('GET /api/tracker/requests route handler', () => {
         const handler = await loadHandler()
         const result = await handler({})
 
-        expect(result).toEqual([
-            expect.objectContaining({ id: 'legacy-1', trackers: [] }),
-        ])
+        expect(result).toEqual([expect.objectContaining({ id: 'legacy-1', trackers: [] })])
     })
 
     it('passes undefined to the repository when limit is not provided', async () => {
