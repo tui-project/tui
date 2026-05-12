@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createUlcxTrackerService } from '../../../../../server/services/tracker/trackers/ulcx'
-import { MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, SOURCES } from '../../../../../server/model/metadata'
+import { MEDIA_TYPES, RATIOS, RESOLUTIONS, SOURCE_TYPES, SOURCES } from '../../../../../server/model/metadata'
 import type { TrackerUploadMetadata } from '../../../../../server/services/tracker/tracker'
 
 const baseMetadata: TrackerUploadMetadata = {
@@ -15,6 +15,8 @@ const baseMetadata: TrackerUploadMetadata = {
     source: SOURCES.BLURAY,
     repack: false,
     proper: false,
+    rerip: false,
+    threeD: false,
     hybrid: false,
     resolution: RESOLUTIONS['1080p'],
     videoCodec: 'H.264',
@@ -43,9 +45,15 @@ describe('createUlcxTrackerService — getTitle', () => {
     })
 
     it('includes PROPER and REPACK flags', () => {
-        const title = service.getTitle({ ...baseMetadata, proper: true, repack: true })
+        const title = service.getTitle({ ...baseMetadata, proper: 1, repack: 1 })
         expect(title).toContain('PROPER')
         expect(title).toContain('REPACK')
+    })
+
+    it('includes REPACK2 and PROPER2 for second repack/proper', () => {
+        const title = service.getTitle({ ...baseMetadata, repack: 2, proper: 2 })
+        expect(title).toContain('REPACK2')
+        expect(title).toContain('PROPER2')
     })
 
     it('includes Hybrid flag', () => {
@@ -174,5 +182,47 @@ describe('createUlcxTrackerService — getTitle', () => {
     it('includes year only for movie media type', () => {
         const title = service.getTitle({ ...baseMetadata, mediaType: MEDIA_TYPES.MOVIE })
         expect(title).toContain(String(baseMetadata.year))
+    })
+
+    it('includes RERip flag', () => {
+        const title = service.getTitle({ ...baseMetadata, rerip: true })
+        expect(title).toContain('RERip')
+    })
+
+    it('omits RERip when false', () => {
+        const title = service.getTitle({ ...baseMetadata, rerip: false })
+        expect(title).not.toContain('RERip')
+    })
+
+    it('includes IMAX ratio', () => {
+        const title = service.getTitle({ ...baseMetadata, ratio: RATIOS.IMAX })
+        expect(title).toContain('IMAX')
+    })
+
+    it('includes Open Matte ratio', () => {
+        const title = service.getTitle({ ...baseMetadata, ratio: RATIOS.OPEN_MATTE })
+        expect(title).toContain('Open Matte')
+    })
+
+    it('includes MAR ratio', () => {
+        const title = service.getTitle({ ...baseMetadata, ratio: RATIOS.MAR })
+        expect(title).toContain('MAR')
+    })
+
+    it('omits ratio when absent', () => {
+        const title = service.getTitle({ ...baseMetadata, ratio: undefined })
+        expect(title).not.toContain('IMAX')
+        expect(title).not.toContain('Open Matte')
+        expect(title).not.toContain('MAR')
+    })
+
+    it('includes 3D flag', () => {
+        const title = service.getTitle({ ...baseMetadata, threeD: true })
+        expect(title).toContain('3D')
+    })
+
+    it('omits 3D when false', () => {
+        const title = service.getTitle({ ...baseMetadata, threeD: false })
+        expect(title).not.toContain('3D')
     })
 })

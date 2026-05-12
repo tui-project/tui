@@ -131,8 +131,13 @@ const cutOptions: SelectOption[] = [
     { label: 'Extended', value: 'Extended' },
     { label: 'Special Edition', value: 'Special Edition' },
     { label: 'Unrated', value: 'Unrated' },
-    { label: '3D', value: '3D' },
     { label: 'Super Duper Cut', value: 'Super Duper Cut' },
+]
+
+const ratioOptions: SelectOption[] = [
+    { label: 'IMAX', value: 'IMAX' },
+    { label: 'Open Matte', value: 'Open Matte' },
+    { label: 'MAR', value: 'MAR' },
 ]
 
 const videoCodecOptions: SelectOption[] = [
@@ -263,9 +268,12 @@ const state = reactive<Metadata>({
     sourceType: '',
     source: '',
     service: '',
-    repack: false,
-    proper: false,
+    repack: 0,
+    proper: 0,
+    rerip: false,
+    threeD: false,
     cut: '',
+    ratio: '',
     hybrid: false,
     resolution: '',
     hdr: [],
@@ -440,10 +448,22 @@ function onSubmit(_: FormSubmitEvent<Schema>) {
                             <USelect v-model="state.cut" size="xl" class="w-full" placeholder="Select cut" :items="cutOptions" />
                         </UFormField>
 
+                        <UFormField label="Ratio">
+                            <USelect v-model="state.ratio" size="xl" class="w-full" placeholder="Select ratio" :items="ratioOptions" />
+                        </UFormField>
+
                         <UFormField label="Flags" class="md:col-span-2">
                             <div class="flex flex-wrap items-center gap-4 py-2">
-                                <UCheckbox v-model="state.repack" size="xl" label="Repack" color="neutral" aria-label="Repack" />
-                                <UCheckbox v-model="state.proper" size="xl" label="Proper" color="neutral" aria-label="Proper" />
+                                <div class="flex items-center gap-1.5">
+                                    <UCheckbox :model-value="state.repack > 0" size="xl" label="Repack" color="neutral" aria-label="Repack" @update:model-value="(v) => (state.repack = v ? 1 : 0)" />
+                                    <UInput v-if="state.repack > 0" v-model.number="state.repack" type="number" size="sm" :min="1" class="w-14" aria-label="Repack number" />
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <UCheckbox :model-value="state.proper > 0" size="xl" label="Proper" color="neutral" aria-label="Proper" @update:model-value="(v) => (state.proper = v ? 1 : 0)" />
+                                    <UInput v-if="state.proper > 0" v-model.number="state.proper" type="number" size="sm" :min="1" class="w-14" aria-label="Proper number" />
+                                </div>
+                                <UCheckbox v-model="state.rerip" size="xl" label="RERip" color="neutral" aria-label="RERip" />
+                                <UCheckbox v-model="state.threeD" size="xl" label="3D" color="neutral" aria-label="3D" />
                                 <UCheckbox v-model="state.hybrid" size="xl" label="Hybrid" color="neutral" aria-label="Hybrid" />
                             </div>
                         </UFormField>

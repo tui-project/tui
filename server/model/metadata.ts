@@ -14,9 +14,12 @@ export interface Metadata {
     sourceType?: SourceType
     source?: Source
     service?: Service
-    repack?: boolean
-    proper?: boolean
+    repack?: number
+    proper?: number
+    rerip?: boolean
+    threeD?: boolean
     cut?: Cut
+    ratio?: Ratio
     hybrid?: boolean
     resolution?: Resolution
     hdr?: HDR[]
@@ -135,13 +138,19 @@ export const RESOLUTIONS = {
 } as const
 export type Resolution = (typeof RESOLUTIONS)[keyof typeof RESOLUTIONS]
 
+export const RATIOS = {
+    IMAX: 'IMAX',
+    OPEN_MATTE: 'Open Matte',
+    MAR: 'MAR',
+} as const
+export type Ratio = (typeof RATIOS)[keyof typeof RATIOS] | undefined
+
 export const CUTS = {
     SUPER_DUPER: 'Super Duper Cut',
     DIRECTORS: "Director's Cut",
     SPECIAL_EDITION: 'Special Edition',
     EXTENDED: 'Extended',
     UNRATED: 'Unrated',
-    THREE_D: '3D',
 } as const
 export type Cut = (typeof CUTS)[keyof typeof CUTS] | undefined
 
@@ -212,9 +221,12 @@ export const MetadataSchema = z
         source: z.enum(SOURCES),
         sourceType: z.enum(SOURCE_TYPES),
         service: z.enum(SERVICES).optional(),
-        repack: z.boolean(),
-        proper: z.boolean(),
+        repack: z.number().int().min(0),
+        proper: z.number().int().min(0),
+        rerip: z.boolean(),
+        threeD: z.boolean(),
         cut: z.enum(CUTS).optional(),
+        ratio: z.enum(RATIOS).optional(),
         hybrid: z.boolean(),
         resolution: z.enum(RESOLUTIONS),
         hdr: z.array(z.enum(HDR_TYPES)).optional(),

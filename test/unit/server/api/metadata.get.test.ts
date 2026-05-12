@@ -35,8 +35,8 @@ beforeEach(() => {
         source: 'Web',
         service: undefined,
         cut: undefined,
-        repack: false,
-        proper: false,
+        repack: 0,
+        proper: 0,
         hybrid: false,
         releaseGroup: '',
     })
@@ -146,8 +146,8 @@ describe('GET /api/metadata route handler', () => {
             source: 'Web',
             service: undefined,
             cut: undefined,
-            repack: false,
-            proper: false,
+            repack: 0,
+            proper: 0,
             hybrid: false,
             releaseGroup: '',
         })
@@ -205,8 +205,8 @@ describe('GET /api/metadata route handler', () => {
             source: 'Web',
             service: undefined,
             cut: undefined,
-            repack: false,
-            proper: false,
+            repack: 0,
+            proper: 0,
             hybrid: false,
             releaseGroup: '',
         })

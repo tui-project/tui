@@ -28,9 +28,12 @@ function createMetadata(overrides: Partial<Metadata> = {}): Metadata {
         sourceType: 'WEB-DL',
         source: 'Web',
         service: 'NF',
-        repack: true,
-        proper: true,
+        repack: 1,
+        proper: 1,
+        rerip: false,
+        threeD: false,
         cut: 'Extened',
+        ratio: '',
         hybrid: true,
         resolution: '2160p',
         hdr: ['HDR10+'],
@@ -343,8 +346,8 @@ describe('StepMetadata', () => {
             '$fetch',
             vi.fn().mockResolvedValue(
                 createMetadata({
-                    repack: false,
-                    proper: false,
+                    repack: 0,
+                    proper: 0,
                     hybrid: false,
                 })
             )
@@ -373,8 +376,8 @@ describe('StepMetadata', () => {
                     mediaType: 'tv',
                     season: 3,
                     tvdbId: null,
-                    repack: false,
-                    proper: false,
+                    repack: 0,
+                    proper: 0,
                     hybrid: false,
                 })
             )

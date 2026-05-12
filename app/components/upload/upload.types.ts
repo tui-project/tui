@@ -14,9 +14,12 @@ export type Metadata = {
     sourceType: string
     source: string
     service: string
-    repack: boolean
-    proper: boolean
+    repack: number
+    proper: number
+    rerip: boolean
+    threeD: boolean
     cut: string
+    ratio: string
     hybrid: boolean
     resolution: string
     hdr: string[]

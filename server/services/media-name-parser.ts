@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { SERVICES, SOURCE_TYPES, SOURCES, type Cut, type Service, type Source, type SourceType } from '../model/metadata'
+import { RATIOS, SERVICES, SOURCE_TYPES, SOURCES, type Cut, type Ratio, type Service, type Source, type SourceType } from '../model/metadata'
 import { logger } from '../utils/logger'
 
 export interface ParsedNameMetadata {
@@ -9,8 +9,11 @@ export interface ParsedNameMetadata {
     source: Source
     service: Service
     cut: Cut
-    repack: boolean
-    proper: boolean
+    ratio: Ratio
+    repack: number
+    proper: number
+    rerip: boolean
+    threeD: boolean
     hybrid: boolean
     releaseGroup?: string
     title: string
@@ -28,9 +31,12 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
     const source = parseSource(upperTokens, sourceType)
     const service = parseService(upperTokens)
     const cut = parseCut(nameWithoutExtension)
-    const repack = upperTokens.some((token) => token === 'REPACK')
-    const proper = upperTokens.some((token) => token === 'PROPER')
+    const repack = parseRepackProper(upperTokens, 'REPACK')
+    const proper = parseRepackProper(upperTokens, 'PROPER')
+    const rerip = upperTokens.some((token) => token === 'RERIP')
+    const threeD = upperTokens.some((token) => token === '3D')
     const hybrid = upperTokens.some((token) => token === 'HYBRID')
+    const ratio = parseRatio(nameWithoutExtension)
     const releaseGroup = parseReleaseGroup(nameWithoutExtension)
 
     const parsedMetadata = {
@@ -41,8 +47,11 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
         source,
         service,
         cut,
+        ratio,
         repack,
         proper,
+        rerip,
+        threeD,
         hybrid,
         releaseGroup,
     }
@@ -50,6 +59,13 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
     logger.debug('Parsed media metadata from name.', parsedMetadata)
 
     return parsedMetadata
+}
+
+function parseRepackProper(upperTokens: string[], keyword: string): number {
+    for (let n = 9; n >= 2; n--) {
+        if (upperTokens.includes(`${keyword}${n}`)) return n
+    }
+    return upperTokens.includes(keyword) ? 1 : 0
 }
 
 function stripFileExtension(name: string) {
@@ -142,8 +158,19 @@ function parseCut(name: string): Cut {
             return 'Extended'
         case /unrated/i.test(name):
             return 'Unrated'
-        case /\b3D\b/i.test(name):
-            return '3D'
+        default:
+            return undefined
+    }
+}
+
+function parseRatio(name: string): Ratio {
+    switch (true) {
+        case /\bIMAX\b/i.test(name):
+            return RATIOS.IMAX
+        case /open[.\s_-]*matte/i.test(name):
+            return RATIOS.OPEN_MATTE
+        case /\bMAR\b/.test(name):
+            return RATIOS.MAR
         default:
             return undefined
     }

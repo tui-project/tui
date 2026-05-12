@@ -18,14 +18,13 @@ function buildTitle(metadata: TrackerUploadMetadata) {
     if (metadata.mediaType === MEDIA_TYPES.MOVIE) parts.push(String(metadata.year))
     parts.push(buildSeasonEpisodeString(metadata.season, metadata.episode))
     if (metadata.cut) parts.push(metadata.cut)
-    /// Ratio — not available in metadata model; skip
+    if (metadata.ratio) parts.push(metadata.ratio)
     if (metadata.hybrid && metadata.sourceType !== SOURCE_TYPES.WEB_DL) parts.push('Hybrid')
-    if (metadata.repack) parts.push('REPACK')
-    if (metadata.proper) parts.push('PROPER')
-    // RERip — not available in metadata model; skip
+    if (metadata.repack) parts.push(metadata.repack === 1 ? 'REPACK' : `REPACK${metadata.repack}`)
+    if (metadata.proper) parts.push(metadata.proper === 1 ? 'PROPER' : `PROPER${metadata.proper}`)
+    if (metadata.rerip) parts.push('RERip')
+    if (metadata.threeD) parts.push('3D')
     if (metadata.source === SOURCES.DVD) parts.push(metadata.resolution)
-    // Edition — not available in metadata model; skip
-    // 3D — not available in metadata model; skip
     parts.push(buildSourceString(metadata))
     parts.push(buildTypeString(metadata.sourceType))
 
