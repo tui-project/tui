@@ -67,7 +67,7 @@ describe('POST /api/settings route handler', () => {
     it('rejects selected tracker without api key and pass key', async () => {
         readBody.mockResolvedValue(
             baseRequest({
-                trackers: [{ code: 'FNP', name: 'FearNoPeer', selected: true }],
+                trackers: [{ code: 'ULCX', name: 'Upload.cx', selected: true }],
             })
         )
         const handler = await loadHandler()
@@ -113,7 +113,7 @@ describe('POST /api/settings route handler', () => {
             mediaPaths: ['/a', '/b'],
             tmdbApiKey: 'abc',
             imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', url: 'https://api.imgbb.com/1/upload?key=', selected: true, apiKey: 'imgbb-key' }],
-            trackers: [{ code: 'FNP', name: 'FearNoPeer', url: 'https://fearnopeer.com', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
+            trackers: [{ code: 'ULCX', name: 'Upload.cx', url: 'https://upload.cx', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
             mediainfoPath: 'mediainfo',
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
@@ -126,7 +126,7 @@ describe('POST /api/settings route handler', () => {
             mediaPaths: ['/a', '/b'],
             tmdbApiKey: 'abc',
             imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', selected: true, apiKey: 'imgbb-key' }],
-            trackers: [{ code: 'FNP', name: 'FearNoPeer', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
+            trackers: [{ code: 'ULCX', name: 'Upload.cx', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
             mediainfoPath: 'mediainfo',
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
@@ -147,8 +147,8 @@ describe('POST /api/settings route handler', () => {
             ],
             trackers: [
                 {
-                    code: 'FNP',
-                    name: 'FearNoPeer',
+                    code: 'ULCX',
+                    name: 'Upload.cx',
                     url: '',
                     selected: true,
                     apiKey: 'api-key',
@@ -181,7 +181,7 @@ function baseRequest(
         mediaPaths: ['/ok'],
         tmdbApiKey: 'abc',
         imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', selected: true, apiKey: 'imgbb-key' }],
-        trackers: [{ code: 'FNP', name: 'FearNoPeer', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
+        trackers: [{ code: 'ULCX', name: 'Upload.cx', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
         mediainfoPath: 'mediainfo',
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',

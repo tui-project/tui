@@ -43,9 +43,9 @@ describe('useTrackerTitle composable', () => {
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useTrackerTitle } = await import('../../../../app/composables/useTrackerTitle')
-        const { fetchTitle, loading, error } = useTrackerTitle()
+        const { getTitle, loading, error } = useTrackerTitle()
 
-        const result = await fetchTitle('FNP', buildMetadata())
+        const result = await getTitle('ULCX', buildMetadata())
 
         expect(result).toBe('Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP')
         expect(loading.value).toBe(false)
@@ -57,9 +57,9 @@ describe('useTrackerTitle composable', () => {
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useTrackerTitle } = await import('../../../../app/composables/useTrackerTitle')
-        const { fetchTitle } = useTrackerTitle()
+        const { getTitle } = useTrackerTitle()
 
-        await fetchTitle('ATH', buildMetadata())
+        await getTitle('ATH', buildMetadata())
 
         expect(fetchMock).toHaveBeenCalledWith('/api/tracker/ATH/title', expect.objectContaining({ method: 'POST' }))
     })
@@ -69,10 +69,10 @@ describe('useTrackerTitle composable', () => {
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useTrackerTitle } = await import('../../../../app/composables/useTrackerTitle')
-        const { fetchTitle } = useTrackerTitle()
+        const { getTitle } = useTrackerTitle()
 
         const metadata = buildMetadata()
-        await fetchTitle('FNP', metadata)
+        await getTitle('ULCX', metadata)
 
         const body = fetchMock.mock.calls[0][1].body
         expect(body.metadata).not.toHaveProperty('service')
@@ -88,11 +88,11 @@ describe('useTrackerTitle composable', () => {
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useTrackerTitle } = await import('../../../../app/composables/useTrackerTitle')
-        const { fetchTitle, loading, error } = useTrackerTitle()
+        const { getTitle, loading, error } = useTrackerTitle()
 
-        const result = await fetchTitle('FNP', buildMetadata())
+        const result = await getTitle('ULCX', buildMetadata())
 
-        expect(result).toBeNull()
+        expect(result).toBeUndefined()
         expect(loading.value).toBe(false)
         expect(error.value).toBe(true)
     })
@@ -108,9 +108,9 @@ describe('useTrackerTitle composable', () => {
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useTrackerTitle } = await import('../../../../app/composables/useTrackerTitle')
-        const { fetchTitle, loading } = useTrackerTitle()
+        const { getTitle, loading } = useTrackerTitle()
 
-        const promise = fetchTitle('FNP', buildMetadata())
+        const promise = getTitle('ULCX', buildMetadata())
         expect(loading.value).toBe(true)
 
         resolveTitle?.({ title: 'Done' })
@@ -138,10 +138,10 @@ describe('useTrackerTitle composable', () => {
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useTrackerTitle } = await import('../../../../app/composables/useTrackerTitle')
-        const { fetchTitle, loading } = useTrackerTitle()
+        const { getTitle, loading } = useTrackerTitle()
 
-        const p1 = fetchTitle('FNP', buildMetadata())
-        const p2 = fetchTitle('ATH', buildMetadata())
+        const p1 = getTitle('ULCX', buildMetadata())
+        const p2 = getTitle('ATH', buildMetadata())
         expect(loading.value).toBe(true)
 
         resolve1?.({ title: 'T1' })

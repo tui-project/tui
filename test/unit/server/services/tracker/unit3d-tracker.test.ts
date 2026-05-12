@@ -40,7 +40,7 @@ describe('createUnit3dService — getTitle (default getCommonTitle)', () => {
     const service = createUnit3dService('https://tracker.example.com', 'apikey')
 
     it('builds a basic movie title', () => {
-        expect(service.getTitle(baseMetadata)).toBe('Movie (2024) 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP')
+        expect(service.getTitle(baseMetadata)).toBe('Movie 2024 1080p BluRay DTS-HD MA 5.1 H.264-GROUP')
     })
 
     it('includes TV season and episode when present', () => {
@@ -62,7 +62,7 @@ describe('createUnit3dService — getTitle (default getCommonTitle)', () => {
 
     it('includes HYBRiD flag', () => {
         const title = service.getTitle({ ...baseMetadata, hybrid: true })
-        expect(title).toContain('HYBRiD')
+        expect(title).toContain('Hybrid')
     })
 
     it('uses streaming service name for WEB source', () => {
@@ -73,6 +73,16 @@ describe('createUnit3dService — getTitle (default getCommonTitle)', () => {
     it('omits service for non-WEB source', () => {
         const title = service.getTitle({ ...baseMetadata, source: SOURCES.BLURAY })
         expect(title).not.toContain('AMZN')
+    })
+
+    it('handles WEB source with no service gracefully', () => {
+        const title = service.getTitle({ ...baseMetadata, source: SOURCES.WEB, service: undefined })
+        expect(title).toBeDefined()
+    })
+
+    it('includes audioMetadata for REMUX sourceType', () => {
+        const title = service.getTitle({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX, audioMetadata: 'Atmos' })
+        expect(title).toContain('Atmos')
     })
 
     it('includes HDR tags', () => {
@@ -91,10 +101,66 @@ describe('createUnit3dService — getTitle (default getCommonTitle)', () => {
         expect(title).toContain('Atmos')
     })
 
-    it('omits release group suffix when releaseGroup is absent', () => {
+    it('omits release group suffix when releaseGroup is absent, uses NOGROUP', () => {
         const title = service.getTitle({ ...baseMetadata, releaseGroup: undefined })
         expect(title).not.toContain('-GROUP')
-        expect(title).not.toMatch(/-$/)
+        expect(title).toMatch(/-NOGROUP$/)
+    })
+
+    it('includes AKA original title when it differs from title', () => {
+        const title = service.getTitle({ ...baseMetadata, title: 'Movie', originalTitle: 'Le Film' })
+        expect(title).toContain('AKA Le Film')
+    })
+
+    it('returns UHD BluRay for 2160p BluRay source', () => {
+        const title = service.getTitle({ ...baseMetadata, source: SOURCES.BLURAY, resolution: RESOLUTIONS['2160p'] })
+        expect(title).toContain('UHD BluRay')
+    })
+
+    it('returns BluRay for non-2160p BluRay source', () => {
+        const title = service.getTitle({ ...baseMetadata, source: SOURCES.BLURAY, resolution: RESOLUTIONS['1080p'] })
+        expect(title).toContain('BluRay')
+        expect(title).not.toContain('UHD')
+    })
+
+    it('returns DVD for DVD source', () => {
+        const title = service.getTitle({ ...baseMetadata, source: SOURCES.DVD })
+        expect(title).toContain('DVD')
+    })
+
+    it('returns empty string for unknown source', () => {
+        const title = service.getTitle({ ...baseMetadata, source: 'UNKNOWN' as never })
+        expect(title).not.toContain('BluRay')
+        expect(title).not.toContain('DVD')
+    })
+
+    it('includes REMUX type string for REMUX sourceType', () => {
+        const title = service.getTitle({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX })
+        expect(title).toContain('REMUX')
+    })
+
+    it('includes WEB-DL type string for WEB_DL sourceType', () => {
+        const title = service.getTitle({ ...baseMetadata, sourceType: SOURCE_TYPES.WEB_DL, source: SOURCES.WEB, service: 'NF' })
+        expect(title).toContain('WEB-DL')
+    })
+
+    it('includes WEBRip type string for WEBRIP sourceType', () => {
+        const title = service.getTitle({ ...baseMetadata, sourceType: SOURCE_TYPES.WEBRIP, source: SOURCES.WEB, service: 'AMZN' })
+        expect(title).toContain('WEBRip')
+    })
+
+    it('places HDR before videoCodec for REMUX sourceType', () => {
+        const title = service.getTitle({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX, hdr: ['HDR10'] })
+        const hdrIndex = title.indexOf('HDR10')
+        const codecIndex = title.indexOf(baseMetadata.videoCodec)
+        expect(hdrIndex).toBeLessThan(codecIndex)
+    })
+
+    it('places HDR after audioChannels for encode sourceType', () => {
+        const title = service.getTitle({ ...baseMetadata, sourceType: SOURCE_TYPES.ENCODE, hdr: ['HDR10'] })
+        const channelsIndex = title.indexOf(baseMetadata.audioChannels)
+        const hdrIndex = title.indexOf('HDR10')
+        expect(channelsIndex).toBeLessThan(hdrIndex)
     })
 
     it('uses a custom buildTitle function when provided', () => {
@@ -129,6 +195,45 @@ describe('createUnit3dService — upload', () => {
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
         await service.upload('/path/to/movie.torrent', { ...baseMetadata, imdbId: 'tt9876543' }, 'desc', 'mi', { title: 'T', anonymous: false })
         expect(appendSpy).toHaveBeenCalledWith('imdb', '9876543')
+    })
+
+    it('passes imdbId unchanged when tt prefix is absent', async () => {
+        const appendSpy = vi.spyOn(FormData.prototype, 'append')
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        await service.upload('/path/to/movie.torrent', { ...baseMetadata, imdbId: '1234567' }, 'desc', 'mi', { title: 'T', anonymous: false })
+        expect(appendSpy).toHaveBeenCalledWith('imdb', '1234567')
+    })
+
+    it('appends anonymous as string "true" when anonymous is true', async () => {
+        const appendSpy = vi.spyOn(FormData.prototype, 'append')
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        await service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: true })
+        expect(appendSpy).toHaveBeenCalledWith('anonymous', 'true')
+    })
+
+    it('appends correct category_id, type_id, and resolution_id for movie encode 1080p', async () => {
+        const appendSpy = vi.spyOn(FormData.prototype, 'append')
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        await service.upload('/path/to/movie.torrent', { ...baseMetadata, mediaType: MEDIA_TYPES.MOVIE, sourceType: SOURCE_TYPES.ENCODE, resolution: RESOLUTIONS['1080p'] }, 'desc', 'mi', { title: 'T', anonymous: false })
+        expect(appendSpy).toHaveBeenCalledWith('category_id', '1')
+        expect(appendSpy).toHaveBeenCalledWith('type_id', '3')
+        expect(appendSpy).toHaveBeenCalledWith('resolution_id', '3')
+    })
+
+    it('appends correct category_id for TV and type_id for REMUX', async () => {
+        const appendSpy = vi.spyOn(FormData.prototype, 'append')
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        await service.upload('/path/to/movie.torrent', { ...baseMetadata, mediaType: MEDIA_TYPES.TV, sourceType: SOURCE_TYPES.REMUX, resolution: RESOLUTIONS['2160p'] }, 'desc', 'mi', { title: 'T', anonymous: false })
+        expect(appendSpy).toHaveBeenCalledWith('category_id', '2')
+        expect(appendSpy).toHaveBeenCalledWith('type_id', '2')
+        expect(appendSpy).toHaveBeenCalledWith('resolution_id', '2')
+    })
+
+    it('appends tmdb id as string', async () => {
+        const appendSpy = vi.spyOn(FormData.prototype, 'append')
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        await service.upload('/path/to/movie.torrent', { ...baseMetadata, tmdbId: 42 }, 'desc', 'mi', { title: 'T', anonymous: false })
+        expect(appendSpy).toHaveBeenCalledWith('tmdb', '42')
     })
 
     it('throws with JSON error detail when response is not ok and body is valid JSON', async () => {

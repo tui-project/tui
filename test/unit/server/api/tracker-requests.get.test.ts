@@ -33,7 +33,7 @@ describe('GET /api/tracker/requests route handler', () => {
                 id: 'upload-2',
                 filepath: '/media/Show.S01E01.mkv',
                 status: 'torrent_creation',
-                trackers: [{ code: 'FNP', title: 'Title', titleModified: false, anonymous: false }],
+                trackers: [{ code: 'ULCX', title: 'Title', titleModified: false, anonymous: false }],
                 torrentCreationProgress: 42,
                 createdAt: new Date('2026-05-10T00:00:00.000Z'),
                 updatedAt: new Date('2026-05-10T00:00:30.000Z'),
@@ -48,7 +48,7 @@ describe('GET /api/tracker/requests route handler', () => {
                 id: 'upload-2',
                 filepath: '/media/Show.S01E01.mkv',
                 status: 'torrent_creation',
-                trackers: [{ code: 'FNP', title: 'Title', titleModified: false, anonymous: false }],
+                trackers: [{ code: 'ULCX', title: 'Title', titleModified: false, anonymous: false }],
                 torrentCreationProgress: 42,
                 failedTrackerCodes: undefined,
                 createdAt: new Date('2026-05-10T00:00:00.000Z'),
@@ -74,6 +74,27 @@ describe('GET /api/tracker/requests route handler', () => {
 
         await expect(handler({})).rejects.toThrow('invalid_query')
         expect(logger.warn).toHaveBeenCalledWith('Rejected tracker requests query with invalid parameters.', { issues })
+    })
+
+    it('returns empty trackers array for legacy records missing the trackers field', async () => {
+        parseValidatedQuery.mockReturnValue({ limit: undefined })
+        findAllTrackerUploadRequests.mockResolvedValue([
+            {
+                id: 'legacy-1',
+                filepath: '/media/old.mkv',
+                status: 'success',
+                torrentCreationProgress: 0,
+                createdAt: new Date('2026-05-10T00:00:00.000Z'),
+                updatedAt: new Date('2026-05-10T00:01:00.000Z'),
+            },
+        ])
+
+        const handler = await loadHandler()
+        const result = await handler({})
+
+        expect(result).toEqual([
+            expect.objectContaining({ id: 'legacy-1', trackers: [] }),
+        ])
     })
 
     it('passes undefined to the repository when limit is not provided', async () => {

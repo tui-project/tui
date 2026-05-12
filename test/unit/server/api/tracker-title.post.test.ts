@@ -18,7 +18,7 @@ beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
     vi.stubGlobal('getRouterParam', getRouterParam)
-    getRouterParam.mockReturnValue('FNP')
+    getRouterParam.mockReturnValue('ULCX')
     createTrackerService.mockResolvedValue({ getTitle: getTitleMock, upload: vi.fn() })
 })
 
@@ -61,10 +61,10 @@ describe('POST /api/tracker/[trackerCode]/title route handler', () => {
         const result = await handler({} as never)
 
         expect(result).toEqual({ title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP' })
-        expect(createTrackerService).toHaveBeenCalledWith('FNP')
+        expect(createTrackerService).toHaveBeenCalledWith('ULCX')
         expect(getTitleMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'Movie' }))
-        expect(logger.debug).toHaveBeenCalledWith('Tracker title request received.', { trackerCode: 'FNP' })
-        expect(logger.debug).toHaveBeenCalledWith('Tracker title built.', { trackerCode: 'FNP', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP' })
+        expect(logger.debug).toHaveBeenCalledWith('Tracker title request received.', { trackerCode: 'ULCX' })
+        expect(logger.debug).toHaveBeenCalledWith('Tracker title built.', { trackerCode: 'ULCX', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP' })
     })
 
     it('rejects a request with missing metadata', async () => {
@@ -72,7 +72,7 @@ describe('POST /api/tracker/[trackerCode]/title route handler', () => {
         const handler = await loadHandler()
 
         await expect(handler({} as never)).rejects.toEqual({ statusCode: 400, message: 'invalid_request' })
-        expect(logger.warn).toHaveBeenCalledWith('Rejected tracker title request with invalid payload.', expect.objectContaining({ trackerCode: 'FNP' }))
+        expect(logger.warn).toHaveBeenCalledWith('Rejected tracker title request with invalid payload.', expect.objectContaining({ trackerCode: 'ULCX' }))
     })
 
     it('rejects a request with invalid metadata', async () => {
@@ -80,6 +80,6 @@ describe('POST /api/tracker/[trackerCode]/title route handler', () => {
         const handler = await loadHandler()
 
         await expect(handler({} as never)).rejects.toEqual({ statusCode: 400, message: 'invalid_request' })
-        expect(logger.warn).toHaveBeenCalledWith('Rejected tracker title request with invalid payload.', expect.objectContaining({ trackerCode: 'FNP' }))
+        expect(logger.warn).toHaveBeenCalledWith('Rejected tracker title request with invalid payload.', expect.objectContaining({ trackerCode: 'ULCX' }))
     })
 })

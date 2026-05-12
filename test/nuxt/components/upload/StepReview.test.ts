@@ -36,7 +36,7 @@ vi.mock('~/composables/useTrackerRequests', () => ({
 
 vi.mock('~/composables/useTrackerTitle', () => ({
     useTrackerTitle: () => ({
-        fetchTitle: fetchTitleMock,
+        getTitle: fetchTitleMock,
         loading: ref(false),
         error: ref(false),
     }),
@@ -88,7 +88,7 @@ describe('StepReview', () => {
         uploadError.value = false
         getSettingsMock.mockResolvedValue({
             trackers: [
-                { code: 'FNP', name: 'FearNoPeer' },
+                { code: 'ULCX', name: 'Upload.cx' },
                 { code: 'ATH', name: 'Aither' },
             ],
         })
@@ -97,12 +97,12 @@ describe('StepReview', () => {
 
     it('renders a card per selected tracker with a server-generated title and anonymous checkbox', async () => {
         await renderSuspended(StepReview, {
-            props: { selectedTrackers: ['FNP'], metadata, sourcePath: '/media/movie.mkv' },
+            props: { selectedTrackers: ['ULCX'], metadata, sourcePath: '/media/movie.mkv' },
         })
 
-        await waitFor(() => expect(screen.getByText('FearNoPeer (FNP)')).toBeTruthy())
-        expect(fetchTitleMock).toHaveBeenCalledWith('FNP', expect.objectContaining({ title: 'Movie' }))
-        await waitFor(() => expect(screen.getByPlaceholderText('Title for FNP')).toHaveProperty('value', DEFAULT_TITLE))
+        await waitFor(() => expect(screen.getByText('Upload.cx (ULCX)')).toBeTruthy())
+        expect(fetchTitleMock).toHaveBeenCalledWith('ULCX', expect.objectContaining({ title: 'Movie' }))
+        await waitFor(() => expect(screen.getByPlaceholderText('Title for ULCX')).toHaveProperty('value', DEFAULT_TITLE))
         expect(screen.getByRole('checkbox', { name: 'Upload anonymously' })).toBeTruthy()
     })
 
@@ -110,21 +110,21 @@ describe('StepReview', () => {
         fetchTitleMock.mockImplementation((code: string) => Promise.resolve(`Generated title for ${code}`))
 
         await renderSuspended(StepReview, {
-            props: { selectedTrackers: ['FNP', 'ATH'], metadata, sourcePath: '/media/movie.mkv' },
+            props: { selectedTrackers: ['ULCX', 'ATH'], metadata, sourcePath: '/media/movie.mkv' },
         })
 
-        await waitFor(() => expect(screen.getByPlaceholderText('Title for FNP')).toHaveProperty('value', 'Generated title for FNP'))
+        await waitFor(() => expect(screen.getByPlaceholderText('Title for ULCX')).toHaveProperty('value', 'Generated title for ULCX'))
         expect(screen.getByPlaceholderText('Title for ATH')).toHaveProperty('value', 'Generated title for ATH')
     })
 
     it('marks title as modified when user changes it from the fetched default', async () => {
         const user = userEvent.setup()
         await renderSuspended(StepReview, {
-            props: { selectedTrackers: ['FNP'], metadata, sourcePath: '/media/movie.mkv' },
+            props: { selectedTrackers: ['ULCX'], metadata, sourcePath: '/media/movie.mkv' },
         })
 
-        await waitFor(() => expect(screen.getByPlaceholderText('Title for FNP')).toHaveProperty('value', DEFAULT_TITLE))
-        const input = screen.getByPlaceholderText('Title for FNP')
+        await waitFor(() => expect(screen.getByPlaceholderText('Title for ULCX')).toHaveProperty('value', DEFAULT_TITLE))
+        const input = screen.getByPlaceholderText('Title for ULCX')
         await user.clear(input)
         await user.type(input, 'Custom Title')
 
@@ -136,7 +136,7 @@ describe('StepReview', () => {
         uploadTorrentMock.mockResolvedValue(undefined)
 
         await renderSuspended(StepReview, {
-            props: { selectedTrackers: ['FNP'], metadata, sourcePath: '/media/movie.mkv', description: 'Release description' },
+            props: { selectedTrackers: ['ULCX'], metadata, sourcePath: '/media/movie.mkv', description: 'Release description' },
         })
 
         await waitFor(() => expect(screen.getByRole('button', { name: 'Submit Upload' })).toBeTruthy())
@@ -144,7 +144,7 @@ describe('StepReview', () => {
 
         await waitFor(() => {
             expect(uploadTorrentMock).toHaveBeenCalledWith('/media/movie.mkv', metadata, 'Release description', [
-                expect.objectContaining({ code: 'FNP', title: DEFAULT_TITLE, titleModified: false, anonymous: false }),
+                expect.objectContaining({ code: 'ULCX', title: DEFAULT_TITLE, titleModified: false, anonymous: false }),
             ])
         })
 
@@ -163,7 +163,7 @@ describe('StepReview', () => {
         })
 
         await renderSuspended(StepReview, {
-            props: { selectedTrackers: ['FNP'], metadata, sourcePath: '/media/movie.mkv' },
+            props: { selectedTrackers: ['ULCX'], metadata, sourcePath: '/media/movie.mkv' },
         })
 
         await waitFor(() => expect(screen.getByRole('button', { name: 'Submit Upload' })).toBeTruthy())
@@ -194,13 +194,13 @@ describe('StepReview', () => {
     it('re-fetches titles when selectedTrackers prop changes', async () => {
         fetchTitleMock.mockResolvedValue(DEFAULT_TITLE)
         const { rerender } = await renderSuspended(StepReview, {
-            props: { selectedTrackers: ['FNP'], metadata, sourcePath: '/media/movie.mkv' },
+            props: { selectedTrackers: ['ULCX'], metadata, sourcePath: '/media/movie.mkv' },
         })
 
-        await waitFor(() => expect(fetchTitleMock).toHaveBeenCalledWith('FNP', expect.any(Object)))
+        await waitFor(() => expect(fetchTitleMock).toHaveBeenCalledWith('ULCX', expect.any(Object)))
 
         fetchTitleMock.mockResolvedValue('ATH Title')
-        await rerender({ selectedTrackers: ['FNP', 'ATH'], metadata, sourcePath: '/media/movie.mkv' })
+        await rerender({ selectedTrackers: ['ULCX', 'ATH'], metadata, sourcePath: '/media/movie.mkv' })
 
         await waitFor(() => expect(fetchTitleMock).toHaveBeenCalledWith('ATH', expect.any(Object)))
     })
@@ -209,7 +209,7 @@ describe('StepReview', () => {
         settingsLoading.value = true
 
         await renderSuspended(StepReview, {
-            props: { selectedTrackers: ['FNP'], metadata, sourcePath: '/media/movie.mkv' },
+            props: { selectedTrackers: ['ULCX'], metadata, sourcePath: '/media/movie.mkv' },
         })
 
         expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0)

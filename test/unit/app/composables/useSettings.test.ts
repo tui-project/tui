@@ -19,7 +19,7 @@ function buildSettings(
             imgbb: { selected: false, code: 'imgbb', name: 'ImgBB', apiKey: null },
         },
         trackers: {
-            FNP: { selected: false, code: 'FNP', name: 'FearNoPeer', url: 'https://fearnopeer.com', apiKey: null, passKey: null },
+            ULCX: { selected: false, code: 'ULCX', name: 'Upload.cx', url: 'https://upload.cx', apiKey: null, passKey: null },
         },
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',

@@ -16,14 +16,6 @@ export const DEFAULT_SETTINGS: Settings = {
     ],
     trackers: [
         {
-            name: 'FearNoPeer',
-            code: 'FNP',
-            url: 'https://fearnopeer.com',
-            selected: false,
-            apiKey: undefined,
-            passKey: undefined,
-        },
-        {
             name: 'Upload.cx',
             code: 'ULCX',
             url: 'https://upload.cx',

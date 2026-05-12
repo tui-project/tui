@@ -30,7 +30,7 @@ describe('tracker upload request repository', () => {
             },
             description: 'Release description',
             trackers: [
-                { code: 'FNP', title: 'Title FNP', titleModified: false, anonymous: false },
+                { code: 'ULCX', title: 'Title ULCX', titleModified: false, anonymous: false },
                 { code: 'ATH', title: 'Title ATH', titleModified: false, anonymous: false },
             ],
             status: 'pending',
@@ -43,7 +43,7 @@ describe('tracker upload request repository', () => {
             id: 'upload-1',
             filepath: '/media/Movie.2024.1080p.mkv',
             trackers: [
-                { code: 'FNP', title: 'Title FNP', titleModified: false, anonymous: false },
+                { code: 'ULCX', title: 'Title ULCX', titleModified: false, anonymous: false },
                 { code: 'ATH', title: 'Title ATH', titleModified: false, anonymous: false },
             ],
             status: 'pending',
@@ -89,7 +89,7 @@ describe('tracker upload request repository', () => {
             },
             description: '',
             trackers: [
-                { code: 'FNP', title: 'Title FNP', titleModified: false, anonymous: false },
+                { code: 'ULCX', title: 'Title ULCX', titleModified: false, anonymous: false },
                 { code: 'ATH', title: 'Title ATH', titleModified: false, anonymous: false },
             ],
             status: 'uploading',
@@ -134,9 +134,9 @@ describe('tracker upload request repository', () => {
                 imdbId: 'tt1234567',
             },
             description: 'Release description',
-            trackers: [{ code: 'FNP', title: 'Title FNP', titleModified: false, anonymous: false }],
+            trackers: [{ code: 'ULCX', title: 'Title ULCX', titleModified: false, anonymous: false }],
             status: 'partial_success',
-            failedTrackerCodes: ['FNP'],
+            failedTrackerCodes: ['ULCX'],
         })
 
         await updateTrackerUploadRequestStatus('upload-3', 'success')
@@ -178,7 +178,7 @@ describe('tracker upload request repository', () => {
                 imdbId: 'tt1234567',
             },
             description: 'Release description',
-            trackers: [{ code: 'FNP', title: 'Title FNP', titleModified: false, anonymous: false }],
+            trackers: [{ code: 'ULCX', title: 'Title ULCX', titleModified: false, anonymous: false }],
             status: 'torrent_creation',
         })
 
@@ -220,7 +220,7 @@ describe('tracker upload request repository', () => {
                 imdbId: 'tt1234567',
             },
             description: 'Release description',
-            trackers: [{ code: 'FNP', title: 'Title FNP', titleModified: false, anonymous: false }],
+            trackers: [{ code: 'ULCX', title: 'Title ULCX', titleModified: false, anonymous: false }],
             status: 'uploading',
         })
 
@@ -263,7 +263,7 @@ describe('tracker upload request repository', () => {
                     imdbId: 'tt1234567',
                 },
                 description: 'Release description',
-                trackers: [{ code: 'FNP', title: 'Title FNP', titleModified: false, anonymous: false }],
+                trackers: [{ code: 'ULCX', title: 'Title ULCX', titleModified: false, anonymous: false }],
                 status: 'pending',
             })
 

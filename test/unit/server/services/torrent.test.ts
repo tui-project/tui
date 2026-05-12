@@ -236,14 +236,14 @@ describe('torrent service', () => {
 
             const result = await createTrackerTorrent({
                 genericTorrentPath: '/config/torrents/generic.torrent',
-                trackerCode: 'FNP',
+                trackerCode: 'ULCX',
                 announceUrl: 'https://tracker.example.com/announce/key',
                 sourcePath: '/media/Movie.2024.1080p.mkv',
             })
 
-            expect(result.trackerTorrentPath).toMatch(/FNP[/\\]Movie\.2024\.1080p\.torrent$/)
+            expect(result.trackerTorrentPath).toMatch(/ULCX[/\\]Movie\.2024\.1080p\.torrent$/)
             expect(toTorrentFile).toHaveBeenCalledWith(expect.objectContaining({ announce: ['https://tracker.example.com/announce/key'] }))
-            expect(writeFile).toHaveBeenCalledWith(expect.stringMatching(/FNP[/\\]Movie\.2024\.1080p\.torrent$/), expect.any(Buffer))
+            expect(writeFile).toHaveBeenCalledWith(expect.stringMatching(/ULCX[/\\]Movie\.2024\.1080p\.torrent$/), expect.any(Buffer))
         })
 
         it('uses the folder name as-is for a directory source', async () => {
@@ -259,13 +259,13 @@ describe('torrent service', () => {
 
             const result = await createTrackerTorrent({
                 genericTorrentPath: '/config/torrents/generic.torrent',
-                trackerCode: 'FNP',
+                trackerCode: 'ULCX',
                 announceUrl: 'https://tracker.example.com/announce/key',
                 sourcePath: '/media/MyShow.S01.2024.1080p',
             })
 
-            expect(result.trackerTorrentPath).toMatch(/FNP[/\\]MyShow\.S01\.2024\.1080p\.torrent$/)
-            expect(writeFile).toHaveBeenCalledWith(expect.stringMatching(/FNP[/\\]MyShow\.S01\.2024\.1080p\.torrent$/), expect.any(Buffer))
+            expect(result.trackerTorrentPath).toMatch(/ULCX[/\\]MyShow\.S01\.2024\.1080p\.torrent$/)
+            expect(writeFile).toHaveBeenCalledWith(expect.stringMatching(/ULCX[/\\]MyShow\.S01\.2024\.1080p\.torrent$/), expect.any(Buffer))
         })
     })
 })

@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
         id: request.id,
         filepath: request.filepath,
         status: request.status,
-        trackers: request.trackers,
+        trackers: request.trackers ?? [],
         torrentCreationProgress: request.torrentCreationProgress,
         failedTrackerCodes: request.failedTrackerCodes,
         createdAt: request.createdAt,

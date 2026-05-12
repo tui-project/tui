@@ -33,7 +33,7 @@ function buildSettings(overrides: Partial<AppSettings> = {}) {
         mediaPaths: [],
         tmdbApiKey: 'tmdb-key',
         imageHostProviders: [{ selected: false, code: 'imgbb', name: 'ImgBB' }],
-        trackers: [{ selected: false, code: 'FNP', name: 'FearNoPeer' }],
+        trackers: [{ selected: false, code: 'ULCX', name: 'Upload.cx' }],
         mediainfoPath: 'mediainfo',
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
@@ -125,29 +125,29 @@ describe('settings page', () => {
         getSettingsMock.mockResolvedValue(
             buildSettings({
                 mediaPaths: ['/media/a'],
-                trackers: [{ selected: true, code: 'FNP', name: 'FearNoPeer', apiKey: 'old-api-key', passKey: 'old-pass-key' }],
+                trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'old-api-key', passKey: 'old-pass-key' }],
             })
         )
         saveSettingsMock.mockResolvedValue(
             buildSaveSettingsRequest({
                 mediaPaths: ['/media/a'],
-                trackers: [{ selected: true, code: 'FNP', name: 'FearNoPeer', apiKey: 'new-api-key', passKey: 'new-pass-key' }],
+                trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'new-api-key', passKey: 'new-pass-key' }],
             })
         )
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
 
-        await user.clear(screen.getByPlaceholderText('Enter FNP API key'))
-        await user.type(screen.getByPlaceholderText('Enter FNP API key'), 'new-api-key')
-        await user.clear(screen.getByPlaceholderText('Enter FNP pass key'))
-        await user.type(screen.getByPlaceholderText('Enter FNP pass key'), 'new-pass-key')
+        await user.clear(screen.getByPlaceholderText('Enter ULCX API key'))
+        await user.type(screen.getByPlaceholderText('Enter ULCX API key'), 'new-api-key')
+        await user.clear(screen.getByPlaceholderText('Enter ULCX pass key'))
+        await user.type(screen.getByPlaceholderText('Enter ULCX pass key'), 'new-pass-key')
         await user.click(screen.getByRole('button', { name: /save/i }))
 
         expect(saveSettingsMock).toHaveBeenCalledWith(
             buildSaveSettingsRequest({
                 mediaPaths: ['/media/a'],
-                trackers: [{ selected: true, code: 'FNP', name: 'FearNoPeer', apiKey: 'new-api-key', passKey: 'new-pass-key' }],
+                trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'new-api-key', passKey: 'new-pass-key' }],
             })
         )
     })
@@ -156,25 +156,25 @@ describe('settings page', () => {
         getSettingsMock.mockResolvedValue(
             buildSettings({
                 mediaPaths: ['/media/a'],
-                trackers: [{ selected: true, code: 'FNP', name: 'FearNoPeer', apiKey: 'old-api-key', passKey: 'old-pass-key' }],
+                trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'old-api-key', passKey: 'old-pass-key' }],
             })
         )
         saveSettingsMock.mockResolvedValue(
             buildSaveSettingsRequest({
                 mediaPaths: ['/media/a'],
-                trackers: [{ selected: false, code: 'FNP', name: 'FearNoPeer' }],
+                trackers: [{ selected: false, code: 'ULCX', name: 'Upload.cx' }],
             })
         )
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
-        await user.click(screen.getByRole('checkbox', { name: 'FearNoPeer (FNP)' }))
+        await user.click(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' }))
         await user.click(screen.getByRole('button', { name: /save/i }))
 
         expect(saveSettingsMock).toHaveBeenCalledWith(
             buildSaveSettingsRequest({
                 mediaPaths: ['/media/a'],
-                trackers: [{ selected: false, code: 'FNP', name: 'FearNoPeer' }],
+                trackers: [{ selected: false, code: 'ULCX', name: 'Upload.cx' }],
             })
         )
     })
@@ -238,11 +238,11 @@ describe('settings page', () => {
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
-        await user.click(screen.getByRole('checkbox', { name: 'FearNoPeer (FNP)' }))
+        await user.click(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' }))
         await user.click(screen.getByRole('button', { name: /save/i }))
 
-        expect(await screen.findByText('API Key is required for FNP.')).toBeDefined()
-        expect(screen.getByText('Pass Key is required for FNP.')).toBeDefined()
+        expect(await screen.findByText('API Key is required for ULCX.')).toBeDefined()
+        expect(screen.getByText('Pass Key is required for ULCX.')).toBeDefined()
         expect(saveSettingsMock).not.toHaveBeenCalled()
     })
 
@@ -266,17 +266,17 @@ describe('settings page', () => {
         getSettingsMock.mockResolvedValue(
             buildSettings({
                 mediaPaths: ['/media/a'],
-                trackers: [{ selected: true, code: 'FNP', name: 'FearNoPeer', apiKey: 'saved-api-key', passKey: 'saved-pass-key' }],
+                trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'saved-api-key', passKey: 'saved-pass-key' }],
             })
         )
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
-        await user.click(screen.getByRole('checkbox', { name: 'FearNoPeer (FNP)' }))
-        await user.click(screen.getByRole('checkbox', { name: 'FearNoPeer (FNP)' }))
+        await user.click(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' }))
+        await user.click(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' }))
 
-        expect((screen.getByPlaceholderText('Enter FNP API key') as HTMLInputElement).value).toBe('saved-api-key')
-        expect((screen.getByPlaceholderText('Enter FNP pass key') as HTMLInputElement).value).toBe('saved-pass-key')
+        expect((screen.getByPlaceholderText('Enter ULCX API key') as HTMLInputElement).value).toBe('saved-api-key')
+        expect((screen.getByPlaceholderText('Enter ULCX pass key') as HTMLInputElement).value).toBe('saved-pass-key')
     })
 
     it('blocks submit when TMDB API key is empty', async () => {
@@ -355,12 +355,12 @@ describe('settings page', () => {
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
-        await user.click(screen.getByRole('checkbox', { name: 'FearNoPeer (FNP)' }))
+        await user.click(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' }))
         await user.click(screen.getByRole('button', { name: /save/i }))
 
-        expect(await screen.findByText('API Key is required for FNP.')).toBeDefined()
+        expect(await screen.findByText('API Key is required for ULCX.')).toBeDefined()
         await waitFor(() => {
-            expect(screen.getByPlaceholderText('Enter FNP API key').getAttribute('aria-invalid')).toBe('true')
+            expect(screen.getByPlaceholderText('Enter ULCX API key').getAttribute('aria-invalid')).toBe('true')
         })
     })
 
@@ -477,7 +477,7 @@ describe('settings page', () => {
             buildSettings({
                 mediaPaths: ['/media/a'],
                 imageHostProviders: [{ selected: false, code: 'imgbb', name: 'ImgBB' }],
-                trackers: [{ selected: false, code: 'FNP', name: 'FearNoPeer' }],
+                trackers: [{ selected: false, code: 'ULCX', name: 'Upload.cx' }],
                 ffmpegPath: 'ffmpeg',
                 ffprobePath: 'ffprobe',
             })

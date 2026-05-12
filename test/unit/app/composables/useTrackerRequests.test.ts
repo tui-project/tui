@@ -35,7 +35,7 @@ const buildRequest = (): TrackerRequest => ({
     id: 'req-1',
     filepath: '/media/movie.mkv',
     status: 'pending',
-    trackers: [{ code: 'FNP', title: 'Title', titleModified: false, anonymous: false }],
+    trackers: [{ code: 'ULCX', title: 'Title', titleModified: false, anonymous: false }],
 })
 
 describe('useTrackerRequests composable', () => {
@@ -110,7 +110,7 @@ describe('useTrackerRequests composable', () => {
             const { useTrackerRequests } = await import('../../../../app/composables/useTrackerRequests')
             const { uploadTorrent, loading, error } = useTrackerRequests()
 
-            const trackers = [{ code: 'FNP', title: 'Title', titleModified: false, anonymous: false }]
+            const trackers = [{ code: 'ULCX', title: 'Title', titleModified: false, anonymous: false }]
             await expect(uploadTorrent('/media/movie.mkv', buildMetadata(), 'Release description', trackers)).resolves.toBeUndefined()
 
             expect(fetchMock).toHaveBeenCalledWith('/api/tracker/requests', {
@@ -154,7 +154,7 @@ describe('useTrackerRequests composable', () => {
             const { uploadTorrent, loading, error } = useTrackerRequests()
 
             await expect(
-                uploadTorrent('/media/movie.mkv', buildMetadata(), undefined, [{ code: 'FNP', title: 'Title', titleModified: false, anonymous: false }])
+                uploadTorrent('/media/movie.mkv', buildMetadata(), undefined, [{ code: 'ULCX', title: 'Title', titleModified: false, anonymous: false }])
             ).resolves.toBeUndefined()
 
             expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -175,11 +175,11 @@ describe('useTrackerRequests composable', () => {
             const { useTrackerRequests } = await import('../../../../app/composables/useTrackerRequests')
             const { uploadTorrent, loading, error } = useTrackerRequests()
 
-            const firstUpload = uploadTorrent('/media/movie.mkv', buildMetadata(), undefined, [{ code: 'FNP', title: 'Title', titleModified: false, anonymous: false }])
+            const firstUpload = uploadTorrent('/media/movie.mkv', buildMetadata(), undefined, [{ code: 'ULCX', title: 'Title', titleModified: false, anonymous: false }])
             expect(loading.value).toBe(true)
 
             await expect(
-                uploadTorrent('/media/movie.mkv', buildMetadata(), undefined, [{ code: 'FNP', title: 'Title', titleModified: false, anonymous: false }])
+                uploadTorrent('/media/movie.mkv', buildMetadata(), undefined, [{ code: 'ULCX', title: 'Title', titleModified: false, anonymous: false }])
             ).resolves.toBeUndefined()
             expect(fetchMock).toHaveBeenCalledTimes(1)
 

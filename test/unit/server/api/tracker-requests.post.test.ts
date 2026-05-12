@@ -103,7 +103,7 @@ function buildRequest(overrides: Partial<Record<string, unknown>> = {}) {
             tvdbId: undefined,
         },
         description: 'Release description',
-        trackers: [{ code: 'FNP', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP', titleModified: false, anonymous: false }],
+        trackers: [{ code: 'ULCX', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP', titleModified: false, anonymous: false }],
         ...overrides,
     }
 }
@@ -157,7 +157,7 @@ describe('POST /api/tracker/requests route handler', () => {
             description: 'Release description',
             filepath: '/media/Movie.2024.1080p.mkv',
             metadata: buildRequest().metadata,
-            trackers: [{ code: 'FNP', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP', titleModified: false, anonymous: false }],
+            trackers: [{ code: 'ULCX', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP', titleModified: false, anonymous: false }],
             status: 'pending',
             torrentCreationProgress: 0,
         })
@@ -172,7 +172,7 @@ describe('POST /api/tracker/requests route handler', () => {
         expect(logger.info).toHaveBeenCalledWith('Tracker upload request uploading to trackers.', {
             id: 'upload-1',
             filepath: '/media/Movie.2024.1080p.mkv',
-            trackerCodes: ['FNP'],
+            trackerCodes: ['ULCX'],
             status: 'uploading',
             genericTorrentPath: '/repo/config/torrents/generic-1.torrent',
             trackerTorrentPaths: {},
@@ -205,7 +205,7 @@ describe('POST /api/tracker/requests route handler', () => {
         expect(logger.debug).toHaveBeenCalledWith('Reusing cached generic torrent for tracker upload request.', {
             id: 'upload-1',
             filepath: '/media/Movie.2024.1080p.mkv',
-            trackerCodes: ['FNP'],
+            trackerCodes: ['ULCX'],
             genericTorrentPath: '/repo/config/torrents/cached.torrent',
         })
         expect(updateTrackerUploadRequestStatus).toHaveBeenNthCalledWith(1, 'upload-1', 'torrent_creation')
@@ -263,10 +263,10 @@ describe('POST /api/tracker/requests route handler', () => {
             genericTorrentPath: '/repo/config/torrents/generic-1.torrent',
         })
         getSettings.mockResolvedValue({
-            trackers: [{ code: 'FNP', url: 'https://fnp.example.com', passKey: 'secret123' }],
+            trackers: [{ code: 'ULCX', url: 'https://ulcx.example.com', passKey: 'secret123' }],
         })
         createTrackerTorrent.mockResolvedValue({
-            trackerTorrentPath: '/config/tmp/torrents/FNP/Movie.2024.1080p.torrent',
+            trackerTorrentPath: '/config/tmp/torrents/ULCX/Movie.2024.1080p.torrent',
         })
         const handler = await loadHandler()
 
@@ -275,21 +275,21 @@ describe('POST /api/tracker/requests route handler', () => {
 
         expect(createTrackerTorrent).toHaveBeenCalledWith({
             genericTorrentPath: '/repo/config/torrents/generic-1.torrent',
-            trackerCode: 'FNP',
-            announceUrl: 'https://fnp.example.com/announce/secret123',
+            trackerCode: 'ULCX',
+            announceUrl: 'https://ulcx.example.com/announce/secret123',
             sourcePath: '/media/Movie.2024.1080p.mkv',
         })
         expect(updateTrackerUploadRequestStatus).toHaveBeenLastCalledWith('upload-1', 'success')
         expect(logger.info).toHaveBeenLastCalledWith('Tracker upload request completed successfully.', {
             id: 'upload-1',
-            trackerCodes: ['FNP'],
+            trackerCodes: ['ULCX'],
         })
     })
 
     it('passes tracker override title and anonymous flag to service.upload', async () => {
         const uploadMock = vi.fn().mockResolvedValue(undefined)
         createTrackerService.mockResolvedValue({ upload: uploadMock })
-        readBody.mockResolvedValue(buildRequest({ trackers: [{ code: 'FNP', title: 'Custom Title', titleModified: true, anonymous: true }] }))
+        readBody.mockResolvedValue(buildRequest({ trackers: [{ code: 'ULCX', title: 'Custom Title', titleModified: true, anonymous: true }] }))
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
         saveTrackerUploadRequest.mockResolvedValue({
             id: 'upload-1',
@@ -298,15 +298,15 @@ describe('POST /api/tracker/requests route handler', () => {
         })
         createGenericTorrent.mockResolvedValue({ genericTorrentPath: '/repo/config/torrents/generic-1.torrent' })
         getSettings.mockResolvedValue({
-            trackers: [{ code: 'FNP', url: 'https://fnp.example.com', passKey: 'secret123' }],
+            trackers: [{ code: 'ULCX', url: 'https://ulcx.example.com', passKey: 'secret123' }],
         })
-        createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/FNP/Movie.torrent' })
+        createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/ULCX/Movie.torrent' })
         const handler = await loadHandler()
 
         await handler({} as never)
         await flushPromises()
 
-        expect(uploadMock).toHaveBeenCalledWith('/config/tmp/torrents/FNP/Movie.torrent', expect.any(Object), expect.any(String), expect.any(String), {
+        expect(uploadMock).toHaveBeenCalledWith('/config/tmp/torrents/ULCX/Movie.torrent', expect.any(Object), expect.any(String), expect.any(String), {
             title: 'Custom Title',
             anonymous: true,
         })
@@ -324,15 +324,15 @@ describe('POST /api/tracker/requests route handler', () => {
         })
         createGenericTorrent.mockResolvedValue({ genericTorrentPath: '/repo/config/torrents/generic-1.torrent' })
         getSettings.mockResolvedValue({
-            trackers: [{ code: 'FNP', url: 'https://fnp.example.com', passKey: 'secret123' }],
+            trackers: [{ code: 'ULCX', url: 'https://ulcx.example.com', passKey: 'secret123' }],
         })
-        createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/FNP/Movie.torrent' })
+        createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/ULCX/Movie.torrent' })
         const handler = await loadHandler()
 
         await handler({} as never)
         await flushPromises()
 
-        expect(uploadMock).toHaveBeenCalledWith('/config/tmp/torrents/FNP/Movie.torrent', expect.any(Object), expect.any(String), expect.any(String), {
+        expect(uploadMock).toHaveBeenCalledWith('/config/tmp/torrents/ULCX/Movie.torrent', expect.any(Object), expect.any(String), expect.any(String), {
             title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP',
             anonymous: false,
         })
@@ -355,7 +355,7 @@ describe('POST /api/tracker/requests route handler', () => {
         readBody.mockResolvedValue(
             buildRequest({
                 trackers: [
-                    { code: 'FNP', title: 'Title', titleModified: false, anonymous: false },
+                    { code: 'ULCX', title: 'Title', titleModified: false, anonymous: false },
                     { code: 'ATH', title: 'Title', titleModified: false, anonymous: false },
                 ],
             })
@@ -369,7 +369,7 @@ describe('POST /api/tracker/requests route handler', () => {
         createGenericTorrent.mockResolvedValue({ genericTorrentPath: '/repo/config/torrents/generic-1.torrent' })
         getSettings.mockResolvedValue({
             trackers: [
-                { code: 'FNP', url: 'https://fnp.example.com', passKey: 'secret' },
+                { code: 'ULCX', url: 'https://ulcx.example.com', passKey: 'secret' },
                 { code: 'ATH', url: 'https://ath.example.com', passKey: 'secret' },
             ],
         })
@@ -401,7 +401,7 @@ describe('POST /api/tracker/requests route handler', () => {
         })
         createGenericTorrent.mockResolvedValue({ genericTorrentPath: '/repo/config/torrents/generic-1.torrent' })
         getSettings.mockResolvedValue({
-            trackers: [{ code: 'FNP', url: 'https://fnp.example.com', passKey: 'secret' }],
+            trackers: [{ code: 'ULCX', url: 'https://ulcx.example.com', passKey: 'secret' }],
         })
         createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/tracker.torrent' })
         analyzeMediaFileAsText.mockResolvedValue('mediainfo output')
@@ -414,9 +414,9 @@ describe('POST /api/tracker/requests route handler', () => {
         expect(updateTrackerUploadRequestStatus).toHaveBeenCalledWith('upload-1', 'fail')
         expect(logger.error).toHaveBeenCalledWith('Tracker upload request failed for all trackers.', undefined, {
             id: 'upload-1',
-            trackerCodes: ['FNP'],
+            trackerCodes: ['ULCX'],
         })
-        expect(logger.error).toHaveBeenCalledWith('Failed to upload to tracker.', uploadError, { trackerCode: 'FNP' })
+        expect(logger.error).toHaveBeenCalledWith('Failed to upload to tracker.', uploadError, { trackerCode: 'ULCX' })
     })
 
     it('marks the request as failed when torrent creation fails', async () => {

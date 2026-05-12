@@ -30,7 +30,7 @@ describe('StepSelectTrackers', () => {
         const user = userEvent.setup()
         getSettingsMock.mockResolvedValue({
             trackers: [
-                { selected: true, code: 'FNP', name: 'FearNoPeer' },
+                { selected: true, code: 'ULCX', name: 'Upload.cx' },
                 { selected: false, code: 'ATH', name: 'Aither' },
                 { selected: true, code: 'BHD', name: 'BeyondHD' },
             ],
@@ -44,31 +44,31 @@ describe('StepSelectTrackers', () => {
             expect(getSettingsMock).toHaveBeenCalledTimes(1)
         })
 
-        expect(screen.getByRole('checkbox', { name: 'FearNoPeer (FNP)' })).toBeTruthy()
+        expect(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' })).toBeTruthy()
         expect(screen.getByRole('checkbox', { name: 'BeyondHD (BHD)' })).toBeTruthy()
         expect(screen.queryByRole('checkbox', { name: 'Aither (ATH)' })).toBeNull()
         expect(screen.getByText('Selected: 0')).toBeTruthy()
 
-        await user.click(screen.getByRole('checkbox', { name: 'FearNoPeer (FNP)' }))
+        await user.click(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' }))
 
         await waitFor(() => {
             expect(screen.getByText('Selected: 1')).toBeTruthy()
         })
 
-        await user.click(screen.getByRole('checkbox', { name: 'FearNoPeer (FNP)' }))
+        await user.click(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' }))
 
         await waitFor(() => {
             expect(screen.getByText('Selected: 0')).toBeTruthy()
         })
 
         const updateEvents = emitted()['update:modelValue'] as string[][] | undefined
-        expect(updateEvents?.at(-2)?.[0]).toEqual(['FNP'])
+        expect(updateEvents?.at(-2)?.[0]).toEqual(['ULCX'])
         expect(updateEvents?.at(-1)?.[0]).toEqual([])
     })
 
     it('shows an empty state when no trackers are enabled in settings', async () => {
         getSettingsMock.mockResolvedValue({
-            trackers: [{ selected: false, code: 'FNP', name: 'FearNoPeer' }],
+            trackers: [{ selected: false, code: 'ULCX', name: 'Upload.cx' }],
         })
 
         await renderSuspended(StepSelectTrackers, {
@@ -103,7 +103,7 @@ describe('StepSelectTrackers', () => {
     it('Next button is disabled until at least one tracker is selected', async () => {
         const user = userEvent.setup()
         getSettingsMock.mockResolvedValue({
-            trackers: [{ selected: true, code: 'FNP', name: 'FearNoPeer' }],
+            trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx' }],
         })
 
         const { emitted } = await renderSuspended(StepSelectTrackers, {
@@ -113,7 +113,7 @@ describe('StepSelectTrackers', () => {
         const nextButton = await screen.findByRole('button', { name: 'Next' })
         expect(nextButton).toHaveProperty('disabled', true)
 
-        await user.click(screen.getByRole('checkbox', { name: 'FearNoPeer (FNP)' }))
+        await user.click(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' }))
         await waitFor(() => expect(nextButton).toHaveProperty('disabled', false))
 
         await user.click(nextButton)

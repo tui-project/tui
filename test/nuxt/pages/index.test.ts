@@ -33,7 +33,7 @@ describe('index page', () => {
                 filepath: '/media/Show.S01E01.mkv',
                 status: 'torrent_creation',
                 trackers: [
-                    { code: 'FNP', title: 'T', titleModified: false, anonymous: false },
+                    { code: 'ULCX', title: 'T', titleModified: false, anonymous: false },
                     { code: 'ATH', title: 'T', titleModified: false, anonymous: false },
                 ],
                 torrentCreationProgress: 42,
@@ -51,7 +51,7 @@ describe('index page', () => {
 
         expect(screen.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeDefined()
         expect(screen.getByText('Show.S01E01.mkv')).toBeTruthy()
-        expect(screen.getByText('FNP')).toBeTruthy()
+        expect(screen.getByText('ULCX')).toBeTruthy()
         expect(screen.getByText('ATH')).toBeTruthy()
         expect(screen.getByText('Torrent Creation')).toBeTruthy()
         expect(screen.getByText('42%')).toBeTruthy()
@@ -84,17 +84,17 @@ describe('index page', () => {
                 filepath: '/media/Movie.2024.mkv',
                 status: 'fail',
                 trackers: [
-                    { code: 'FNP', title: 'T', titleModified: false, anonymous: false },
+                    { code: 'ULCX', title: 'T', titleModified: false, anonymous: false },
                     { code: 'ATH', title: 'T', titleModified: false, anonymous: false },
                 ],
-                failedTrackerCodes: ['FNP', 'ATH'],
+                failedTrackerCodes: ['ULCX', 'ATH'],
             },
         ])
 
         await renderSuspended(IndexPage)
 
         expect(screen.getByText('Fail')).toBeTruthy()
-        expect(screen.getByText('Failed trackers: FNP, ATH')).toBeTruthy()
+        expect(screen.getByText('Failed trackers: ULCX, ATH')).toBeTruthy()
     })
 
     it('shows warning badge and failed tracker codes for a partial_success request', async () => {
@@ -104,7 +104,7 @@ describe('index page', () => {
                 filepath: '/media/Movie.2024.mkv',
                 status: 'partial_success',
                 trackers: [
-                    { code: 'FNP', title: 'T', titleModified: false, anonymous: false },
+                    { code: 'ULCX', title: 'T', titleModified: false, anonymous: false },
                     { code: 'ATH', title: 'T', titleModified: false, anonymous: false },
                 ],
                 failedTrackerCodes: ['ATH'],
@@ -132,7 +132,7 @@ describe('index page', () => {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'torrent_creation',
-                trackers: [{ code: 'FNP', title: 'T', titleModified: false, anonymous: false }],
+                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false }],
             },
         ])
 
@@ -170,7 +170,7 @@ describe('index page', () => {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'pending',
-                trackers: [{ code: 'FNP', title: 'T', titleModified: false, anonymous: false }],
+                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false }],
             },
         ])
 
@@ -187,7 +187,7 @@ describe('index page', () => {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'uploading',
-                trackers: [{ code: 'FNP', title: 'T', titleModified: false, anonymous: false }],
+                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false }],
             },
         ])
 
@@ -199,7 +199,7 @@ describe('index page', () => {
     })
 
     it('retains displayed requests when a poll returns null', async () => {
-        getRequestsMock.mockResolvedValueOnce([{ id: 'req-1', filepath: '/media/Movie.mkv', status: 'success', trackerCodes: ['FNP'] }]).mockResolvedValueOnce(null)
+        getRequestsMock.mockResolvedValueOnce([{ id: 'req-1', filepath: '/media/Movie.mkv', status: 'success', trackerCodes: ['ULCX'] }]).mockResolvedValueOnce(null)
 
         await renderSuspended(IndexPage)
 

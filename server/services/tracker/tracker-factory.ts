@@ -1,7 +1,6 @@
 import { getSettings } from '../../repositories/settings-repository'
 import type { TrackerService } from './tracker'
 import { createAthTrackerService } from './trackers/ath'
-import { createFnpTrackerService } from './trackers/fnp'
 import { createHunoTrackerService } from './trackers/huno'
 import { createLstTrackerService } from './trackers/lst'
 import { createRfxTrackerService } from './trackers/rfx'
@@ -16,8 +15,6 @@ export async function createTrackerService(code: string): Promise<TrackerService
     if (!tracker?.apiKey) throw new Error(`API key not configured for tracker: ${code}`)
 
     switch (code) {
-        case 'FNP':
-            return createFnpTrackerService(tracker.url, tracker.apiKey)
         case 'ULCX':
             return createUlcxTrackerService(tracker.url, tracker.apiKey)
         case 'RFX':
