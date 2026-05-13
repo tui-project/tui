@@ -264,4 +264,40 @@ describe('createUlcxTrackerService — getTitle', () => {
         const title = await service.getTitle({ ...baseMetadata, threeD: false })
         expect(title).not.toContain('3D')
     })
+
+    describe('buildDubString', () => {
+        it('includes Dual-Audio when two languages and one is the original', async () => {
+            const title = await service.getTitle({ ...baseMetadata, language: ['en', 'fr'], originalLanguage: 'fr' })
+            expect(title).toContain('Dual-Audio')
+        })
+
+        it('includes Dubbed when single English language and original is not English', async () => {
+            const title = await service.getTitle({ ...baseMetadata, language: ['en'], originalLanguage: 'fr' })
+            expect(title).toContain('Dubbed')
+        })
+
+        it('omits dub string when single language matches original', async () => {
+            const title = await service.getTitle({ ...baseMetadata, language: ['en'], originalLanguage: 'en' })
+            expect(title).not.toContain('Dual-Audio')
+            expect(title).not.toContain('Dubbed')
+        })
+
+        it('omits dub string when languages array is empty', async () => {
+            const title = await service.getTitle({ ...baseMetadata, language: [] })
+            expect(title).not.toContain('Dual-Audio')
+            expect(title).not.toContain('Dubbed')
+        })
+
+        it('omits dub string when more than two languages are present', async () => {
+            const title = await service.getTitle({ ...baseMetadata, language: ['en', 'fr', 'de'], originalLanguage: 'fr' })
+            expect(title).not.toContain('Dual-Audio')
+            expect(title).not.toContain('Dubbed')
+        })
+
+        it('omits dub string when two languages but neither is the original', async () => {
+            const title = await service.getTitle({ ...baseMetadata, language: ['en', 'fr'], originalLanguage: 'de' })
+            expect(title).not.toContain('Dual-Audio')
+            expect(title).not.toContain('Dubbed')
+        })
+    })
 })

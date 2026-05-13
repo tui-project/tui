@@ -19,7 +19,6 @@ export async function getTvdbSeries(tvdbId: number): Promise<SkyHookSeries | nul
     }
 }
 
-
 function toLoggableFetchError(error: unknown) {
     if (!error || typeof error !== 'object') return { message: String(error) }
 

@@ -455,11 +455,25 @@ function onSubmit(_: FormSubmitEvent<Schema>) {
                         <UFormField label="Flags" class="md:col-span-2">
                             <div class="flex flex-wrap items-center gap-4 py-2">
                                 <div class="flex items-center gap-1.5">
-                                    <UCheckbox :model-value="state.repack > 0" size="xl" label="Repack" color="neutral" aria-label="Repack" @update:model-value="(v) => (state.repack = v ? 1 : 0)" />
+                                    <UCheckbox
+                                        :model-value="state.repack > 0"
+                                        size="xl"
+                                        label="Repack"
+                                        color="neutral"
+                                        aria-label="Repack"
+                                        @update:model-value="(v) => (state.repack = v ? 1 : 0)"
+                                    />
                                     <UInput v-if="state.repack > 0" v-model.number="state.repack" type="number" size="sm" :min="1" class="w-14" aria-label="Repack number" />
                                 </div>
                                 <div class="flex items-center gap-1.5">
-                                    <UCheckbox :model-value="state.proper > 0" size="xl" label="Proper" color="neutral" aria-label="Proper" @update:model-value="(v) => (state.proper = v ? 1 : 0)" />
+                                    <UCheckbox
+                                        :model-value="state.proper > 0"
+                                        size="xl"
+                                        label="Proper"
+                                        color="neutral"
+                                        aria-label="Proper"
+                                        @update:model-value="(v) => (state.proper = v ? 1 : 0)"
+                                    />
                                     <UInput v-if="state.proper > 0" v-model.number="state.proper" type="number" size="sm" :min="1" class="w-14" aria-label="Proper number" />
                                 </div>
                                 <UCheckbox v-model="state.rerip" size="xl" label="RERip" color="neutral" aria-label="RERip" />

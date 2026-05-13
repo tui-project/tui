@@ -37,12 +37,12 @@ async function buildTitle(metadata: TrackerUploadMetadata) {
         // Hi10P — not available; requires 10-bit depth flag; skip
         if (metadata.hdr && metadata.hdr.length > 0) parts.push(metadata.hdr.join(' '))
         parts.push(metadata.videoCodec)
-        // Dub — not available; requires language/originalLanguage analysis; skip
+        parts.push(buildDubString(metadata.language, metadata.originalLanguage))
         parts.push(metadata.audioCodec)
         parts.push(metadata.audioChannels)
         if (metadata.audioMetadata) parts.push(metadata.audioMetadata)
     } else {
-        // Dub — not available; requires language/originalLanguage analysis; skip
+        parts.push(buildDubString(metadata.language, metadata.originalLanguage))
         parts.push(metadata.audioCodec)
         parts.push(metadata.audioChannels)
         if (metadata.audioMetadata) parts.push(metadata.audioMetadata)
@@ -77,5 +77,12 @@ function buildTypeString(sourceType: SourceType): string {
     if (sourceType === SOURCE_TYPES.REMUX) return 'REMUX'
     if (sourceType === SOURCE_TYPES.WEB_DL) return 'WEB-DL'
     if (sourceType === SOURCE_TYPES.WEBRIP) return 'WEBRip'
+    return ''
+}
+
+function buildDubString(languages: string[], originalLanguage: string) {
+    if (!languages?.length) return ''
+    if (languages.length === 2 && languages.includes(originalLanguage)) return 'Dual-Audio'
+    if (languages.length === 1 && languages.includes('en') && !languages.includes(originalLanguage)) return 'Dubbed'
     return ''
 }
