@@ -95,6 +95,7 @@ function buildRequest(overrides: Partial<Record<string, unknown>> = {}) {
             cut: undefined,
             ratio: undefined,
             hybrid: false,
+            hi10p: false,
             resolution: '1080p',
             hdr: [],
             videoCodec: 'H.264',

@@ -25,6 +25,7 @@ const baseMetadata: TrackerUploadMetadata = {
     rerip: false,
     threeD: false,
     hybrid: false,
+    hi10p: false,
     resolution: RESOLUTIONS['1080p'],
     videoCodec: 'H.264',
     audioCodec: 'DTS-HD MA',
@@ -263,6 +264,27 @@ describe('createUlcxTrackerService — getTitle', () => {
     it('omits 3D when false', async () => {
         const title = await service.getTitle({ ...baseMetadata, threeD: false })
         expect(title).not.toContain('3D')
+    })
+
+    it('includes Hi10P after audioChannels for non-remux sourceType', async () => {
+        const title = await service.getTitle({ ...baseMetadata, hi10p: true })
+        const channelsIndex = title.indexOf(baseMetadata.audioChannels)
+        const hi10pIndex = title.indexOf('Hi10P')
+        expect(hi10pIndex).toBeGreaterThan(-1)
+        expect(channelsIndex).toBeLessThan(hi10pIndex)
+    })
+
+    it('includes Hi10P before videoCodec for REMUX sourceType', async () => {
+        const title = await service.getTitle({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX, hi10p: true })
+        const hi10pIndex = title.indexOf('Hi10P')
+        const codecIndex = title.indexOf(baseMetadata.videoCodec)
+        expect(hi10pIndex).toBeGreaterThan(-1)
+        expect(hi10pIndex).toBeLessThan(codecIndex)
+    })
+
+    it('omits Hi10P when false', async () => {
+        const title = await service.getTitle({ ...baseMetadata, hi10p: false })
+        expect(title).not.toContain('Hi10P')
     })
 
     describe('buildDubString', () => {

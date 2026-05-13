@@ -275,6 +275,7 @@ const state = reactive<Metadata>({
     cut: '',
     ratio: '',
     hybrid: false,
+    hi10p: false,
     resolution: '',
     hdr: [],
     videoCodec: '',
@@ -479,6 +480,14 @@ function onSubmit(_: FormSubmitEvent<Schema>) {
                                 <UCheckbox v-model="state.rerip" size="xl" label="RERip" color="neutral" aria-label="RERip" />
                                 <UCheckbox v-model="state.threeD" size="xl" label="3D" color="neutral" aria-label="3D" />
                                 <UCheckbox v-model="state.hybrid" size="xl" label="Hybrid" color="neutral" aria-label="Hybrid" />
+                                <UCheckbox
+                                    v-if="state.videoCodec === 'AVC' || state.videoCodec === 'H.264' || state.videoCodec === 'x264'"
+                                    v-model="state.hi10p"
+                                    size="xl"
+                                    label="Hi10P"
+                                    color="neutral"
+                                    aria-label="Hi10P"
+                                />
                             </div>
                         </UFormField>
                     </div>

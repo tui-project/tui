@@ -35,6 +35,7 @@ function createMetadata(overrides: Partial<Metadata> = {}): Metadata {
         cut: 'Extened',
         ratio: '',
         hybrid: true,
+        hi10p: false,
         resolution: '2160p',
         hdr: ['HDR10+'],
         videoCodec: 'HEVC',

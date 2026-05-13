@@ -34,7 +34,7 @@ async function buildTitle(metadata: TrackerUploadMetadata) {
     parts.push(buildTypeString(metadata.sourceType))
 
     if (isRemux) {
-        // Hi10P — not available; requires 10-bit depth flag; skip
+        if (metadata.hi10p) parts.push('Hi10P')
         if (metadata.hdr && metadata.hdr.length > 0) parts.push(metadata.hdr.join(' '))
         parts.push(metadata.videoCodec)
         parts.push(buildDubString(metadata.language, metadata.originalLanguage))
@@ -46,7 +46,7 @@ async function buildTitle(metadata: TrackerUploadMetadata) {
         parts.push(metadata.audioCodec)
         parts.push(metadata.audioChannels)
         if (metadata.audioMetadata) parts.push(metadata.audioMetadata)
-        // Hi10P — not available; requires 10-bit depth flag; skip
+        if (metadata.hi10p) parts.push('Hi10P')
         if (metadata.hdr && metadata.hdr.length > 0) parts.push(metadata.hdr.join(' '))
         parts.push(metadata.videoCodec)
     }

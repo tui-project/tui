@@ -25,6 +25,7 @@ describe('mediainfo service', () => {
         await expect(parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')).resolves.toEqual({
             resolution: undefined,
             videoCodec: undefined,
+            hi10p: false,
             hdr: [],
             language: [],
             audioCodec: undefined,
@@ -657,6 +658,45 @@ describe('mediainfo service', () => {
                 audioMetadata: undefined,
                 language: ['en'],
             },
+        },
+        {
+            name: 'hi10p true when AVC with High 10 profile',
+            sourceType: 'WEB-DL' as const,
+            result: {
+                media: {
+                    track: [
+                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', Format_Profile: 'High 10@L4.1', HDR_Format: '', HDR_Format_Compatibility: '' },
+                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
+                    ],
+                },
+            },
+            expected: { hi10p: true, videoCodec: 'H.264' },
+        },
+        {
+            name: 'hi10p false when AVC without High 10 profile',
+            sourceType: 'WEB-DL' as const,
+            result: {
+                media: {
+                    track: [
+                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', Format_Profile: 'High@L4.1', HDR_Format: '', HDR_Format_Compatibility: '' },
+                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
+                    ],
+                },
+            },
+            expected: { hi10p: false, videoCodec: 'H.264' },
+        },
+        {
+            name: 'hi10p false when non-AVC codec with High 10 profile',
+            sourceType: 'WEB-DL' as const,
+            result: {
+                media: {
+                    track: [
+                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'HEVC', Format_Profile: 'High 10@L4.1', HDR_Format: '', HDR_Format_Compatibility: '' },
+                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
+                    ],
+                },
+            },
+            expected: { hi10p: false },
         },
     ])('parses mediainfo metadata across branches: $name', async ({ sourceType, result, expected }) => {
         const { parseMetadataFromMediainfo } = await loadService()

@@ -32,6 +32,7 @@ interface MediaInfoResult {
 export interface ParsedMediainfoMetadata {
     resolution?: Resolution
     videoCodec?: VideoCodec
+    hi10p: boolean
     hdr: HDR[]
     language: string[]
     audioCodec?: AudioCodec
@@ -57,7 +58,9 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
 
     const format = toStringValue(video, 'Format')
     const formatVersion = toStringValue(video, 'Format_Version')
+    const formatProfile = toStringValue(video, 'Format_Profile')
     const videoCodec = parseVideoCodec(format, formatVersion, sourceType)
+    const hi10p = parseHi10p(format, formatProfile)
 
     const hdrFormat = toStringValue(video, 'HDR_Format')
     const hdrCompatibility = toStringValue(video, 'HDR_Format_Compatibility')
@@ -85,6 +88,7 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
     const parsedMetadata = {
         resolution,
         videoCodec,
+        hi10p,
         hdr,
         audioCodec,
         audioChannels,
@@ -203,6 +207,10 @@ function parseVideoCodec(format: string, formatVersion: string, sourceType: Sour
             logger.warn('Unknown video codec from mediainfo.', { format, formatVersion, sourceType })
             return undefined
     }
+}
+
+function parseHi10p(format: string, formatProfile: string): boolean {
+    return format === 'AVC' && formatProfile.includes('High 10')
 }
 
 function parseHdr(hdrFormat: string, hdrCompatibility: string): HDR[] {

@@ -21,6 +21,7 @@ export type Metadata = {
     cut: string
     ratio: string
     hybrid: boolean
+    hi10p: boolean
     resolution: string
     hdr: string[]
     videoCodec: string

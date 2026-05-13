@@ -16,6 +16,7 @@ export type TrackerUploadMetadata = Omit<Metadata, 'fileName'> &
             | 'rerip'
             | 'threeD'
             | 'hybrid'
+            | 'hi10p'
             | 'resolution'
             | 'videoCodec'
             | 'audioCodec'

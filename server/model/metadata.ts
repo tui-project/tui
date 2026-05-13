@@ -21,6 +21,7 @@ export interface Metadata {
     cut?: Cut
     ratio?: Ratio
     hybrid?: boolean
+    hi10p?: boolean
     resolution?: Resolution
     hdr?: HDR[]
     videoCodec?: VideoCodec
@@ -228,6 +229,7 @@ export const MetadataSchema = z
         cut: z.enum(CUTS).optional(),
         ratio: z.enum(RATIOS).optional(),
         hybrid: z.boolean(),
+        hi10p: z.boolean(),
         resolution: z.enum(RESOLUTIONS),
         hdr: z.array(z.enum(HDR_TYPES)).optional(),
         videoCodec: z.enum(VIDEO_CODECS),

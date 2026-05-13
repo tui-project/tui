@@ -66,6 +66,7 @@ const metadata: Metadata = {
     cut: '',
     ratio: '',
     hybrid: false,
+    hi10p: false,
     resolution: '1080p',
     hdr: [],
     videoCodec: 'H.264',
