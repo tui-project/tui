@@ -8,7 +8,7 @@ const requestsQuerySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-    logger.debug('Recent tracker upload requests received.')
+    // logger.debug('Recent tracker upload requests received.')
 
     const { limit } = parseValidatedQuery(event, requestsQuerySchema, {
         errorMessage: 'invalid_query',

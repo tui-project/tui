@@ -29,3 +29,12 @@ export async function updateTrackerUploadRequestStatus(id: string, status: Track
 export async function updateTrackerUploadRequestTorrentCreationProgress(id: string, torrentCreationProgress: number) {
     await trackerUploadRequestCollection.updateAsync({ id }, { $set: { torrentCreationProgress } }, {})
 }
+
+export async function resetTrackerUploadRequest(id: string) {
+    await trackerUploadRequestCollection.updateAsync(
+        { id },
+        { $set: { status: 'pending', torrentCreationProgress: 0 }, $unset: { failedTrackerCodes: true } },
+        {}
+    )
+    return await trackerUploadRequestCollection.findOneAsync({ id })
+}

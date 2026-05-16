@@ -50,22 +50,24 @@ export function createUnit3dService(url: string, apiKey: string, buildTitle?: (m
         if (metadata.tvdbId != null) formData.append('tvdb', String(metadata.tvdbId))
         if (metadata.season != null) formData.append('season_number', String(metadata.season))
         if (metadata.episode != null) formData.append('episode_number', String(metadata.episode))
-        formData.append('anonymous', String(anonymous))
-        formData.append('mod_queue_opt_in', String(true))
+        formData.append('anonymous', anonymous ? '1' : '0')
 
         logger.info('Uploading torrent to UNIT3D tracker.', { trackerUrl: url, title, torrentPath })
         logger.debug('request', { formData: Object.fromEntries(formData.entries()) })
-        
+
         try {
-            await $fetch<unknown>(`${url}/api/torrents/upload`, {
+            await $fetch(`${url}/api/torrents/upload`, {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${apiKey}` },
+                headers: {
+                    Authorization: `Bearer ${apiKey}`,
+                    Accept: 'application/json',
+                },
                 body: formData,
                 redirect: 'error',
             })
         } catch (error: unknown) {
-            const data = (typeof error === 'object' && error !== null && 'data' in error) ? (error as { data: unknown }).data : undefined
-            logger.error('Upload to tracker failed', { statusCode: (error as { statusCode?: number }).statusCode, data })
+            const err = error as { statusCode?: number; data?: unknown }
+            logger.error('Upload to tracker failed', { statusCode: err.statusCode, data: err.data })
             throw new Error('Upload failed')
         }
 

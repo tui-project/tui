@@ -234,6 +234,57 @@ describe('tracker upload request repository', () => {
         })
     })
 
+    it('resets a failed request back to pending and clears progress and failed codes', async () => {
+        const { saveTrackerUploadRequest, resetTrackerUploadRequest, findTrackerUploadRequestById } = await import('../../../../server/repositories/tracker-request-repository')
+
+        await saveTrackerUploadRequest({
+            id: 'upload-reset-1',
+            filepath: '/media/Movie.2024.1080p.mkv',
+            metadata: {
+                releaseGroup: 'GROUP',
+                mediaType: 'movie',
+                title: 'Movie',
+                originalTitle: 'Movie',
+                year: 2024,
+                language: ['English'],
+                originalLanguage: 'English',
+                sourceType: 'ENCODE',
+                source: 'BluRay',
+                repack: 0,
+                proper: 0,
+                hybrid: false,
+                resolution: '1080p',
+                hdr: [],
+                videoCodec: 'H.264',
+                audioCodec: 'DTS-HD MA',
+                audioChannels: '5.1',
+                tmdbId: 1,
+                imdbId: 'tt1234567',
+            },
+            description: 'desc',
+            trackers: [{ code: 'ULCX', title: 'Title', titleModified: false, anonymous: false }],
+            status: 'fail',
+            torrentCreationProgress: 42,
+            failedTrackerCodes: ['ULCX'],
+        })
+
+        const reset = await resetTrackerUploadRequest('upload-reset-1')
+        const found = await findTrackerUploadRequestById('upload-reset-1')
+
+        expect(reset).toMatchObject({ id: 'upload-reset-1', status: 'pending', torrentCreationProgress: 0 })
+        expect(reset?.failedTrackerCodes).toBeUndefined()
+        expect(found).toMatchObject({ id: 'upload-reset-1', status: 'pending', torrentCreationProgress: 0 })
+        expect(found?.failedTrackerCodes).toBeUndefined()
+    })
+
+    it('returns null from resetTrackerUploadRequest when the id does not exist', async () => {
+        const { resetTrackerUploadRequest } = await import('../../../../server/repositories/tracker-request-repository')
+
+        const result = await resetTrackerUploadRequest('nonexistent-id')
+
+        expect(result).toBeNull()
+    })
+
     it('returns only the most recent tracker upload requests up to the limit when provided', async () => {
         const { saveTrackerUploadRequest, findAllTrackerUploadRequests } = await import('../../../../server/repositories/tracker-request-repository')
 

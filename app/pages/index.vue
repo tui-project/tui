@@ -4,7 +4,7 @@ import type { TrackerRequest } from '~/composables/useTrackerRequests'
 const LIMIT = 6
 const REFRESH_INTERVAL_MS = 2_000
 
-const { getRequests, error } = useTrackerRequests()
+const { getRequests, retryRequest, error } = useTrackerRequests()
 const requests = ref<TrackerRequest[] | null>(null)
 
 let refreshTimer: ReturnType<typeof globalThis.setInterval> | undefined
@@ -75,6 +75,18 @@ function getStatusIcon(status: string) {
 function shouldAnimateIcon(status: string) {
     return status === trackerUploadStatuses.torrentCreation
 }
+
+function isRetryable(status: string) {
+    return status === trackerUploadStatuses.fail || status === trackerUploadStatuses.partialSuccess
+}
+
+async function handleRetry(request: TrackerRequest) {
+    await retryRequest(request.id)
+    const result = await getRequests(LIMIT)
+    if (result !== null) {
+        requests.value = result
+    }
+}
 </script>
 
 <template>
@@ -119,6 +131,12 @@ function shouldAnimateIcon(status: string) {
 
                         <div v-else-if="hasFinalStatus(request.status) && request.failedTrackerCodes?.length" class="text-xs text-muted">
                             Failed trackers: {{ request.failedTrackerCodes.join(', ') }}
+                        </div>
+
+                        <div v-if="isRetryable(request.status)" class="flex justify-end">
+                            <UButton size="sm" variant="soft" color="neutral" icon="i-heroicons-arrow-path" @click="handleRetry(request)">
+                                Retry
+                            </UButton>
                         </div>
                     </div>
                 </UCard>

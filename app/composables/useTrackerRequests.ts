@@ -68,9 +68,30 @@ export function useTrackerRequests() {
         }
     }
 
+    async function retryRequest(id: string): Promise<void> {
+        if (loading.value) {
+            return
+        }
+
+        loading.value = true
+        error.value = false
+
+        try {
+            await $fetch(`/api/tracker/requests/${id}`, {
+                method: 'PATCH',
+                body: { action: 'retry' },
+            })
+        } catch {
+            error.value = true
+        } finally {
+            loading.value = false
+        }
+    }
+
     return {
         getRequests,
         uploadTorrent,
+        retryRequest,
         loading: readonly(loading),
         error: readonly(error),
     }

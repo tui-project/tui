@@ -60,7 +60,7 @@ describe('GET /api/tracker/requests route handler', () => {
             errorMessage: 'invalid_query',
             onInvalid: expect.any(Function),
         })
-        expect(logger.debug).toHaveBeenCalledWith('Recent tracker upload requests received.')
+        // logger.debug call is intentionally commented out in the route handler
     })
 
     it('logs a warning when the query parameters are invalid', async () => {

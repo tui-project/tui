@@ -112,6 +112,10 @@ function buildRequest(overrides: Partial<Record<string, unknown>> = {}) {
     }
 }
 
+function mockEvent() {
+    return { waitUntil: (p: Promise<unknown>) => p } as never
+}
+
 async function flushPromises() {
     for (let i = 0; i < 10; i++) {
         await Promise.resolve()
@@ -123,7 +127,7 @@ describe('POST /api/tracker/requests route handler', () => {
         readBody.mockResolvedValue(buildRequest({ filepath: '   ', trackers: [] }))
         const handler = await loadHandler()
 
-        await expect(handler({} as never)).rejects.toEqual({
+        await expect(handler(mockEvent())).rejects.toEqual({
             statusCode: 400,
             message: 'invalid_request',
         })
@@ -148,14 +152,14 @@ describe('POST /api/tracker/requests route handler', () => {
         })
         const handler = await loadHandler()
 
-        await expect(handler({} as never)).resolves.toEqual({
+        await expect(handler(mockEvent())).resolves.toEqual({
             id: 'upload-1',
             status: 'pending',
         })
 
         await flushPromises()
 
-        expect(setResponseStatus).toHaveBeenCalledWith({}, 201)
+        expect(setResponseStatus).toHaveBeenCalledWith(expect.any(Object), 201)
         expect(saveTrackerUploadRequest).toHaveBeenCalledWith({
             id: expect.any(String),
             description: 'Release description',
@@ -196,7 +200,7 @@ describe('POST /api/tracker/requests route handler', () => {
         })
         const handler = await loadHandler()
 
-        await expect(handler({} as never)).resolves.toEqual({
+        await expect(handler(mockEvent())).resolves.toEqual({
             id: 'upload-1',
             status: 'pending',
         })
@@ -205,7 +209,7 @@ describe('POST /api/tracker/requests route handler', () => {
 
         expect(createGenericTorrent).not.toHaveBeenCalled()
         expect(saveGenericTorrentCache).not.toHaveBeenCalled()
-        expect(updateTrackerUploadRequestTorrentCreationProgress).not.toHaveBeenCalled()
+        expect(updateTrackerUploadRequestTorrentCreationProgress).toHaveBeenCalledWith('upload-1', 100)
         expect(logger.debug).toHaveBeenCalledWith('Reusing cached generic torrent for tracker upload request.', {
             id: 'upload-1',
             filepath: '/media/Movie.2024.1080p.mkv',
@@ -229,7 +233,7 @@ describe('POST /api/tracker/requests route handler', () => {
         )
         const handler = await loadHandler()
 
-        await expect(handler({} as never)).rejects.toEqual({
+        await expect(handler(mockEvent())).rejects.toEqual({
             statusCode: 400,
             message: 'invalid_request',
         })
@@ -248,7 +252,7 @@ describe('POST /api/tracker/requests route handler', () => {
         )
         const handler = await loadHandler()
 
-        await expect(handler({} as never)).rejects.toEqual({
+        await expect(handler(mockEvent())).rejects.toEqual({
             statusCode: 400,
             message: 'invalid_request',
         })
@@ -274,7 +278,7 @@ describe('POST /api/tracker/requests route handler', () => {
         })
         const handler = await loadHandler()
 
-        await expect(handler({} as never)).resolves.toEqual({ id: 'upload-1', status: 'pending' })
+        await expect(handler(mockEvent())).resolves.toEqual({ id: 'upload-1', status: 'pending' })
         await flushPromises()
 
         expect(createTrackerTorrent).toHaveBeenCalledWith({
@@ -307,7 +311,7 @@ describe('POST /api/tracker/requests route handler', () => {
         createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/ULCX/Movie.torrent' })
         const handler = await loadHandler()
 
-        await handler({} as never)
+        await handler(mockEvent())
         await flushPromises()
 
         expect(uploadMock).toHaveBeenCalledWith('/config/tmp/torrents/ULCX/Movie.torrent', expect.any(Object), expect.any(String), expect.any(String), {
@@ -333,7 +337,7 @@ describe('POST /api/tracker/requests route handler', () => {
         createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/ULCX/Movie.torrent' })
         const handler = await loadHandler()
 
-        await handler({} as never)
+        await handler(mockEvent())
         await flushPromises()
 
         expect(uploadMock).toHaveBeenCalledWith('/config/tmp/torrents/ULCX/Movie.torrent', expect.any(Object), expect.any(String), expect.any(String), {
@@ -346,7 +350,7 @@ describe('POST /api/tracker/requests route handler', () => {
         readBody.mockResolvedValue(buildRequest({ trackers: [] }))
         const handler = await loadHandler()
 
-        await expect(handler({} as never)).rejects.toEqual({
+        await expect(handler(mockEvent())).rejects.toEqual({
             statusCode: 400,
             message: 'invalid_request',
         })
@@ -381,7 +385,7 @@ describe('POST /api/tracker/requests route handler', () => {
         analyzeMediaFileAsText.mockResolvedValue('mediainfo output')
         const handler = await loadHandler()
 
-        await handler({} as never)
+        await handler(mockEvent())
         await flushPromises()
         await flushPromises()
 
@@ -411,7 +415,7 @@ describe('POST /api/tracker/requests route handler', () => {
         analyzeMediaFileAsText.mockResolvedValue('mediainfo output')
         const handler = await loadHandler()
 
-        await handler({} as never)
+        await handler(mockEvent())
         await flushPromises()
         await flushPromises()
 
@@ -435,7 +439,7 @@ describe('POST /api/tracker/requests route handler', () => {
         createGenericTorrent.mockRejectedValue(error)
         const handler = await loadHandler()
 
-        await expect(handler({} as never)).resolves.toEqual({
+        await expect(handler(mockEvent())).resolves.toEqual({
             id: 'upload-1',
             status: 'pending',
         })

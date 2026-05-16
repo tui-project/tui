@@ -89,7 +89,7 @@ describe('createUnit3dService — upload', () => {
         const appendSpy = vi.spyOn(FormData.prototype, 'append')
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
         await service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: true })
-        expect(appendSpy).toHaveBeenCalledWith('anonymous', 'true')
+        expect(appendSpy).toHaveBeenCalledWith('anonymous', '1')
     })
 
     it('appends correct category_id, type_id, and resolution_id for movie encode 1080p', async () => {
