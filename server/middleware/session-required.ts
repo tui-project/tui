@@ -8,10 +8,10 @@ export default defineEventHandler(async (event) => {
     const path = getRequestURL(event).pathname
     const isBypassed = BYPASS_PATHS.some((bypassPath) => path === bypassPath || path.startsWith(`${bypassPath}/`))
 
-    logger.trace(`Requested path: ${path}.`)
+    // logger.trace(`Requested path: ${path}.`)
 
     if (isBypassed) {
-        logger.trace(`Requested path: ${path} is by passed.`)
+        // logger.trace(`Requested path: ${path} is by passed.`)
         return
     }
 

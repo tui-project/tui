@@ -54,21 +54,21 @@ export function createUnit3dService(url: string, apiKey: string, buildTitle?: (m
         formData.append('mod_queue_opt_in', String(true))
 
         logger.info('Uploading torrent to UNIT3D tracker.', { trackerUrl: url, title, torrentPath })
-
+        logger.debug('request', { formData: Object.fromEntries(formData.entries()) })
+        
         try {
-            await $fetch(`${url}/api/torrents/upload`, {
+            await $fetch<unknown>(`${url}/api/torrents/upload`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${apiKey}` },
                 body: formData,
+                redirect: 'error',
             })
-        } catch (err) {
-            logger.error('Upload to tracker failed', { err })
-            
-            const detail = err instanceof Error ? err.message : String(err)
-            throw new Error(`Upload failed: ${detail}`)
+        } catch (error: unknown) {
+            const data = (typeof error === 'object' && error !== null && 'data' in error) ? (error as { data: unknown }).data : undefined
+            logger.error('Upload to tracker failed', { statusCode: (error as { statusCode?: number }).statusCode, data })
+            throw new Error('Upload failed')
         }
 
-        logger.debug('request', { formData })
         logger.info('Torrent uploaded successfully to UNIT3D tracker.', { trackerUrl: url, title })
     }
 
