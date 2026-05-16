@@ -76,6 +76,7 @@ const metadata: Metadata = {
     tmdbId: 1,
     imdbId: 'tt1234567',
     tvdbId: null,
+    locale: '',
 }
 
 const DEFAULT_TITLE = 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP'

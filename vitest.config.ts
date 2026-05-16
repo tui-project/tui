@@ -7,7 +7,7 @@ export default defineConfig({
             provider: 'v8',
             include: ['server/**/*.{ts,js}', 'app/**/*'],
             exclude: ['server/**/*.d.ts'],
-            reporter: ['text', 'html'],
+            reporter: ['text', 'html', 'json'],
         },
         projects: [
             {

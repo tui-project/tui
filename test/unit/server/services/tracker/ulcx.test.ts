@@ -49,7 +49,7 @@ describe('createUlcxTrackerService — getTitle', () => {
     })
 
     it('builds a basic movie title', async () => {
-        expect(await service.getTitle(baseMetadata)).toBe('Movie 2024 BluRay DTS-HD MA 5.1 H.264-GROUP')
+        expect(await service.getTitle(baseMetadata)).toBe('Movie 2024 1080p BluRay DTS-HD MA 5.1 H.264-GROUP')
     })
 
     it('includes TV season and episode when present', async () => {
@@ -150,10 +150,10 @@ describe('createUlcxTrackerService — getTitle', () => {
         expect(title).not.toContain('UHD')
     })
 
-    it('returns DVD for DVD source and includes resolution before source', async () => {
+    it('returns DVD for DVD source and omits resolution', async () => {
         const title = await service.getTitle({ ...baseMetadata, source: SOURCES.DVD })
         expect(title).toContain('DVD')
-        expect(title).toContain(baseMetadata.resolution)
+        expect(title).not.toContain(baseMetadata.resolution)
     })
 
     it('returns empty string for unknown source', async () => {
@@ -321,5 +321,10 @@ describe('createUlcxTrackerService — getTitle', () => {
             expect(title).not.toContain('Dual-Audio')
             expect(title).not.toContain('Dubbed')
         })
+    })
+
+    it('includes locale when present', async () => {
+        const title = await service.getTitle({ ...baseMetadata, locale: 'KR' })
+        expect(title).toContain('KR')
     })
 })

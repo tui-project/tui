@@ -7,14 +7,18 @@ export function createUlcxTrackerService(url: string, apiKey: string): TrackerSe
     return createUnit3dService(url, apiKey, buildTitle)
 }
 
+/**
+ * Full Disc, Remux Template            : Name AKA Original LOCALE Year S##E## Cut Ratio Hybrid REPACK PROPER RERip Resolution Edition Region 3D SOURCE TYPE Hi10P HDR Vcodec Dub Acodec Channels Object-Tag
+ * Encode, WEB-DL, WEBRip, HDTV Template: Name AKA Original LOCALE Year S##E## Cut Ratio Hybrid REPACK PROPER RERip Resolution Edition 3D SOURCE TYPE Dub Acodec Channels Object Hi10P HDR Vcodec-Tag
+ * 
+ * Refer to: https://upload.cx/wikis/7
+ */
 async function buildTitle(metadata: TrackerUploadMetadata) {
-    //Refer to: https://upload.cx/wikis/7
-
     const isRemux = metadata.sourceType === SOURCE_TYPES.REMUX
     const parts: string[] = [metadata.title]
 
     if (metadata?.originalTitle !== metadata.title) parts.push(`AKA ${metadata.originalTitle}`)
-    // LOCALE — not available in metadata model; skip
+    if (metadata.locale) parts.push(metadata.locale)
     if (metadata.mediaType === MEDIA_TYPES.MOVIE) {
         parts.push(String(metadata.year))
     } else if (metadata.mediaType === MEDIA_TYPES.TV && metadata.tvdbId) {
@@ -29,7 +33,7 @@ async function buildTitle(metadata: TrackerUploadMetadata) {
     if (metadata.proper) parts.push(metadata.proper === 1 ? 'PROPER' : `PROPER${metadata.proper}`)
     if (metadata.rerip) parts.push('RERip')
     if (metadata.threeD) parts.push('3D')
-    if (metadata.source === SOURCES.DVD) parts.push(metadata.resolution)
+    if (metadata.source !== SOURCES.DVD) parts.push(metadata.resolution)
     parts.push(buildSourceString(metadata))
     parts.push(buildTypeString(metadata.sourceType))
 

@@ -285,6 +285,7 @@ const state = reactive<Metadata>({
     tmdbId: null,
     imdbId: '',
     tvdbId: null,
+    locale: '',
 })
 
 const { getMetadata, loading, error } = useMetadata()
@@ -451,6 +452,10 @@ function onSubmit(_: FormSubmitEvent<Schema>) {
 
                         <UFormField label="Ratio">
                             <USelect v-model="state.ratio" size="xl" class="w-full" placeholder="Select ratio" :items="ratioOptions" />
+                        </UFormField>
+
+                        <UFormField label="Locale">
+                            <UInput v-model="state.locale" size="xl" class="w-full" placeholder="e.g. US, KR, GB" />
                         </UFormField>
 
                         <UFormField label="Flags" class="md:col-span-2">

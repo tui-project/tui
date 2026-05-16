@@ -31,6 +31,7 @@ export type Metadata = {
     tmdbId: number | null
     imdbId: string
     tvdbId: number | null
+    locale: string
 }
 
 export type Path = {

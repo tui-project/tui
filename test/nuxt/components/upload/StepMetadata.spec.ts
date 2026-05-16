@@ -45,6 +45,7 @@ function createMetadata(overrides: Partial<Metadata> = {}): Metadata {
         tmdbId: 438631,
         imdbId: 'tt1160419',
         tvdbId: null,
+        locale: '',
         ...overrides,
     }
 }
@@ -342,6 +343,84 @@ describe('StepMetadata', () => {
         })
     })
 
+    it('shows repack and proper number inputs when repack/proper are set', async () => {
+        await renderSuspended(StepMetadata, {
+            props: { selectedPath },
+        })
+
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.getByRole('spinbutton', { name: 'Repack number' })).toBeDefined()
+        expect(screen.getByRole('spinbutton', { name: 'Proper number' })).toBeDefined()
+        expect(screen.getByRole('spinbutton', { name: 'Repack number' }).getAttribute('value')).toBe('1')
+        expect(screen.getByRole('spinbutton', { name: 'Proper number' }).getAttribute('value')).toBe('1')
+    })
+
+    it('shows Hi10P checkbox when video codec is AVC, H.264, or x264', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ videoCodec: 'AVC', hi10p: true })))
+
+        await renderSuspended(StepMetadata, {
+            props: { selectedPath },
+        })
+
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.getByRole('checkbox', { name: 'Hi10P' })).toBeDefined()
+        expect(screen.getByRole('checkbox', { name: 'Hi10P' }).getAttribute('data-state')).toBe('checked')
+    })
+
+    it('shows Hi10P checkbox when video codec is x264', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ videoCodec: 'x264', hi10p: false })))
+
+        await renderSuspended(StepMetadata, {
+            props: { selectedPath },
+        })
+
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.getByRole('checkbox', { name: 'Hi10P' })).toBeDefined()
+    })
+
+    it('hides Hi10P checkbox when video codec is HEVC', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ videoCodec: 'HEVC' })))
+
+        await renderSuspended(StepMetadata, {
+            props: { selectedPath },
+        })
+
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.queryByRole('checkbox', { name: 'Hi10P' })).toBeNull()
+    })
+
+    it('shows RERip and 3D checkboxes', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ rerip: true, threeD: true })))
+
+        await renderSuspended(StepMetadata, {
+            props: { selectedPath },
+        })
+
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.getByRole('checkbox', { name: 'RERip' }).getAttribute('data-state')).toBe('checked')
+        expect(screen.getByRole('checkbox', { name: '3D' }).getAttribute('data-state')).toBe('checked')
+    })
+
+    it('shows season and episode inputs for tv metadata', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 2, episode: 5, tvdbId: 999 })))
+
+        await renderSuspended(StepMetadata, {
+            props: { selectedPath },
+        })
+
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.getByRole('spinbutton', { name: 'Season' }).getAttribute('value')).toBe('2')
+        expect(screen.getByRole('spinbutton', { name: 'Episode' }).getAttribute('value')).toBe('5')
+        expect(screen.getByRole('spinbutton', { name: 'TMDb ID' }).getAttribute('value')).toBe('438631')
+        expect(screen.getByRole('spinbutton', { name: 'TVDB ID' }).getAttribute('value')).toBe('999')
+    })
+
     it('renders unchecked flags when metadata flags are false', async () => {
         vi.stubGlobal(
             '$fetch',
@@ -466,6 +545,185 @@ describe('StepMetadata', () => {
         expect(onBack).toHaveBeenCalledTimes(1)
         await waitFor(() => {
             expect(onNext).toHaveBeenCalledTimes(1)
+        })
+    })
+
+    it('shows Hi10P checkbox when video codec is H.264', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ videoCodec: 'H.264', hi10p: false })))
+
+        await renderSuspended(StepMetadata, {
+            props: { selectedPath },
+        })
+
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.getByRole('checkbox', { name: 'Hi10P' })).toBeDefined()
+    })
+
+    it('unchecking repack and proper sets them to 0 and hides number inputs', async () => {
+        const user = userEvent.setup()
+
+        await renderSuspended(StepMetadata, {
+            props: { selectedPath },
+        })
+
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.getByRole('spinbutton', { name: 'Repack number' })).toBeDefined()
+        expect(screen.getByRole('spinbutton', { name: 'Proper number' })).toBeDefined()
+
+        await user.click(screen.getByRole('checkbox', { name: 'Repack' }))
+        await user.click(screen.getByRole('checkbox', { name: 'Proper' }))
+
+        await waitFor(() => {
+            expect(screen.queryByRole('spinbutton', { name: 'Repack number' })).toBeNull()
+            expect(screen.queryByRole('spinbutton', { name: 'Proper number' })).toBeNull()
+        })
+    })
+
+    it('updates modelValue on submit', async () => {
+        const onUpdateModelValue = vi.fn()
+
+        await renderSuspended(StepMetadata, {
+            props: {
+                selectedPath,
+                'onUpdate:modelValue': onUpdateModelValue,
+            },
+        })
+
+        await screen.findByDisplayValue('Dune')
+        await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+        await waitFor(() => {
+            expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ title: 'Dune' }))
+        })
+    })
+
+    it('updates repack and proper number inputs via typing', async () => {
+        await renderSuspended(StepMetadata, {
+            props: { selectedPath },
+        })
+
+        await screen.findByDisplayValue('Dune')
+
+        const repackInput = screen.getByRole('spinbutton', { name: 'Repack number' })
+        const properInput = screen.getByRole('spinbutton', { name: 'Proper number' })
+
+        await fireEvent.update(repackInput, '3')
+        await fireEvent.update(properInput, '2')
+
+        await waitFor(() => {
+            expect(repackInput.getAttribute('value')).toBe('3')
+            expect(properInput.getAttribute('value')).toBe('2')
+        })
+    })
+
+    it('toggles Hi10P checkbox on and off', async () => {
+        const user = userEvent.setup()
+
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ videoCodec: 'AVC', hi10p: false })))
+
+        await renderSuspended(StepMetadata, {
+            props: { selectedPath },
+        })
+
+        await screen.findByDisplayValue('Dune')
+
+        const hi10pCheckbox = screen.getByRole('checkbox', { name: 'Hi10P' })
+        expect(hi10pCheckbox.getAttribute('data-state')).toBe('unchecked')
+
+        await user.click(hi10pCheckbox)
+        await waitFor(() => {
+            expect(screen.getByRole('checkbox', { name: 'Hi10P' }).getAttribute('data-state')).toBe('checked')
+        })
+
+        await user.click(screen.getByRole('checkbox', { name: 'Hi10P' }))
+        await waitFor(() => {
+            expect(screen.getByRole('checkbox', { name: 'Hi10P' }).getAttribute('data-state')).toBe('unchecked')
+        })
+    })
+
+    it('updates season, episode, tmdb and tvdb inputs for TV media type', async () => {
+        const user = userEvent.setup()
+
+        vi.stubGlobal(
+            '$fetch',
+            vi.fn().mockResolvedValue(
+                createMetadata({
+                    mediaType: 'tv',
+                    season: null,
+                    episode: null,
+                    tvdbId: null,
+                    tmdbId: null,
+                })
+            )
+        )
+
+        await renderSuspended(StepMetadata, {
+            props: { selectedPath },
+        })
+
+        await screen.findByDisplayValue('Dune')
+
+        const seasonInput = screen.getByRole('spinbutton', { name: 'Season' })
+        const episodeInput = screen.getByRole('spinbutton', { name: 'Episode' })
+        const tvdbInput = screen.getByRole('spinbutton', { name: 'TVDB ID' })
+        const tmdbInput = screen.getByRole('spinbutton', { name: 'TMDb ID' })
+
+        await user.type(seasonInput, '2')
+        await user.type(episodeInput, '5')
+        await user.type(tvdbInput, '67890')
+        await user.type(tmdbInput, '99999')
+
+        await waitFor(() => {
+            expect(seasonInput.getAttribute('value')).toBe('2')
+            expect(episodeInput.getAttribute('value')).toBe('5')
+            expect(tvdbInput.getAttribute('value')).toBe('67890')
+            expect(tmdbInput.getAttribute('value')).toBe('99999')
+        })
+    })
+
+    it('updates tmdb input for movie media type', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ tmdbId: null })))
+
+        await renderSuspended(StepMetadata, {
+            props: { selectedPath },
+        })
+
+        await screen.findByDisplayValue('Dune')
+
+        const tmdbInput = screen.getByRole('spinbutton', { name: 'TMDb ID' })
+        await fireEvent.input(tmdbInput, { target: { value: '12345' } })
+        await fireEvent.change(tmdbInput, { target: { value: '12345' } })
+
+        await waitFor(() => {
+            expect(tmdbInput.getAttribute('value')).toBe('12345')
+        })
+    })
+
+    it('toggles rerip and 3D checkboxes', async () => {
+        const user = userEvent.setup()
+
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ rerip: false, threeD: false })))
+
+        await renderSuspended(StepMetadata, {
+            props: { selectedPath },
+        })
+
+        await screen.findByDisplayValue('Dune')
+
+        const reripCheckbox = screen.getByRole('checkbox', { name: 'RERip' })
+        const threeDCheckbox = screen.getByRole('checkbox', { name: '3D' })
+
+        expect(reripCheckbox.getAttribute('data-state')).toBe('unchecked')
+        expect(threeDCheckbox.getAttribute('data-state')).toBe('unchecked')
+
+        await user.click(reripCheckbox)
+        await user.click(threeDCheckbox)
+
+        await waitFor(() => {
+            expect(screen.getByRole('checkbox', { name: 'RERip' }).getAttribute('data-state')).toBe('checked')
+            expect(screen.getByRole('checkbox', { name: '3D' }).getAttribute('data-state')).toBe('checked')
         })
     })
 })

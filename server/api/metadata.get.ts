@@ -5,9 +5,9 @@ import { getSettings } from '../repositories/settings-repository'
 import { logger } from '../utils/logger'
 import { parseMetadataFromName, type ParsedNameMetadata } from '../services/media-name-parser'
 import { parseMetadataFromMediainfo, type ParsedMediainfoMetadata } from '../services/mediainfo'
-import { findByExternalID, findByTitle, getDetails, getExternalIDs, ID_TYPES } from '../services/tmdb'
+import { findByExternalID, findByTitle, findLocale, getDetails, getExternalIDs, ID_TYPES } from '../services/tmdb'
 import { isWithinAnyRoot, resolveMediaFilePath } from '../utils/file-system'
-import type { Metadata } from '../model/metadata'
+import { MEDIA_TYPES, type Metadata } from '../model/metadata'
 import { parseValidatedQuery } from '../utils/request-validator'
 
 const metadataQuerySchema = z.object({
@@ -59,44 +59,64 @@ async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameM
         logger.debug('TMDB enrichment using existing TMDB ID.', { tmdbId: metadata.tmdbId, mediaType: metadata.mediaType })
 
         const details = await getDetails(String(metadata.tmdbId), metadata.mediaType)
-        metadata.title = details.title
-        metadata.originalTitle = details.original_title
-        metadata.originalLanguage = details.original_language
-        metadata.year = details.year
+        if (details) {
+            metadata.title = details.title
+            metadata.originalTitle = details.original_title
+            metadata.originalLanguage = details.original_language
+            metadata.year = details.year
+            metadata.imdbId = details.external_ids?.imdb_id
+            metadata.tvdbId = details.external_ids?.tvdb_id
+            if (metadata.title && metadata.mediaType === MEDIA_TYPES.TV) metadata.locale = await findLocale(metadata?.title, metadata.tmdbId, metadata.mediaType)
+        }
     } else if (metadata.imdbId) {
         logger.debug('TMDB enrichment using IMDb ID.', { imdbId: metadata.imdbId, mediaType: metadata.mediaType })
 
-        const searchResult = await findByExternalID(metadata.imdbId, ID_TYPES.IMDB, metadata.mediaType)
-        metadata.tmdbId = searchResult.id
-        metadata.title = searchResult.title
-        metadata.originalTitle = searchResult.original_title
-        metadata.originalLanguage = searchResult.original_language
-        metadata.year = searchResult.year
+        const findResult = await findByExternalID(metadata.imdbId, ID_TYPES.IMDB, metadata.mediaType)
+        if (findResult) {
+            metadata.tmdbId = findResult.id
+            metadata.title = findResult.title
+            metadata.originalTitle = findResult.original_title
+            metadata.originalLanguage = findResult.original_language
+            metadata.year = findResult.year
+            metadata.imdbId = findResult.external_ids?.imdb_id ?? metadata.imdbId
+            metadata.tvdbId = findResult.external_ids?.tvdb_id ?? undefined
+            if (metadata.title && metadata.mediaType === MEDIA_TYPES.TV) metadata.locale = await findLocale(metadata.title, metadata.tmdbId, metadata.mediaType)
+        }
     } else if (metadata.tvdbId !== undefined) {
         logger.debug('TMDB enrichment using TVDB ID.', { tvdbId: metadata.tvdbId, mediaType: metadata.mediaType })
 
-        const searchResult = await findByExternalID(String(metadata.tvdbId), ID_TYPES.TVDB, metadata.mediaType)
-        metadata.tmdbId = searchResult.id
-        metadata.title = searchResult.title
-        metadata.originalTitle = searchResult.original_title
-        metadata.originalLanguage = searchResult.original_language
-        metadata.year = searchResult.year
+        const findResult = await findByExternalID(String(metadata.tvdbId), ID_TYPES.TVDB, metadata.mediaType)
+        if (findResult) {
+            metadata.tmdbId = findResult.id
+            metadata.title = findResult.title
+            metadata.originalTitle = findResult.original_title
+            metadata.originalLanguage = findResult.original_language
+            metadata.year = findResult.year
+            metadata.imdbId = findResult.external_ids?.imdb_id
+            metadata.tvdbId = findResult.external_ids?.tvdb_id ?? undefined
+            if (metadata.title && metadata.mediaType === MEDIA_TYPES.TV) metadata.locale = await findLocale(metadata.title, metadata.tmdbId, metadata.mediaType)
+        }
     } else {
         logger.debug('TMDB enrichment using title lookup.', { title: metadata?.title, mediaType: metadata.mediaType })
 
-        const searchResult = await findByTitle(metadata.title ?? '', metadata.mediaType)
-        metadata.tmdbId = searchResult.id
-        metadata.title = searchResult.title
-        metadata.originalTitle = searchResult.original_title
-        metadata.originalLanguage = searchResult.original_language
-        metadata.year = searchResult.year
+        const searchResult = await findByTitle(metadata.title!, metadata.mediaType)
+        if (searchResult) {
+            metadata.tmdbId = searchResult.id
+            metadata.title = searchResult.title
+            metadata.originalTitle = searchResult.original_title
+            metadata.originalLanguage = searchResult.original_language
+            metadata.year = searchResult.year
+            metadata.locale = searchResult.origin_country
+
+            logger.debug('Fetching TMDB external IDs.', { tmdbId: metadata.tmdbId, mediaType: metadata.mediaType })
+
+            const externalIDs = await getExternalIDs(String(metadata.tmdbId), metadata.mediaType)
+            if (externalIDs) {
+                metadata.imdbId = externalIDs.imdb_id
+                metadata.tvdbId = externalIDs.tvdb_id
+            }
+        }
     }
-
-    logger.debug('Fetching TMDB external IDs.', { tmdbId: metadata.tmdbId, mediaType: metadata.mediaType })
-
-    const externalIDs = await getExternalIDs(String(metadata.tmdbId ?? ''), metadata.mediaType)
-    metadata.imdbId = externalIDs.imdb_id
-    metadata.tvdbId = externalIDs.tvdb_id ?? undefined
 
     return metadata
 }

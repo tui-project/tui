@@ -1,140 +1,81 @@
-import type { MediaType } from '../model/metadata'
+import { MEDIA_TYPES, type MediaType } from '../model/metadata'
 import { getSettings } from '../repositories/settings-repository'
 import { logger } from '../utils/logger'
 
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3/'
-
-export const TMDB_API_KEY_REQUIRED_ERROR = 'tmdb api key is required'
+const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
+const TMDB_API_KEY_REQUIRED_ERROR = 'tmdb api key is required'
 
 export const ID_TYPES = {
     IMDB: 'imdb_id',
     TVDB: 'tvdb_id',
 } as const
-
-export type IDType = (typeof ID_TYPES)[keyof typeof ID_TYPES]
-
-export interface TMDbExternalIDs {
-    imdb_id?: string
-    tvdb_id?: number | null
-}
-
-export interface TMDbSearchResult {
-    id?: number
-    title?: string
-    original_title?: string
-    original_language?: string
-    year?: number
-    media_type?: MediaType
-}
+type IDType = (typeof ID_TYPES)[keyof typeof ID_TYPES]
 
 interface TMDbItem {
-    id?: number
+    id: number
     title?: string
     name?: string
     original_title?: string
     original_name?: string
-    original_language?: string
+    original_language: string
     release_date?: string
     first_air_date?: string
-    media_type?: MediaType
+    media_type: MediaType
+    origin_country?: string[]
+    external_ids: TMDbExternalIDs
 }
 
-export async function findByTitle(title: string, mediaType: MediaType): Promise<TMDbSearchResult> {
+export interface TMDbExternalIDs {
+    imdb_id: string
+    tvdb_id?: number
+}
+
+export interface TMDbSearchResult {
+    id: number
+    title: string
+    original_title: string
+    original_language: string
+    year: number
+    media_type: MediaType
+    origin_country?: string
+    external_ids: TMDbExternalIDs
+}
+
+export async function findByTitle(title: string, mediaType: MediaType): Promise<TMDbSearchResult | null> {
     const trimmedTitle = title.trim()
     if (!trimmedTitle) {
-        logger.debug('TMDB title lookup skipped due to empty title.', { mediaType })
-        return {}
+        logger.debug('TMDB title lookup skipped due to empty title.')
+        return null
     }
 
-    logger.debug('TMDB title lookup request prepared.', { mediaType, endpoint: 'search/multi', title: trimmedTitle })
-    const payload = await requestTMDb<{ results?: TMDbItem[] }>('search/multi', { query: trimmedTitle })
+    logger.debug('TMDB title lookup request prepared.', { mediaType, endpoint: 'search/multi', trimmedTitle })
 
-    const results = payload?.results ?? []
-    const match = results.find((item) => item.media_type === mediaType)
-    if (!match) {
-        logger.debug('TMDB title lookup returned no matching result.', { mediaType, resultCount: results.length })
-    }
-
-    return toSearchResult(match, mediaType)
-}
-
-export async function findByExternalID(externalID: string, idType: IDType, mediaType: MediaType): Promise<TMDbSearchResult> {
-    const normalizedExternalID = normalizeTMDbID(externalID)
-    if (!normalizedExternalID) {
-        logger.debug('TMDB external id lookup skipped due to empty id.', { mediaType, idType })
-        return {}
-    }
-
-    if (idType !== ID_TYPES.IMDB && idType !== ID_TYPES.TVDB) {
-        logger.warn('TMDB external id lookup skipped due to unsupported id type.', { mediaType, idType })
-        return {}
-    }
-
-    const path = `find/${normalizedExternalID}`
-    logger.debug('TMDB external id lookup request prepared.', { mediaType, idType, endpoint: path, externalID: normalizedExternalID })
-    const payload = await requestTMDb<{ movie_results?: TMDbItem[]; tv_results?: TMDbItem[] }>(path, {
-        external_source: idType,
-    })
-
-    const movieResults = payload?.movie_results ?? []
-    const tvResults = payload?.tv_results ?? []
-    const selected = mediaType === 'movie' ? movieResults[0] : tvResults[0]
-    if (!selected) {
-        logger.debug('TMDB external id lookup returned no result for requested media type.', {
-            mediaType,
-            idType,
-            movieResultCount: movieResults.length,
-            tvResultCount: tvResults.length,
-        })
-    }
-
-    return toSearchResult(selected, mediaType)
-}
-
-export async function getDetails(tmdbID: string, mediaType: MediaType): Promise<TMDbSearchResult> {
-    const normalizedTMDbID = normalizeTMDbID(tmdbID)
-    if (!normalizedTMDbID) {
-        logger.warn('TMDB details lookup skipped due to empty TMDB ID.', { mediaType })
-        return {}
-    }
-
-    const path = `${mediaType}/${normalizedTMDbID}`
-    logger.debug('TMDB details request prepared.', { mediaType, endpoint: path, tmdbID: normalizedTMDbID })
-    const payload = await requestTMDb<TMDbItem>(path)
-
-    return toSearchResult(payload ?? undefined, mediaType)
-}
-
-export async function getExternalIDs(tmdbID: string, mediaType: MediaType): Promise<TMDbExternalIDs> {
-    const normalizedTMDbID = normalizeTMDbID(tmdbID)
-    if (!normalizedTMDbID) {
-        logger.warn('TMDB external ids lookup skipped due to empty TMDB ID.', { mediaType })
-        return {}
-    }
-
-    const path = `${mediaType}/${normalizedTMDbID}/external_ids`
-    logger.debug('TMDB external ids request prepared.', { mediaType, endpoint: path, tmdbID: normalizedTMDbID })
-    const payload = await requestTMDb<TMDbExternalIDs>(path)
-
-    return payload ?? {}
-}
-
-async function requestTMDb<T>(path: string, query: Record<string, string> = {}) {
     const apiKey = await getApiKey()
-    const url = new URL(path, TMDB_BASE_URL)
-    url.searchParams.set('api_key', apiKey)
-
-    for (const [key, value] of Object.entries(query)) {
-        url.searchParams.set(key, value)
-    }
+    const path = `${TMDB_BASE_URL}/search/multi`
 
     try {
-        return await $fetch<T>(url.toString())
-    } catch (error: unknown) {
-        logger.warn('TMDB request failed.', {
-            path,
-            error: toLoggableFetchError(error),
+        const response = await $fetch<{ results: TMDbItem[] }>(path, {
+            query: {
+                api_key: apiKey,
+                query: encodeURIComponent(trimmedTitle),
+            },
         })
+
+        const results = response.results.filter((item) => item.media_type === mediaType).map((item) => toSearchResult(item, mediaType))
+        const match = results[0]
+        if (!match) {
+            logger.debug('TMDB title lookup returned no matching result.', { mediaType, resultCount: results.length })
+            return null
+        }
+
+        if (match.media_type === MEDIA_TYPES.TV) {
+            const locale = detectLocale(match, results, mediaType)
+            return { ...match, origin_country: locale }
+        } else {
+            return match
+        }
+    } catch (error: unknown) {
+        logger.warn('TMDB request failed.', { path, error })
         return null
     }
 }
@@ -151,44 +92,16 @@ async function getApiKey() {
     return apiKey
 }
 
-function toLoggableFetchError(error: unknown) {
-    if (!error || typeof error !== 'object') {
-        return {
-            message: String(error),
-        }
-    }
-
-    const payload = error as {
-        name?: unknown
-        message?: unknown
-        statusCode?: unknown
-        data?: {
-            status_message?: unknown
-            status_code?: unknown
-        }
-    }
-
-    return {
-        name: typeof payload.name === 'string' ? payload.name : undefined,
-        message: typeof payload.message === 'string' ? payload.message : undefined,
-        statusCode: typeof payload.statusCode === 'number' ? payload.statusCode : undefined,
-        tmdbStatusCode: typeof payload.data?.status_code === 'number' ? payload.data.status_code : undefined,
-        tmdbStatusMessage: typeof payload.data?.status_message === 'string' ? payload.data.status_message : undefined,
-    }
-}
-
-function toSearchResult(item: TMDbItem | undefined, mediaType: MediaType): TMDbSearchResult {
-    if (!item?.id) {
-        return {}
-    }
-
+function toSearchResult(item: TMDbItem, mediaType: MediaType): TMDbSearchResult {
     return {
         id: item.id,
-        title: firstNonEmpty(sanitiseText(item.title), sanitiseText(item.name)),
-        original_title: firstNonEmpty(sanitiseText(item.original_title), sanitiseText(item.original_name)),
+        title: firstNonEmpty(sanitiseText(item.title), sanitiseText(item.name))!,
+        original_title: firstNonEmpty(sanitiseText(item.original_title), sanitiseText(item.original_name))!,
         original_language: item.original_language,
-        year: extractYearFromDate(firstNonEmpty(item.release_date, item.first_air_date)),
+        year: extractYearFromDate(firstNonEmpty(item.release_date, item.first_air_date))!,
         media_type: mediaType,
+        origin_country: item.origin_country?.[0],
+        external_ids: item.external_ids,
     }
 }
 
@@ -228,6 +141,85 @@ function extractYearFromDate(value: string | undefined) {
     return year
 }
 
+function detectLocale(match: TMDbSearchResult, allResults: TMDbSearchResult[], mediaType: MediaType): string | undefined {
+    const duplicates = allResults.filter((item) => item.title === match.title && (mediaType !== MEDIA_TYPES.MOVIE || item.year === match.year)).sort((a, b) => a.year - b.year)
+    if (duplicates.length < 2 || duplicates[0]?.id === match.id) return undefined
+
+    return match.origin_country
+}
+
+export async function findLocale(title: string, tmdbId: number, mediaType: MediaType): Promise<string | undefined> {
+    logger.debug('TMDB locale search request prepared.', { mediaType, endpoint: 'search/multi', title, tmdbId })
+
+    const apiKey = await getApiKey()
+    const path = `${TMDB_BASE_URL}/search/multi`
+
+    try {
+        const response = await $fetch<{ results: TMDbItem[] }>(path, {
+            query: {
+                api_key: apiKey,
+                query: encodeURIComponent(title),
+            },
+        })
+        const results = response.results.filter((item) => item.media_type === mediaType).map((item) => toSearchResult(item, mediaType))
+        const match = results.find((item) => item.id === tmdbId)
+        if (!match) return undefined
+
+        return detectLocale(match, results, mediaType)
+    } catch (error: unknown) {
+        logger.warn('TMDB request failed.', { path, error })
+        return undefined
+    }
+}
+
+export async function findByExternalID(externalID: string, idType: IDType, mediaType: MediaType): Promise<TMDbSearchResult | null> {
+    const normalizedExternalID = normalizeTMDbID(externalID)
+    if (!normalizedExternalID) {
+        logger.debug('TMDB external id lookup skipped due to empty id.', { mediaType, idType })
+        return null
+    }
+
+    if (idType !== ID_TYPES.IMDB && idType !== ID_TYPES.TVDB) {
+        logger.warn('TMDB external id lookup skipped due to unsupported id type.', { mediaType, idType })
+        return null
+    }
+
+    const apiKey = await getApiKey()
+    const path = `${TMDB_BASE_URL}/find/${normalizedExternalID}`
+
+    logger.debug('TMDB external id lookup request prepared.', { mediaType, idType, endpoint: path, externalID: normalizedExternalID })
+
+    try {
+        const response = await $fetch<{ movie_results: TMDbItem[]; tv_results: TMDbItem[] }>(path, {
+            query: {
+                api_key: apiKey,
+                external_source: idType,
+            },
+        })
+
+        const selected = mediaType === MEDIA_TYPES.MOVIE ? response.movie_results[0] : response.tv_results[0]
+        if (!selected) {
+            logger.debug('TMDB external id lookup returned no result for requested media type.', {
+                mediaType,
+                idType,
+                movieResultCount: response.movie_results.length,
+                tvResultCount: response.tv_results.length,
+            })
+            return null
+        }
+
+        const externalIds: TMDbExternalIDs = {
+            imdb_id: selected.external_ids.imdb_id,
+            tvdb_id: selected.external_ids.tvdb_id,
+        }
+
+        return toSearchResult({ ...selected, external_ids: externalIds }, mediaType)
+    } catch (error: unknown) {
+        logger.warn('TMDB request failed.', { path, error })
+        return null
+    }
+}
+
 function normalizeTMDbID(value: string) {
     return value
         .trim()
@@ -235,4 +227,55 @@ function normalizeTMDbID(value: string) {
         .replace(/^movie\//, '')
         .replace(/^tv\//, '')
         .trim()
+}
+
+export async function getDetails(tmdbID: string, mediaType: MediaType): Promise<TMDbSearchResult | null> {
+    const normalizedTMDbID = normalizeTMDbID(tmdbID)
+    if (!normalizedTMDbID) {
+        logger.warn('TMDB details lookup skipped due to empty TMDB ID.', { mediaType })
+        return null
+    }
+
+    const apiKey = await getApiKey()
+    const path = `${TMDB_BASE_URL}/${mediaType}/${normalizedTMDbID}`
+
+    logger.debug('TMDB details request prepared.', { mediaType, endpoint: path, tmdbID: normalizedTMDbID })
+
+    try {
+        const response = await $fetch<TMDbItem>(path, {
+            query: {
+                api_key: apiKey,
+                append_to_response: 'external_ids',
+            },
+        })
+
+        return toSearchResult(response, mediaType)
+    } catch (error: unknown) {
+        logger.warn('TMDB request failed.', { path, error })
+        return null
+    }
+}
+
+export async function getExternalIDs(tmdbID: string, mediaType: MediaType): Promise<TMDbExternalIDs | null> {
+    const normalizedTMDbID = normalizeTMDbID(tmdbID)
+    if (!normalizedTMDbID) {
+        logger.warn('TMDB external ids lookup skipped due to empty TMDB ID.', { mediaType })
+        return null
+    }
+
+    const apiKey = await getApiKey()
+    const path = `${TMDB_BASE_URL}/${mediaType}/${normalizedTMDbID}/external_ids`
+
+    logger.debug('TMDB external ids request prepared.', { mediaType, endpoint: path, tmdbID: normalizedTMDbID })
+
+    try {
+        return await $fetch<TMDbExternalIDs>(path, {
+            query: {
+                api_key: apiKey,
+            },
+        })
+    } catch (error: unknown) {
+        logger.warn('TMDB request failed.', { path, error })
+        return null
+    }
 }

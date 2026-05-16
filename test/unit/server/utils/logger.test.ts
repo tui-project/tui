@@ -229,7 +229,7 @@ describe('server logger', () => {
         }
     })
 
-    it('uses default LOG_LEVEL when LOG_LEVEL is not set', async () => {
+    it('uses default LOG_LEVEL of 5 (debug) when LOG_LEVEL is not set', async () => {
         process.env.LOG_DIR = getLogDir()
         process.env.LOG_FILE_DISABLED = 'false'
         delete process.env.LOG_LEVEL
@@ -237,11 +237,12 @@ describe('server logger', () => {
         vi.resetModules()
         const { logger } = await import('../../../../server/utils/logger')
 
-        logger.debug('hidden at default level')
-        logger.error('visible at default level')
+        logger.debug('visible at default level')
+        logger.error('also visible at default level')
 
         const logs = await readLogLines()
-        expect(logs).toHaveLength(1)
+        expect(logs).toHaveLength(2)
         expect(logs[0]?.msg).toBe('visible at default level')
+        expect(logs[1]?.msg).toBe('also visible at default level')
     })
 })

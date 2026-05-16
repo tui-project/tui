@@ -7,4 +7,9 @@ export default defineNuxtConfig({
     },
     modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxt/test-utils/module', '@nuxt/image', '@nuxt/image'],
     css: ['~/assets/css/main.css'],
+    vite: {
+        optimizeDeps: {
+            include: ['zod'],
+        },
+    },
 })

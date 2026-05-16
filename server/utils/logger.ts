@@ -11,7 +11,7 @@ const logFileDisabled = process.env.LOG_FILE_DISABLED === 'true'
 mkdirSync(logDir, { recursive: true })
 
 const baseLogger = createConsola({
-    level: process.env.LOG_LEVEL ? Number(process.env.LOG_LEVEL) : 3,
+    level: process.env.LOG_LEVEL ? Number(process.env.LOG_LEVEL) : 5,
 })
 
 if (!logFileDisabled) {

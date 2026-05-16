@@ -31,6 +31,7 @@ export interface Metadata {
     tmdbId?: number
     imdbId?: string
     tvdbId?: number
+    locale?: string
 }
 
 export const MEDIA_TYPES = {
@@ -239,6 +240,7 @@ export const MetadataSchema = z
         tmdbId: z.number().int(),
         imdbId: z.string().trim().min(1),
         tvdbId: z.number().int().optional(),
+        locale: z.string().trim().min(1).optional(),
     })
     .superRefine((metadata, ctx) => {
         if (metadata.mediaType === MEDIA_TYPES.TV && metadata.season == null) {
