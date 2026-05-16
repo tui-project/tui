@@ -54,7 +54,7 @@ describe('createUnit3dService — getTitle', () => {
 
 describe('createUnit3dService — upload', () => {
     beforeEach(() => {
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }))
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(undefined))
     })
 
     it('reads the torrent file and logs upload info', async () => {
@@ -129,32 +129,19 @@ describe('createUnit3dService — upload', () => {
         expect(appendSpy).toHaveBeenCalledWith('tmdb', '42')
     })
 
-    it('throws with JSON error detail when response is not ok and body is valid JSON', async () => {
-        vi.stubGlobal(
-            'fetch',
-            vi.fn().mockResolvedValue({
-                ok: false,
-                status: 422,
-                json: vi.fn().mockResolvedValue({ message: 'Validation failed' }),
-            })
-        )
-        const service = createUnit3dService('https://tracker.example.com', 'apikey')
-        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false })).rejects.toThrow('Upload failed with status 422')
-    })
-
-    it('throws with text error detail when response is not ok and body is not valid JSON', async () => {
-        vi.stubGlobal(
-            'fetch',
-            vi.fn().mockResolvedValue({
-                ok: false,
-                status: 500,
-                json: vi.fn().mockRejectedValue(new Error('not json')),
-                text: vi.fn().mockResolvedValue('Internal Server Error'),
-            })
-        )
+    it('throws when $fetch rejects with an Error', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('422 Unprocessable Entity')))
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
         await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false })).rejects.toThrow(
-            'Upload failed with status 500: Internal Server Error'
+            'Upload failed: 422 Unprocessable Entity'
+        )
+    })
+
+    it('throws when $fetch rejects with a non-Error value', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockRejectedValue('Internal Server Error'))
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false })).rejects.toThrow(
+            'Upload failed: Internal Server Error'
         )
     })
 })

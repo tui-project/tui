@@ -32,15 +32,12 @@ describe('ImgBB upload provider', () => {
     it('uploads an image and maps the response urls', async () => {
         readFile.mockResolvedValue('base64-data')
         const fetchMock = vi.fn().mockResolvedValue({
-            ok: true,
-            json: vi.fn().mockResolvedValue({
-                data: {
-                    url: ' https://full ',
-                    display_url: ' https://display ',
-                },
-            }),
+            data: {
+                url: ' https://full ',
+                display_url: ' https://display ',
+            },
         })
-        vi.stubGlobal('fetch', fetchMock)
+        vi.stubGlobal('$fetch', fetchMock)
         const { createImgbbImageUploadProvider } = await loadService()
 
         const provider = createImgbbImageUploadProvider('secret key')
@@ -57,13 +54,7 @@ describe('ImgBB upload provider', () => {
 
     it('rejects non-200 uploads', async () => {
         readFile.mockResolvedValue('base64-data')
-        vi.stubGlobal(
-            'fetch',
-            vi.fn().mockResolvedValue({
-                ok: false,
-                status: 500,
-            })
-        )
+        vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('HTTP 500')))
         const { createImgbbImageUploadProvider } = await loadService()
 
         await expect(createImgbbImageUploadProvider('secret').uploadImage('/tmp/image.png')).rejects.toEqual({
@@ -75,15 +66,12 @@ describe('ImgBB upload provider', () => {
     it('rejects payloads without both urls', async () => {
         readFile.mockResolvedValue('base64-data')
         vi.stubGlobal(
-            'fetch',
+            '$fetch',
             vi.fn().mockResolvedValue({
-                ok: true,
-                json: vi.fn().mockResolvedValue({
-                    data: {
-                        url: 'https://full',
-                        display_url: ' ',
-                    },
-                }),
+                data: {
+                    url: 'https://full',
+                    display_url: ' ',
+                },
             })
         )
         const { createImgbbImageUploadProvider } = await loadService()
@@ -103,13 +91,7 @@ describe('ImgBB upload provider', () => {
 
     it('rejects payloads without a data object', async () => {
         readFile.mockResolvedValue('base64-data')
-        vi.stubGlobal(
-            'fetch',
-            vi.fn().mockResolvedValue({
-                ok: true,
-                json: vi.fn().mockResolvedValue({}),
-            })
-        )
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({}))
         const { createImgbbImageUploadProvider } = await loadService()
 
         await expect(createImgbbImageUploadProvider('secret').uploadImage('/tmp/image.png')).rejects.toEqual({
