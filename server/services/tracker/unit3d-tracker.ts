@@ -34,7 +34,7 @@ export function createUnit3dService(url: string, apiKey: string, buildTitle?: (m
      * refer to: https://hdinnovations.github.io/UNIT3D/torrent_api.html
      */
     async function upload(torrentPath: string, metadata: TrackerUploadMetadata, description: string, mediainfoText: string, options: TrackerUploadOptions) {
-        const { title, anonymous } = options
+        const { title, anonymous, modQueueOptIn } = options
         const torrentBuffer = await readFile(torrentPath)
 
         const formData = new FormData()
@@ -51,6 +51,7 @@ export function createUnit3dService(url: string, apiKey: string, buildTitle?: (m
         if (metadata.season != null) formData.append('season_number', String(metadata.season))
         if (metadata.episode != null) formData.append('episode_number', String(metadata.episode))
         formData.append('anonymous', anonymous ? '1' : '0')
+        formData.append('mod_queue_opt_in', modQueueOptIn ? '1' : '0')
 
         logger.info('Uploading torrent to UNIT3D tracker.', { trackerUrl: url, title, torrentPath })
         logger.debug('request', { formData: Object.fromEntries(formData.entries()) })

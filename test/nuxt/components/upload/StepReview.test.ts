@@ -109,6 +109,7 @@ describe('StepReview', () => {
         expect(fetchTitleMock).toHaveBeenCalledWith('ULCX', expect.objectContaining({ title: 'Movie' }))
         await waitFor(() => expect(screen.getByPlaceholderText('Title for ULCX')).toHaveProperty('value', DEFAULT_TITLE))
         expect(screen.getByRole('checkbox', { name: 'Upload anonymously' })).toBeTruthy()
+        expect(screen.getByRole('checkbox', { name: 'Opt in to mod queue' })).toBeTruthy()
     })
 
     it('fetches titles for each selected tracker independently', async () => {
@@ -149,7 +150,7 @@ describe('StepReview', () => {
 
         await waitFor(() => {
             expect(uploadTorrentMock).toHaveBeenCalledWith('/media/movie.mkv', metadata, 'Release description', [
-                expect.objectContaining({ code: 'ULCX', title: DEFAULT_TITLE, titleModified: false, anonymous: false }),
+                expect.objectContaining({ code: 'ULCX', title: DEFAULT_TITLE, titleModified: false, anonymous: false, modQueueOptIn: false }),
             ])
         })
 

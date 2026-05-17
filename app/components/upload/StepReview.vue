@@ -41,7 +41,9 @@ async function loadTrackerItems() {
 
     const existing = Object.fromEntries(trackerItems.value.map((t) => [t.code, t]))
     trackerItems.value = await Promise.all(
-        props.selectedTrackers.map(async (code) => existing[code] ?? { code, title: (await getTitle(code, props.metadata!)) ?? '', titleModified: false, anonymous: false })
+        props.selectedTrackers.map(
+            async (code) => existing[code] ?? { code, title: (await getTitle(code, props.metadata!)) ?? '', titleModified: false, anonymous: false, modQueueOptIn: false }
+        )
     )
 }
 
@@ -90,6 +92,7 @@ async function onSubmit() {
                 </UFormField>
 
                 <UCheckbox v-model="item.anonymous" label="Upload anonymously" color="neutral" />
+                <UCheckbox v-model="item.modQueueOptIn" label="Opt in to mod queue" color="neutral" />
             </div>
         </UForm>
 

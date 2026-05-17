@@ -28,6 +28,7 @@ export type TrackerUploadMetadata = Omit<Metadata, 'fileName'> &
 
 export interface TrackerUploadOptions {
     anonymous: boolean
+    modQueueOptIn: boolean
     title: string
 }
 

@@ -81,7 +81,11 @@ async function uploadToTrackers(trackerTorrentPaths: Record<string, string>, tra
 
         try {
             const trackerService = await createTrackerService(tracker.code)
-            await trackerService.upload(torrentPath, metadata, description, mediainfoText, { title: tracker.title, anonymous: tracker.anonymous })
+            await trackerService.upload(torrentPath, metadata, description, mediainfoText, {
+                title: tracker.title,
+                anonymous: tracker.anonymous,
+                modQueueOptIn: tracker.modQueueOptIn,
+            })
         } catch (error: unknown) {
             logger.error('Failed to upload to tracker.', error, { trackerCode: tracker.code })
             failedTrackerCodes.push(tracker.code)

@@ -59,14 +59,16 @@ describe('createUnit3dService — upload', () => {
 
     it('reads the torrent file and logs upload info', async () => {
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
-        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'description', 'mediainfo text', { title: 'Movie Title', anonymous: false })).resolves.toBeUndefined()
+        await expect(
+            service.upload('/path/to/movie.torrent', baseMetadata, 'description', 'mediainfo text', { title: 'Movie Title', anonymous: false, modQueueOptIn: false })
+        ).resolves.toBeUndefined()
         expect(readFileMock).toHaveBeenCalledWith('/path/to/movie.torrent')
     })
 
     it('includes optional tvdbId, season, and episode in form data when present', async () => {
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
         await expect(
-            service.upload('/path/to/movie.torrent', { ...baseMetadata, tvdbId: 99, season: 2, episode: 5 }, 'desc', 'mi', { title: 'T', anonymous: true })
+            service.upload('/path/to/movie.torrent', { ...baseMetadata, tvdbId: 99, season: 2, episode: 5 }, 'desc', 'mi', { title: 'T', anonymous: true, modQueueOptIn: false })
         ).resolves.toBeUndefined()
     })
 
@@ -74,22 +76,36 @@ describe('createUnit3dService — upload', () => {
         readFileMock.mockResolvedValue(Buffer.from('data') as never)
         const appendSpy = vi.spyOn(FormData.prototype, 'append')
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
-        await service.upload('/path/to/movie.torrent', { ...baseMetadata, imdbId: 'tt9876543' }, 'desc', 'mi', { title: 'T', anonymous: false })
+        await service.upload('/path/to/movie.torrent', { ...baseMetadata, imdbId: 'tt9876543' }, 'desc', 'mi', { title: 'T', anonymous: false, modQueueOptIn: false })
         expect(appendSpy).toHaveBeenCalledWith('imdb', '9876543')
     })
 
     it('passes imdbId unchanged when tt prefix is absent', async () => {
         const appendSpy = vi.spyOn(FormData.prototype, 'append')
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
-        await service.upload('/path/to/movie.torrent', { ...baseMetadata, imdbId: '1234567' }, 'desc', 'mi', { title: 'T', anonymous: false })
+        await service.upload('/path/to/movie.torrent', { ...baseMetadata, imdbId: '1234567' }, 'desc', 'mi', { title: 'T', anonymous: false, modQueueOptIn: false })
         expect(appendSpy).toHaveBeenCalledWith('imdb', '1234567')
     })
 
-    it('appends anonymous as string "true" when anonymous is true', async () => {
+    it('appends anonymous as "1" when anonymous is true', async () => {
         const appendSpy = vi.spyOn(FormData.prototype, 'append')
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
-        await service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: true })
+        await service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: true, modQueueOptIn: false })
         expect(appendSpy).toHaveBeenCalledWith('anonymous', '1')
+    })
+
+    it('appends mod_queue_opt_in as "1" when modQueueOptIn is true', async () => {
+        const appendSpy = vi.spyOn(FormData.prototype, 'append')
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        await service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false, modQueueOptIn: true })
+        expect(appendSpy).toHaveBeenCalledWith('mod_queue_opt_in', '1')
+    })
+
+    it('appends mod_queue_opt_in as "0" when modQueueOptIn is false', async () => {
+        const appendSpy = vi.spyOn(FormData.prototype, 'append')
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        await service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false, modQueueOptIn: false })
+        expect(appendSpy).toHaveBeenCalledWith('mod_queue_opt_in', '0')
     })
 
     it('appends correct category_id, type_id, and resolution_id for movie encode 1080p', async () => {
@@ -100,7 +116,7 @@ describe('createUnit3dService — upload', () => {
             { ...baseMetadata, mediaType: MEDIA_TYPES.MOVIE, sourceType: SOURCE_TYPES.ENCODE, resolution: RESOLUTIONS['1080p'] },
             'desc',
             'mi',
-            { title: 'T', anonymous: false }
+            { title: 'T', anonymous: false, modQueueOptIn: false }
         )
         expect(appendSpy).toHaveBeenCalledWith('category_id', '1')
         expect(appendSpy).toHaveBeenCalledWith('type_id', '3')
@@ -115,7 +131,7 @@ describe('createUnit3dService — upload', () => {
             { ...baseMetadata, mediaType: MEDIA_TYPES.TV, sourceType: SOURCE_TYPES.REMUX, resolution: RESOLUTIONS['2160p'] },
             'desc',
             'mi',
-            { title: 'T', anonymous: false }
+            { title: 'T', anonymous: false, modQueueOptIn: false }
         )
         expect(appendSpy).toHaveBeenCalledWith('category_id', '2')
         expect(appendSpy).toHaveBeenCalledWith('type_id', '2')
@@ -125,7 +141,7 @@ describe('createUnit3dService — upload', () => {
     it('appends tmdb id as string', async () => {
         const appendSpy = vi.spyOn(FormData.prototype, 'append')
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
-        await service.upload('/path/to/movie.torrent', { ...baseMetadata, tmdbId: 42 }, 'desc', 'mi', { title: 'T', anonymous: false })
+        await service.upload('/path/to/movie.torrent', { ...baseMetadata, tmdbId: 42 }, 'desc', 'mi', { title: 'T', anonymous: false, modQueueOptIn: false })
         expect(appendSpy).toHaveBeenCalledWith('tmdb', '42')
     })
 
@@ -133,7 +149,7 @@ describe('createUnit3dService — upload', () => {
         const fetchError = Object.assign(new Error(), { statusCode: 422, data: { message: 'Unprocessable Entity' } })
         vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(fetchError))
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
-        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false })).rejects.toThrow(
+        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false, modQueueOptIn: false })).rejects.toThrow(
             'Upload failed: HTTP 422 — {"message":"Unprocessable Entity"}'
         )
     })
@@ -141,7 +157,7 @@ describe('createUnit3dService — upload', () => {
     it('throws with unknown status when $fetch rejects with a non-Error value', async () => {
         vi.stubGlobal('$fetch', vi.fn().mockRejectedValue('Internal Server Error'))
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
-        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false })).rejects.toThrow(
+        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false, modQueueOptIn: false })).rejects.toThrow(
             'Upload failed: HTTP unknown — undefined'
         )
     })

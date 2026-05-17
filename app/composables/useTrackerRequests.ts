@@ -6,6 +6,7 @@ export interface TrackerItem {
     title: string
     titleModified: boolean
     anonymous: boolean
+    modQueueOptIn: boolean
 }
 
 export interface TrackerRequest {

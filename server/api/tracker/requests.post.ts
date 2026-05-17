@@ -12,6 +12,7 @@ const trackerItemSchema = z.object({
     title: z.string().trim().min(1),
     titleModified: z.boolean(),
     anonymous: z.boolean(),
+    modQueueOptIn: z.boolean(),
 })
 
 const trackerUploadRequestSchema = z.object({

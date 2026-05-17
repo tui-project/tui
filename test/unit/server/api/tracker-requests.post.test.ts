@@ -107,7 +107,7 @@ function buildRequest(overrides: Partial<Record<string, unknown>> = {}) {
             tvdbId: undefined,
         },
         description: 'Release description',
-        trackers: [{ code: 'ULCX', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP', titleModified: false, anonymous: false }],
+        trackers: [{ code: 'ULCX', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP', titleModified: false, anonymous: false, modQueueOptIn: false }],
         ...overrides,
     }
 }
@@ -165,7 +165,7 @@ describe('POST /api/tracker/requests route handler', () => {
             description: 'Release description',
             filepath: '/media/Movie.2024.1080p.mkv',
             metadata: buildRequest().metadata,
-            trackers: [{ code: 'ULCX', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP', titleModified: false, anonymous: false }],
+            trackers: [{ code: 'ULCX', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP', titleModified: false, anonymous: false, modQueueOptIn: false }],
             status: 'pending',
             torrentCreationProgress: 0,
         })
@@ -297,7 +297,7 @@ describe('POST /api/tracker/requests route handler', () => {
     it('passes tracker override title and anonymous flag to service.upload', async () => {
         const uploadMock = vi.fn().mockResolvedValue(undefined)
         createTrackerService.mockResolvedValue({ upload: uploadMock })
-        readBody.mockResolvedValue(buildRequest({ trackers: [{ code: 'ULCX', title: 'Custom Title', titleModified: true, anonymous: true }] }))
+        readBody.mockResolvedValue(buildRequest({ trackers: [{ code: 'ULCX', title: 'Custom Title', titleModified: true, anonymous: true, modQueueOptIn: true }] }))
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
         saveTrackerUploadRequest.mockResolvedValue({
             id: 'upload-1',
@@ -317,6 +317,7 @@ describe('POST /api/tracker/requests route handler', () => {
         expect(uploadMock).toHaveBeenCalledWith('/config/tmp/torrents/ULCX/Movie.torrent', expect.any(Object), expect.any(String), expect.any(String), {
             title: 'Custom Title',
             anonymous: true,
+            modQueueOptIn: true,
         })
     })
 
@@ -343,6 +344,7 @@ describe('POST /api/tracker/requests route handler', () => {
         expect(uploadMock).toHaveBeenCalledWith('/config/tmp/torrents/ULCX/Movie.torrent', expect.any(Object), expect.any(String), expect.any(String), {
             title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP',
             anonymous: false,
+            modQueueOptIn: false,
         })
     })
 
@@ -363,8 +365,8 @@ describe('POST /api/tracker/requests route handler', () => {
         readBody.mockResolvedValue(
             buildRequest({
                 trackers: [
-                    { code: 'ULCX', title: 'Title', titleModified: false, anonymous: false },
-                    { code: 'ATH', title: 'Title', titleModified: false, anonymous: false },
+                    { code: 'ULCX', title: 'Title', titleModified: false, anonymous: false, modQueueOptIn: false },
+                    { code: 'ATH', title: 'Title', titleModified: false, anonymous: false, modQueueOptIn: false },
                 ],
             })
         )
