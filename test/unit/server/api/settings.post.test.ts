@@ -5,6 +5,7 @@ const logger = {
     info: vi.fn(),
     warn: vi.fn(),
 }
+const setLogLevel = vi.fn()
 
 const readBody = vi.fn()
 const createError = vi.fn((payload: unknown) => payload)
@@ -33,6 +34,7 @@ async function loadHandler() {
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
         logger,
+        setLogLevel,
     }))
 
     const { default: handler } = await import('../../../../server/api/settings.post')
@@ -119,6 +121,7 @@ describe('POST /api/settings route handler', () => {
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
             tvEpisodeScreenshotCount: 1,
+            logLevel: 3,
         })
         const handler = await loadHandler()
 
@@ -132,6 +135,7 @@ describe('POST /api/settings route handler', () => {
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
             tvEpisodeScreenshotCount: 1,
+            logLevel: 3,
         })
         expect(saveSettings).toHaveBeenCalledWith({
             mediaPaths: ['/a', '/b'],
@@ -160,6 +164,7 @@ describe('POST /api/settings route handler', () => {
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
             tvEpisodeScreenshotCount: 3,
+            logLevel: 3,
         })
     })
 })
@@ -175,6 +180,7 @@ function baseRequest(
         ffprobePath: unknown
         movieScreenshotCount: unknown
         tvEpisodeScreenshotCount: unknown
+        logLevel: unknown
     }> = {}
 ) {
     return {
@@ -187,6 +193,7 @@ function baseRequest(
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,
         tvEpisodeScreenshotCount: 3,
+        logLevel: 3,
         ...overrides,
     }
 }

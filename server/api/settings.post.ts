@@ -2,7 +2,7 @@ import { stat } from 'node:fs/promises'
 import { createError } from 'h3'
 import { z } from 'zod'
 import { getSettings, saveSettings } from '../repositories/settings-repository'
-import { logger } from '../utils/logger'
+import { logger, setLogLevel } from '../utils/logger'
 import { parseValidatedBody } from '../utils/request-validator'
 import { toSettingsResponse } from './settings-response'
 
@@ -67,6 +67,7 @@ const settingsRequestSchema = z.object({
     ffprobePath: z.string().trim().min(1),
     movieScreenshotCount: z.number().int().positive(),
     tvEpisodeScreenshotCount: z.number().int().positive(),
+    logLevel: z.number().int().min(0).max(5),
 })
 
 export default defineEventHandler(async (event) => {
@@ -89,6 +90,7 @@ export default defineEventHandler(async (event) => {
     }
 
     await saveSettings(request)
+    setLogLevel(request.logLevel)
     logger.info('Settings updated.')
 
     const savedSettings = await getSettings()

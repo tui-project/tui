@@ -39,6 +39,7 @@ function buildSettings(overrides: Partial<AppSettings> = {}) {
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,
         tvEpisodeScreenshotCount: 3,
+        logLevel: 3,
         ...overrides,
     }
 }
@@ -445,6 +446,33 @@ describe('settings page', () => {
         expect(vm.formState.ffprobePath).toBe('/custom/ffprobe')
         expect(vm.formState.movieScreenshotCount).toBe(10)
         expect(vm.formState.tvEpisodeScreenshotCount).toBe(5)
+    })
+
+    it('does not show a toast when save fails', async () => {
+        getSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'] }))
+        saveSettingsMock.mockImplementation(async () => {
+            errorRef.value = true
+            return undefined
+        })
+        const user = userEvent.setup()
+
+        await renderSuspended(SettingsPage)
+        await user.click(screen.getByRole('button', { name: /save/i }))
+
+        await waitFor(() => {
+            expect(toastAddMock).not.toHaveBeenCalled()
+        })
+    })
+
+    it('does not scroll to a field when onError is called with no errors', async () => {
+        getSettingsMock.mockResolvedValue(buildSettings())
+
+        const wrapper = await mountSuspended(SettingsPage)
+        const vm = wrapper.vm as unknown as {
+            onError: (event: { errors: unknown[] }) => Promise<void>
+        }
+
+        await expect(vm.onError({ errors: [] })).resolves.toBeUndefined()
     })
 
     it('shows loading skeletons while settings are loading', async () => {

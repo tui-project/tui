@@ -26,6 +26,7 @@ export interface AppSettings {
     ffprobePath: string
     movieScreenshotCount: number
     tvEpisodeScreenshotCount: number
+    logLevel: number
 }
 
 export function useSettings() {

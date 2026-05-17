@@ -27,6 +27,7 @@ const schema = z
         ffprobePath: z.string().trim().min(1, 'FFprobe Path is required.'),
         movieScreenshotCount: z.number('Movie Screenshot Count is required.').int().min(1, 'Movie screenshot count must be at least 1.'),
         tvEpisodeScreenshotCount: z.number('TV Episode Screenshot Count is required.').int().min(1, 'TV episode screenshot count must be at least 1.'),
+        logLevel: z.number().int().min(0).max(5),
     })
     .superRefine((value, ctx) => {
         const selectedImageHosts = value.imageHostProviders.filter((provider) => provider.selected)
@@ -59,6 +60,15 @@ const schema = z
         }
     })
 
+const LOG_LEVEL_OPTIONS = [
+    { label: 'Fatal', value: 0 },
+    { label: 'Error', value: 1 },
+    { label: 'Warn', value: 2 },
+    { label: 'Info', value: 3 },
+    { label: 'Debug', value: 4 },
+    { label: 'Trace', value: 5 },
+]
+
 const formState = reactive<AppSettings>({
     mediaPaths: [] as string[],
     tmdbApiKey: '',
@@ -69,19 +79,18 @@ const formState = reactive<AppSettings>({
     ffprobePath: 'ffprobe',
     movieScreenshotCount: 6,
     tvEpisodeScreenshotCount: 3,
+    logLevel: 3,
 })
 
 async function onError(event: FormErrorEvent) {
-    const firstError = event?.errors?.[0]
+    const firstError = event.errors[0]
     if (!firstError) {
         return
     }
 
-    if (firstError.id) {
-        const element = document.getElementById(firstError.id)
+        const element = document.getElementById(firstError.id!)
         element?.focus()
         element?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }
 }
 
 async function onSubmit(event: FormSubmitEvent<SettingsFormState>) {
@@ -126,6 +135,7 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
         ffprobePath: settings.ffprobePath,
         movieScreenshotCount: settings.movieScreenshotCount,
         tvEpisodeScreenshotCount: settings.tvEpisodeScreenshotCount,
+        logLevel: settings.logLevel,
     }
 }
 </script>
@@ -195,6 +205,19 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
                         <UInput v-model="formState.ffprobePath" size="xl" class="w-full" placeholder="ffprobe" />
                     </UFormField>
                 </div>
+            </UCard>
+
+            <UCard title="Logging" description="Configure server log verbosity" variant="subtle" class="mt-4">
+                <UFormField label="Log Level" name="logLevel" required>
+                    <USelect
+                        v-model="formState.logLevel"
+                        :items="LOG_LEVEL_OPTIONS"
+                        value-key="value"
+                        label-key="label"
+                        size="xl"
+                        class="w-48"
+                    />
+                </UFormField>
             </UCard>
 
             <UCard title="Screenshots" description="Configure screenshot generation and upload settings" variant="subtle" class="mt-4">

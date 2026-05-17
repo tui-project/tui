@@ -69,6 +69,7 @@ export const DEFAULT_SETTINGS: Settings = {
     ffprobePath: 'ffprobe',
     movieScreenshotCount: 6,
     tvEpisodeScreenshotCount: 1,
+    logLevel: 3,
 }
 
 export async function getSettings() {
@@ -103,6 +104,7 @@ export async function saveSettings(settingsInput: Omit<Settings, 'id'>) {
         ffprobePath: settingsInput.ffprobePath,
         movieScreenshotCount: settingsInput.movieScreenshotCount,
         tvEpisodeScreenshotCount: settingsInput.tvEpisodeScreenshotCount,
+        logLevel: settingsInput.logLevel,
     }
 
     await settingsCollection.updateAsync({ id: DEFAULT_SETTINGS.id }, settings, { upsert: true })

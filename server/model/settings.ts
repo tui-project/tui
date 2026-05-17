@@ -9,6 +9,7 @@ export interface Settings {
     ffprobePath: string
     movieScreenshotCount: number
     tvEpisodeScreenshotCount: number
+    logLevel: number
 }
 
 export interface ImageHostProviderSettings {

@@ -1,6 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync, renameSync, statSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
-import { createConsola, type LogObject } from 'consola'
+import { createConsola, LogLevels, type LogObject } from 'consola'
 
 const logDir = process.env.LOG_DIR ?? join(process.cwd(), 'config', 'logs')
 const logFile = process.env.LOG_FILE ?? join(logDir, 'server.log')
@@ -92,9 +92,9 @@ function writeCompactTrace(...args: unknown[]) {
     serverLogger._log({
         args,
         date: new Date(),
-        level: baseLogger.level,
+        level: LogLevels.trace,
         tag: 'server',
-        type: 'debug',
+        type: 'trace',
     })
 }
 
@@ -103,3 +103,8 @@ serverLogger.trace = Object.assign(writeCompactTrace, {
 })
 
 export const logger = serverLogger
+
+export function setLogLevel(level: number) {
+    baseLogger.level = level
+    serverLogger.level = level
+}

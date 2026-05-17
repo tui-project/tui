@@ -75,7 +75,7 @@ describe('server logger', () => {
                 args: ['Initialising database'],
                 level: 5,
                 tag: 'server',
-                type: 'debug',
+                type: 'trace',
             })
         )
     })
@@ -227,6 +227,19 @@ describe('server logger', () => {
         } finally {
             process.chdir(originalCwd)
         }
+    })
+
+    it('setLogLevel changes the active log level at runtime', async () => {
+        const { logger, setLogLevel } = await importLogger('3')
+
+        logger.info('visible before change')
+        setLogLevel(5)
+        logger.debug('visible after change')
+
+        const logs = await readLogLines()
+        expect(logs).toHaveLength(2)
+        expect(logs[0]?.msg).toBe('visible before change')
+        expect(logs[1]?.msg).toBe('visible after change')
     })
 
     it('uses default LOG_LEVEL of 5 (debug) when LOG_LEVEL is not set', async () => {
