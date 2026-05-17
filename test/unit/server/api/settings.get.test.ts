@@ -39,7 +39,7 @@ describe('GET /api/settings route handler', () => {
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 1,
+            episodePackScreenshotCount: 1,
         })
         const handler = await loadHandler()
 
@@ -51,7 +51,7 @@ describe('GET /api/settings route handler', () => {
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 1,
+            episodePackScreenshotCount: 1,
         })
     })
 })

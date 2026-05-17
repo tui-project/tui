@@ -60,7 +60,7 @@ describe('settings repository', () => {
             ffmpegPath: '/custom/ffmpeg',
             ffprobePath: '/custom/ffprobe',
             movieScreenshotCount: 9,
-            tvEpisodeScreenshotCount: 2,
+            episodePackScreenshotCount: 2,
         })
 
         expect(storedSettings).toEqual({
@@ -72,7 +72,7 @@ describe('settings repository', () => {
             ffmpegPath: '/custom/ffmpeg',
             ffprobePath: '/custom/ffprobe',
             movieScreenshotCount: 9,
-            tvEpisodeScreenshotCount: 2,
+            episodePackScreenshotCount: 2,
         })
     })
 })

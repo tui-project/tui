@@ -26,7 +26,7 @@ const schema = z
         ffmpegPath: z.string().trim().min(1, 'FFmpeg Path is required.'),
         ffprobePath: z.string().trim().min(1, 'FFprobe Path is required.'),
         movieScreenshotCount: z.number('Movie Screenshot Count is required.').int().min(1, 'Movie screenshot count must be at least 1.'),
-        tvEpisodeScreenshotCount: z.number('TV Episode Screenshot Count is required.').int().min(1, 'TV episode screenshot count must be at least 1.'),
+        episodePackScreenshotCount: z.number('Episode Pack Screenshot Count is required.').int().min(1, 'Episode pack screenshot count must be at least 1.'),
         logLevel: z.number().int().min(0).max(5),
     })
     .superRefine((value, ctx) => {
@@ -78,7 +78,7 @@ const formState = reactive<AppSettings>({
     ffmpegPath: 'ffmpeg',
     ffprobePath: 'ffprobe',
     movieScreenshotCount: 6,
-    tvEpisodeScreenshotCount: 3,
+    episodePackScreenshotCount: 3,
     logLevel: 3,
 })
 
@@ -88,9 +88,9 @@ async function onError(event: FormErrorEvent) {
         return
     }
 
-        const element = document.getElementById(firstError.id!)
-        element?.focus()
-        element?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const element = document.getElementById(firstError.id!)
+    element?.focus()
+    element?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
 async function onSubmit(event: FormSubmitEvent<SettingsFormState>) {
@@ -134,7 +134,7 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
         ffmpegPath: settings.ffmpegPath,
         ffprobePath: settings.ffprobePath,
         movieScreenshotCount: settings.movieScreenshotCount,
-        tvEpisodeScreenshotCount: settings.tvEpisodeScreenshotCount,
+        episodePackScreenshotCount: settings.episodePackScreenshotCount,
         logLevel: settings.logLevel,
     }
 }
@@ -209,14 +209,7 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
 
             <UCard title="Logging" description="Configure server log verbosity" variant="subtle" class="mt-4">
                 <UFormField label="Log Level" name="logLevel" required>
-                    <USelect
-                        v-model="formState.logLevel"
-                        :items="LOG_LEVEL_OPTIONS"
-                        value-key="value"
-                        label-key="label"
-                        size="xl"
-                        class="w-48"
-                    />
+                    <USelect v-model="formState.logLevel" :items="LOG_LEVEL_OPTIONS" value-key="value" label-key="label" size="xl" class="w-48" />
                 </UFormField>
             </UCard>
 
@@ -238,23 +231,33 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
                         <USeparator v-if="provider.selected" />
                     </template>
 
-                    <div class="grid gap-4 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                        <UFormField label="Movie Screenshot Count" name="movieScreenshotCount" required>
+                    <div class="grid gap-4 xl:grid-cols-3 2xl:grid-cols-4">
+                        <UFormField
+                            label="Movie / Single Episode Screenshot Count"
+                            name="movieScreenshotCount"
+                            description="Number of screenshots per movie or single TV episode file."
+                            required
+                        >
                             <UInputNumber
                                 v-model="formState.movieScreenshotCount"
                                 size="xl"
-                                placeholder="Movie screenshot count"
+                                placeholder="e.g. 6"
                                 :min="1"
                                 :increment="false"
                                 :decrement="false"
                                 :format-options="{ useGrouping: false }"
                             />
                         </UFormField>
-                        <UFormField label="Tv Episode Screenshot Count" name="tvEpisodeScreenshotCount" required>
+                        <UFormField
+                            label="Episode Pack Screenshot Count"
+                            name="episodePackScreenshotCount"
+                            description="Number of screenshots per episode when uploading a multi-episode pack (folder)."
+                            required
+                        >
                             <UInputNumber
-                                v-model="formState.tvEpisodeScreenshotCount"
+                                v-model="formState.episodePackScreenshotCount"
                                 size="xl"
-                                placeholder="Tv episode screenshot count"
+                                placeholder="e.g. 1"
                                 :min="1"
                                 :increment="false"
                                 :decrement="false"

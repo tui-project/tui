@@ -33,7 +33,7 @@ beforeEach(() => {
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,
-        tvEpisodeScreenshotCount: 1,
+        episodePackScreenshotCount: 1,
         trackers: {},
     })
     probeMediaDuration.mockResolvedValue({ durationSeconds: 100 })
@@ -104,7 +104,7 @@ describe('screenshot generator service', () => {
         expect(rm).toHaveBeenCalledTimes(1)
     })
 
-    it('uses tv screenshot count for episodic content', async () => {
+    it('uses episode pack screenshot count for episodic content', async () => {
         generateScreenshotsWithFfmpeg
             .mockResolvedValueOnce([{ order: 1, outputPath: '/tmp/episode-one.png' }])
             .mockResolvedValueOnce([{ order: 1, outputPath: '/tmp/episode-two.png' }])
@@ -153,7 +153,7 @@ describe('screenshot generator service', () => {
             ffmpegPath: '',
             ffprobePath: ' ',
             movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 1,
+            episodePackScreenshotCount: 1,
             trackers: {},
         })
         const { createScreenshots } = await loadService()
@@ -176,7 +176,7 @@ describe('screenshot generator service', () => {
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 1,
+            episodePackScreenshotCount: 1,
             trackers: {},
         })
         const { createScreenshots } = await loadService()

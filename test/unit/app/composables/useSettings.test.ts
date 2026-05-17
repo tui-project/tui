@@ -9,7 +9,7 @@ function buildSettings(
         ffmpegPath: string
         ffprobePath: string
         movieScreenshotCount: number
-        tvEpisodeScreenshotCount: number
+        episodePackScreenshotCount: number
     }> = {}
 ) {
     return {
@@ -24,7 +24,7 @@ function buildSettings(
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,
-        tvEpisodeScreenshotCount: 3,
+        episodePackScreenshotCount: 3,
         ...overrides,
     }
 }

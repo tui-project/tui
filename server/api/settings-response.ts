@@ -15,7 +15,7 @@ export function toSettingsResponse(settings: Settings): SettingsDto {
         ffmpegPath: settings.ffmpegPath,
         ffprobePath: settings.ffprobePath,
         movieScreenshotCount: settings.movieScreenshotCount,
-        tvEpisodeScreenshotCount: settings.tvEpisodeScreenshotCount,
+        episodePackScreenshotCount: settings.episodePackScreenshotCount,
         logLevel: settings.logLevel,
     }
 }

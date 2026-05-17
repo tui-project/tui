@@ -27,7 +27,7 @@ export async function createScreenshots(inputPath: string, hdr: boolean, tv: boo
     const mediaFilePaths = tv ? await resolveMediaFilePaths(inputPath) : [await resolveMediaFilePath(inputPath)]
     const provider = await createImageUploadProvider()
     const tempDir = join(process.cwd(), 'config', 'tmp', 'screenshots', randomUUID())
-    const screenshotCount = tv ? settings.tvEpisodeScreenshotCount : settings.movieScreenshotCount
+    const screenshotCount = mediaFilePaths.length > 1 ? settings.episodePackScreenshotCount : settings.movieScreenshotCount
 
     logger.trace('Screenshot generation prepared.', {
         inputPath,

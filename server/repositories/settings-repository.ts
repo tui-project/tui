@@ -68,7 +68,7 @@ export const DEFAULT_SETTINGS: Settings = {
     ffmpegPath: 'ffmpeg',
     ffprobePath: 'ffprobe',
     movieScreenshotCount: 6,
-    tvEpisodeScreenshotCount: 1,
+    episodePackScreenshotCount: 1,
     logLevel: 3,
 }
 
@@ -103,7 +103,7 @@ export async function saveSettings(settingsInput: Omit<Settings, 'id'>) {
         ffmpegPath: settingsInput.ffmpegPath,
         ffprobePath: settingsInput.ffprobePath,
         movieScreenshotCount: settingsInput.movieScreenshotCount,
-        tvEpisodeScreenshotCount: settingsInput.tvEpisodeScreenshotCount,
+        episodePackScreenshotCount: settingsInput.episodePackScreenshotCount,
         logLevel: settingsInput.logLevel,
     }
 

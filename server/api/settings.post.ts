@@ -66,7 +66,7 @@ const settingsRequestSchema = z.object({
     ffmpegPath: z.string().trim().min(1),
     ffprobePath: z.string().trim().min(1),
     movieScreenshotCount: z.number().int().positive(),
-    tvEpisodeScreenshotCount: z.number().int().positive(),
+    episodePackScreenshotCount: z.number().int().positive(),
     logLevel: z.number().int().min(0).max(5),
 })
 

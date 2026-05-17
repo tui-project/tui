@@ -120,7 +120,7 @@ describe('POST /api/settings route handler', () => {
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 1,
+            episodePackScreenshotCount: 1,
             logLevel: 3,
         })
         const handler = await loadHandler()
@@ -134,7 +134,7 @@ describe('POST /api/settings route handler', () => {
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 1,
+            episodePackScreenshotCount: 1,
             logLevel: 3,
         })
         expect(saveSettings).toHaveBeenCalledWith({
@@ -163,7 +163,7 @@ describe('POST /api/settings route handler', () => {
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
-            tvEpisodeScreenshotCount: 3,
+            episodePackScreenshotCount: 3,
             logLevel: 3,
         })
     })
@@ -179,7 +179,7 @@ function baseRequest(
         ffmpegPath: unknown
         ffprobePath: unknown
         movieScreenshotCount: unknown
-        tvEpisodeScreenshotCount: unknown
+        episodePackScreenshotCount: unknown
         logLevel: unknown
     }> = {}
 ) {
@@ -192,7 +192,7 @@ function baseRequest(
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,
-        tvEpisodeScreenshotCount: 3,
+        episodePackScreenshotCount: 3,
         logLevel: 3,
         ...overrides,
     }

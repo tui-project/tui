@@ -38,7 +38,7 @@ function buildSettings(overrides: Partial<AppSettings> = {}) {
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,
-        tvEpisodeScreenshotCount: 3,
+        episodePackScreenshotCount: 3,
         logLevel: 3,
         ...overrides,
     }
@@ -370,37 +370,37 @@ describe('settings page', () => {
             buildSettings({
                 mediaPaths: ['/media/a'],
                 movieScreenshotCount: 6,
-                tvEpisodeScreenshotCount: 3,
+                episodePackScreenshotCount: 3,
             })
         )
         saveSettingsMock.mockResolvedValue(
             buildSettings({
                 mediaPaths: ['/media/a'],
                 movieScreenshotCount: 8,
-                tvEpisodeScreenshotCount: 4,
+                episodePackScreenshotCount: 4,
             })
         )
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
 
-        await user.clear(screen.getByLabelText('Movie Screenshot Count'))
-        await user.type(screen.getByLabelText('Movie Screenshot Count'), '8')
-        await user.clear(screen.getByLabelText('Tv Episode Screenshot Count'))
-        await user.type(screen.getByLabelText('Tv Episode Screenshot Count'), '4')
+        await user.clear(screen.getByLabelText('Movie / Single Episode Screenshot Count'))
+        await user.type(screen.getByLabelText('Movie / Single Episode Screenshot Count'), '8')
+        await user.clear(screen.getByLabelText('Episode Pack Screenshot Count'))
+        await user.type(screen.getByLabelText('Episode Pack Screenshot Count'), '4')
         await user.click(screen.getByRole('button', { name: /save/i }))
 
         expect(saveSettingsMock).toHaveBeenCalledWith(
             buildSaveSettingsRequest({
                 mediaPaths: ['/media/a'],
                 movieScreenshotCount: 8,
-                tvEpisodeScreenshotCount: 4,
+                episodePackScreenshotCount: 4,
             })
         )
 
         await waitFor(() => {
-            expect((screen.getByLabelText('Movie Screenshot Count') as HTMLInputElement).value).toBe('8')
-            expect((screen.getByLabelText('Tv Episode Screenshot Count') as HTMLInputElement).value).toBe('4')
+            expect((screen.getByLabelText('Movie / Single Episode Screenshot Count') as HTMLInputElement).value).toBe('8')
+            expect((screen.getByLabelText('Episode Pack Screenshot Count') as HTMLInputElement).value).toBe('4')
         })
     })
 
@@ -412,7 +412,7 @@ describe('settings page', () => {
                 ffmpegPath: 'ffmpeg',
                 ffprobePath: 'ffprobe',
                 movieScreenshotCount: 6,
-                tvEpisodeScreenshotCount: 3,
+                episodePackScreenshotCount: 3,
             })
         )
         saveSettingsMock.mockResolvedValue(
@@ -422,7 +422,7 @@ describe('settings page', () => {
                 ffmpegPath: '/custom/ffmpeg',
                 ffprobePath: '/custom/ffprobe',
                 movieScreenshotCount: 10,
-                tvEpisodeScreenshotCount: 5,
+                episodePackScreenshotCount: 5,
             })
         )
 
@@ -445,7 +445,7 @@ describe('settings page', () => {
         expect(vm.formState.ffmpegPath).toBe('/custom/ffmpeg')
         expect(vm.formState.ffprobePath).toBe('/custom/ffprobe')
         expect(vm.formState.movieScreenshotCount).toBe(10)
-        expect(vm.formState.tvEpisodeScreenshotCount).toBe(5)
+        expect(vm.formState.episodePackScreenshotCount).toBe(5)
     })
 
     it('does not show a toast when save fails', async () => {

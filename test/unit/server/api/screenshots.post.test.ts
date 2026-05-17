@@ -22,7 +22,7 @@ beforeEach(() => {
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
         movieScreenshotCount: 6,
-        tvEpisodeScreenshotCount: 3,
+        episodePackScreenshotCount: 3,
         imgbbApiKey: 'imgbb-key',
     })
     isWithinAnyRoot.mockReturnValue(true)

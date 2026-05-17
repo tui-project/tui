@@ -8,7 +8,7 @@ export interface Settings {
     ffmpegPath: string
     ffprobePath: string
     movieScreenshotCount: number
-    tvEpisodeScreenshotCount: number
+    episodePackScreenshotCount: number
     logLevel: number
 }
 
