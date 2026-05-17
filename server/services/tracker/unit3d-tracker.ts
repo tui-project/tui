@@ -67,8 +67,8 @@ export function createUnit3dService(url: string, apiKey: string, buildTitle?: (m
             })
         } catch (error: unknown) {
             const err = error as { statusCode?: number; data?: unknown }
-            logger.error('Upload to tracker failed', { statusCode: err.statusCode, data: err.data })
-            throw new Error('Upload failed')
+            const uploadError = new Error(`Upload failed: HTTP ${err.statusCode ?? 'unknown'} — ${JSON.stringify(err.data)}`)
+            throw uploadError
         }
 
         logger.info('Torrent uploaded successfully to UNIT3D tracker.', { trackerUrl: url, title })

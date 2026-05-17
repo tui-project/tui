@@ -129,15 +129,20 @@ describe('createUnit3dService — upload', () => {
         expect(appendSpy).toHaveBeenCalledWith('tmdb', '42')
     })
 
-    it('throws when $fetch rejects with an Error', async () => {
-        vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('422 Unprocessable Entity')))
+    it('throws with status code and response data when $fetch rejects with a structured error', async () => {
+        const fetchError = Object.assign(new Error(), { statusCode: 422, data: { message: 'Unprocessable Entity' } })
+        vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(fetchError))
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
-        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false })).rejects.toThrow('Upload failed')
+        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false })).rejects.toThrow(
+            'Upload failed: HTTP 422 — {"message":"Unprocessable Entity"}'
+        )
     })
 
-    it('throws when $fetch rejects with a non-Error value', async () => {
+    it('throws with unknown status when $fetch rejects with a non-Error value', async () => {
         vi.stubGlobal('$fetch', vi.fn().mockRejectedValue('Internal Server Error'))
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
-        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false })).rejects.toThrow('Upload failed')
+        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false })).rejects.toThrow(
+            'Upload failed: HTTP unknown — undefined'
+        )
     })
 })
