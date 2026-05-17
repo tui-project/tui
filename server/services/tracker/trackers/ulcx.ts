@@ -10,7 +10,7 @@ export function createUlcxTrackerService(url: string, apiKey: string): TrackerSe
 /**
  * Full Disc, Remux Template            : Name AKA Original LOCALE Year S##E## Cut Ratio Hybrid REPACK PROPER RERip Resolution Edition Region 3D SOURCE TYPE Hi10P HDR Vcodec Dub Acodec Channels Object-Tag
  * Encode, WEB-DL, WEBRip, HDTV Template: Name AKA Original LOCALE Year S##E## Cut Ratio Hybrid REPACK PROPER RERip Resolution Edition 3D SOURCE TYPE Dub Acodec Channels Object Hi10P HDR Vcodec-Tag
- * 
+ *
  * Refer to: https://upload.cx/wikis/7
  */
 async function buildTitle(metadata: TrackerUploadMetadata) {

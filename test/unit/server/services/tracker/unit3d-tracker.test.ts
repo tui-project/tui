@@ -132,16 +132,12 @@ describe('createUnit3dService — upload', () => {
     it('throws when $fetch rejects with an Error', async () => {
         vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('422 Unprocessable Entity')))
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
-        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false })).rejects.toThrow(
-            'Upload failed'
-        )
+        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false })).rejects.toThrow('Upload failed')
     })
 
     it('throws when $fetch rejects with a non-Error value', async () => {
         vi.stubGlobal('$fetch', vi.fn().mockRejectedValue('Internal Server Error'))
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
-        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false })).rejects.toThrow(
-            'Upload failed'
-        )
+        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false })).rejects.toThrow('Upload failed')
     })
 })

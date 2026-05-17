@@ -17,9 +17,7 @@ export async function upload(uploadRequestId: string, filepath: string, trackers
         logger.info('Tracker upload request started generic torrent creation.', { id: uploadRequestId, filepath, trackerCodes, status: TRACKER_UPLOAD_STATUSES.TORRENT_CREATION })
 
         const cachedGenericTorrent = await findGenericTorrentCacheByFilepath(filepath)
-        const genericTorrentPath = cachedGenericTorrent
-            ? cachedGenericTorrent.genericTorrentPath
-            : await createGenericTorrentForUploadRequest(uploadRequestId, filepath)
+        const genericTorrentPath = cachedGenericTorrent ? cachedGenericTorrent.genericTorrentPath : await createGenericTorrentForUploadRequest(uploadRequestId, filepath)
 
         if (cachedGenericTorrent) {
             logger.debug('Reusing cached generic torrent for tracker upload request.', { id: uploadRequestId, filepath, trackerCodes, genericTorrentPath })
@@ -31,7 +29,14 @@ export async function upload(uploadRequestId: string, filepath: string, trackers
         const trackerTorrentPaths = await createTrackerTorrents(genericTorrentPath, filepath, trackerCodes)
 
         await updateTrackerUploadRequestStatus(uploadRequestId, TRACKER_UPLOAD_STATUSES.UPLOADING)
-        logger.info('Tracker upload request uploading to trackers.', { id: uploadRequestId, filepath, trackerCodes, status: TRACKER_UPLOAD_STATUSES.UPLOADING, genericTorrentPath, trackerTorrentPaths })
+        logger.info('Tracker upload request uploading to trackers.', {
+            id: uploadRequestId,
+            filepath,
+            trackerCodes,
+            status: TRACKER_UPLOAD_STATUSES.UPLOADING,
+            genericTorrentPath,
+            trackerTorrentPaths,
+        })
 
         const mediaFilePath = await resolveMediaFilePath(filepath)
         const mediainfoText = await analyzeMediaFileAsText(mediaFilePath)

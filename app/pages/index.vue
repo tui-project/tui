@@ -134,9 +134,7 @@ async function handleRetry(request: TrackerRequest) {
                         </div>
 
                         <div v-if="isRetryable(request.status)" class="flex justify-end">
-                            <UButton size="sm" variant="soft" color="neutral" icon="i-heroicons-arrow-path" @click="handleRetry(request)">
-                                Retry
-                            </UButton>
+                            <UButton size="sm" variant="soft" color="neutral" icon="i-heroicons-arrow-path" @click="handleRetry(request)"> Retry </UButton>
                         </div>
                     </div>
                 </UCard>

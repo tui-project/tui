@@ -93,13 +93,7 @@ describe('PATCH /api/tracker/requests/:id route handler', () => {
 
         expect(result).toEqual({ id: 'upload-1', status: 'pending' })
         expect(resetTrackerUploadRequest).toHaveBeenCalledWith('upload-1')
-        expect(processTrackerUploadRequest).toHaveBeenCalledWith(
-            'upload-1',
-            existing.filepath,
-            existing.trackers,
-            existing.metadata,
-            existing.description,
-        )
+        expect(processTrackerUploadRequest).toHaveBeenCalledWith('upload-1', existing.filepath, existing.trackers, existing.metadata, existing.description)
     })
 
     it('retries only failed trackers for a partial_success request', async () => {
@@ -115,7 +109,7 @@ describe('PATCH /api/tracker/requests/:id route handler', () => {
             existing.filepath,
             [{ code: 'ATH', title: 'Title ATH', titleModified: false, anonymous: false }],
             existing.metadata,
-            existing.description,
+            existing.description
         )
     })
 
@@ -127,13 +121,7 @@ describe('PATCH /api/tracker/requests/:id route handler', () => {
 
         await handler(mockEvent())
 
-        expect(processTrackerUploadRequest).toHaveBeenCalledWith(
-            'upload-1',
-            existing.filepath,
-            existing.trackers,
-            existing.metadata,
-            existing.description,
-        )
+        expect(processTrackerUploadRequest).toHaveBeenCalledWith('upload-1', existing.filepath, existing.trackers, existing.metadata, existing.description)
     })
 
     it('returns 500 when reset fails', async () => {

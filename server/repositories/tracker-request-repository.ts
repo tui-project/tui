@@ -31,10 +31,6 @@ export async function updateTrackerUploadRequestTorrentCreationProgress(id: stri
 }
 
 export async function resetTrackerUploadRequest(id: string) {
-    await trackerUploadRequestCollection.updateAsync(
-        { id },
-        { $set: { status: 'pending', torrentCreationProgress: 0 }, $unset: { failedTrackerCodes: true } },
-        {}
-    )
+    await trackerUploadRequestCollection.updateAsync({ id }, { $set: { status: 'pending', torrentCreationProgress: 0 }, $unset: { failedTrackerCodes: true } }, {})
     return await trackerUploadRequestCollection.findOneAsync({ id })
 }
