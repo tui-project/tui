@@ -65,6 +65,25 @@ describe('createUlcxTrackerService — getTitle', () => {
         expect(title).not.toMatch(/S\d+E/)
     })
 
+    it('appends special name after S00E## for TVDb specials', async () => {
+        fetchMock.mockResolvedValue({ title: 'Top Gear' })
+        const title = await service.getTitle({ ...tvBaseMetadata, season: 0, episode: 12, specialName: 'Polar Challenge' })
+        expect(title).toContain('S00E12 Polar Challenge')
+    })
+
+    it('appends special name after S##E00 for non-TVDb specials', async () => {
+        fetchMock.mockResolvedValue({ title: 'Top Gear' })
+        const title = await service.getTitle({ ...tvBaseMetadata, season: 27, episode: 0, specialName: 'Nepal Special' })
+        expect(title).toContain('S27E00 Nepal Special')
+    })
+
+    it('does not append special name for regular episodes even if specialName is set', async () => {
+        fetchMock.mockResolvedValue({ title: 'Show' })
+        const title = await service.getTitle({ ...tvBaseMetadata, season: 1, episode: 3, specialName: 'Some Name' })
+        expect(title).toContain('S01E03')
+        expect(title).not.toContain('Some Name')
+    })
+
     it('includes PROPER and REPACK flags', async () => {
         const title = await service.getTitle({ ...baseMetadata, proper: 1, repack: 1 })
         expect(title).toContain('PROPER')

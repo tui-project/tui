@@ -23,6 +23,7 @@ function createMetadata(overrides: Partial<Metadata> = {}): Metadata {
         year: 2021,
         season: null,
         episode: null,
+        specialName: '',
         language: ['en'],
         originalLanguage: 'en',
         sourceType: 'WEB-DL',
@@ -680,6 +681,51 @@ describe('StepMetadata', () => {
             expect(episodeInput.getAttribute('value')).toBe('5')
             expect(tvdbInput.getAttribute('value')).toBe('67890')
             expect(tmdbInput.getAttribute('value')).toBe('99999')
+        })
+    })
+
+    it('shows Special Name field when season is 0 (TVDb special S00E##)', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 0, episode: 12, specialName: 'Polar Challenge', tvdbId: 74608 })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.getByText('Special Name')).toBeDefined()
+        expect(screen.getByRole('textbox', { name: 'Special Name' }).getAttribute('value')).toBe('Polar Challenge')
+    })
+
+    it('shows Special Name field when episode is 0 (non-TVDb special S##E00)', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 27, episode: 0, specialName: 'Nepal Special', tvdbId: 74608 })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.getByText('Special Name')).toBeDefined()
+        expect(screen.getByRole('textbox', { name: 'Special Name' }).getAttribute('value')).toBe('Nepal Special')
+    })
+
+    it('hides Special Name field for regular TV episodes', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 2, episode: 5, tvdbId: 999 })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.queryByText('Special Name')).toBeNull()
+    })
+
+    it('allows editing the special name field', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 0, episode: 3, specialName: 'Old Name', tvdbId: 74608 })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+
+        const specialNameInput = await screen.findByRole('textbox', { name: 'Special Name' })
+        await fireEvent.update(specialNameInput, 'New Name')
+
+        await waitFor(() => {
+            expect(screen.getByRole('textbox', { name: 'Special Name' }).getAttribute('value')).toBe('New Name')
         })
     })
 

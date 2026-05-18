@@ -466,4 +466,54 @@ describe('media name parser', () => {
     ])('$name', ({ input, expected }) => {
         expect(parseMetadataFromName(input)).toEqual(expected)
     })
+
+    it.each([
+        {
+            name: 'extracts special name for S00E## (TVDb special)',
+            input: 'Top.Gear.S00E12.Polar.Challenge.1080i.DD2.0.AVC.REMUX-FraMeSToR.mkv',
+            expectedSeason: 0,
+            expectedEpisode: 12,
+            expectedSpecialName: 'Polar Challenge',
+        },
+        {
+            name: 'extracts special name for S##E00 (non-TVDb special)',
+            input: 'Top.Gear.S27E00.Nepal.Special.1080p.iP.WEB-DL.AAC2.0.H.264-TBN.mkv',
+            expectedSeason: 27,
+            expectedEpisode: 0,
+            expectedSpecialName: 'Nepal Special',
+        },
+        {
+            name: 'strips cut from special name',
+            input: "Top.Gear.S00E12.Polar.Challenge.Director's.Cut.1080i.REMUX-GRP.mkv",
+            expectedSeason: 0,
+            expectedEpisode: 12,
+            expectedSpecialName: 'Polar Challenge',
+        },
+        {
+            name: 'returns no special name for regular S##E## episodes',
+            input: 'Top.Gear.S30E01.1080p.HDTV.H264-GRP.mkv',
+            expectedSeason: 30,
+            expectedEpisode: 1,
+            expectedSpecialName: undefined,
+        },
+        {
+            name: 'extracts special name when no technical marker follows (uses end of string)',
+            input: 'Show.S00E01.Tribute-GRP',
+            expectedSeason: 0,
+            expectedEpisode: 1,
+            expectedSpecialName: 'Tribute',
+        },
+        {
+            name: 'returns undefined when only a cut token follows the SxxExx token',
+            input: "Show.S00E01.Director's.Cut.1080p.REMUX-GRP",
+            expectedSeason: 0,
+            expectedEpisode: 1,
+            expectedSpecialName: undefined,
+        },
+    ])('$name', ({ input, expectedSeason, expectedEpisode, expectedSpecialName }) => {
+        const result = parseMetadataFromName(input)
+        expect(result.season).toBe(expectedSeason)
+        expect(result.episode).toBe(expectedEpisode)
+        expect(result.specialName).toBe(expectedSpecialName)
+    })
 })

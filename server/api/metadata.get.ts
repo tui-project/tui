@@ -9,6 +9,7 @@ import { findByExternalID, findByTitle, findLocale, getDetails, getExternalIDs, 
 import { isWithinAnyRoot, resolveMediaFilePath } from '../utils/file-system'
 import { MEDIA_TYPES, type Metadata } from '../model/metadata'
 import { parseValidatedQuery } from '../utils/request-validator'
+import { findTvdbSpecial } from '../services/tvdb'
 
 const metadataQuerySchema = z.object({
     path: z.string().trim().min(1),
@@ -47,6 +48,7 @@ export default defineEventHandler(async (event) => {
 
     return metadata
 })
+
 async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameMetadata, metadataFromMediainfo: ParsedMediainfoMetadata): Promise<Metadata> {
     const metadata: Metadata = {
         fileName,
@@ -118,5 +120,20 @@ async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameM
         }
     }
 
+    if (isSpecialEpisode(metadata) && metadata.tvdbId && metadata.specialName) {
+        logger.debug('Attempting TVDb special lookup.', { tvdbId: metadata.tvdbId, specialName: metadata.specialName })
+
+        const match = await findTvdbSpecial(metadata.tvdbId, metadata.specialName)
+        if (match) {
+            metadata.season = 0
+            metadata.episode = match.episodeNumber
+            metadata.specialName = match.title
+        }
+    }
+
     return metadata
+}
+
+function isSpecialEpisode(metadata: Metadata): boolean {
+    return (metadata.season === 0 && metadata.episode !== undefined) || (metadata.season !== undefined && metadata.season > 0 && metadata.episode === 0)
 }

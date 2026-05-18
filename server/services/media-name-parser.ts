@@ -5,6 +5,7 @@ import { logger } from '../utils/logger'
 export interface ParsedNameMetadata {
     season?: number
     episode?: number
+    specialName?: string
     sourceType: SourceType
     source: Source
     service: Service
@@ -25,8 +26,9 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
     const nameWithoutExtension = stripFileExtension(name)
     const tokens = nameWithoutExtension.split(/[.\s_-]+/).filter(Boolean)
     const upperTokens = tokens.map((token) => token.toUpperCase())
-    const { season, episode, index } = parseSeasonEpisode(nameWithoutExtension)
+    const { season, episode, index, tokenEnd } = parseSeasonEpisode(nameWithoutExtension)
     const title = parseTitle(nameWithoutExtension, index, nameWithoutExtension !== name)
+    const specialName = parseSpecialName(nameWithoutExtension, season, episode, tokenEnd)
     const sourceType = parseSourceType(upperTokens)
     const source = parseSource(upperTokens, sourceType)
     const service = parseService(upperTokens)
@@ -43,6 +45,7 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
         title,
         season,
         episode,
+        specialName,
         sourceType,
         source,
         service,
@@ -91,6 +94,7 @@ function parseSeasonEpisode(name: string) {
             season: Number(seasonEpisodeMatch[1]),
             episode: Number(seasonEpisodeMatch[2]),
             index: seasonEpisodeMatch.index,
+            tokenEnd: seasonEpisodeMatch.index + seasonEpisodeMatch[0].length,
         }
     }
 
@@ -100,7 +104,23 @@ function parseSeasonEpisode(name: string) {
         season: seasonOnlyMatch ? Number(seasonOnlyMatch[1]) : undefined,
         episode: undefined,
         index: seasonOnlyMatch ? seasonOnlyMatch.index : -1,
+        tokenEnd: seasonOnlyMatch ? seasonOnlyMatch.index + seasonOnlyMatch[0].length : -1,
     }
+}
+
+function parseSpecialName(name: string, season: number | undefined, episode: number | undefined, tokenEnd: number): string | undefined {
+    const isSpecial = (season === 0 && episode !== undefined) || (season !== undefined && season > 0 && episode === 0)
+    if (!isSpecial || tokenEnd < 0) return undefined
+
+    const afterToken = name.slice(tokenEnd).replace(/-([^-]+)$/, '')
+    const technicalMarkerMatch = findFileMetadataIndex(afterToken)
+    const end = technicalMarkerMatch >= 0 ? technicalMarkerMatch : afterToken.length
+    let raw = afterToken.slice(0, end).replace(/^[.\s_-]+/, '').replace(/[.\s_-]+$/, '').replace(/[._]+/g, ' ').trim()
+
+    const cut = parseCut(raw)
+    if (cut) raw = raw.replace(cut, '').trim()
+
+    return raw || undefined
 }
 
 function parseSourceType(tokens: string[]): SourceType {
@@ -195,7 +215,7 @@ function parseTitle(name: string, seasonEpisodeIndex: number, isFileName: boolea
 }
 
 function findFileMetadataIndex(name: string) {
-    const metadataStartPatterns = [/\b(?:19|20)\d{2}\b/, /\b(?:480|576|720|1080|2160|4320)p\b/i, /\bREMUX\b/i, /\bBlu[.\s_-]*ray\b/i, /\bWEB[.\s_-]*(?:DL|RIP)?\b/i]
+    const metadataStartPatterns = [/\b(?:19|20)\d{2}\b/, /\b(?:480|576|720|1080|2160|4320)[pi]\b/i, /\bREMUX\b/i, /\bBlu[.\s_-]*ray\b/i, /\bWEB[.\s_-]*(?:DL|RIP)?\b/i]
     const indexes = metadataStartPatterns.map((pattern) => pattern.exec(name)?.index ?? -1).filter((index) => index >= 0)
 
     return indexes.length > 0 ? Math.min(...indexes) : -1

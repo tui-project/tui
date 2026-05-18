@@ -263,6 +263,7 @@ const state = reactive<Metadata>({
     year: null,
     season: null,
     episode: null,
+    specialName: '',
     language: [],
     originalLanguage: '',
     sourceType: '',
@@ -290,6 +291,7 @@ const state = reactive<Metadata>({
 
 const { getMetadata, loading, error } = useMetadata()
 const isTV = computed(() => state?.mediaType === 'tv')
+const isSpecial = computed(() => isTV.value && (state.season === 0 || state.episode === 0))
 const isWebSource = computed(() => state?.source === 'Web')
 const selectedPathLabel = computed(() => (props.selectedPath?.folder ? 'Folder' : 'File'))
 const selectedPathValue = computed(() => props.selectedPath?.value)
@@ -407,6 +409,10 @@ function onSubmit(_: FormSubmitEvent<Schema>) {
                                 :decrement="false"
                                 :format-options="{ useGrouping: false }"
                             />
+                        </UFormField>
+
+                        <UFormField v-if="isSpecial" label="Special Name">
+                            <UInput v-model="state.specialName" size="xl" class="w-full" placeholder="Enter special name" />
                         </UFormField>
                     </div>
                 </section>

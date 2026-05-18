@@ -15,6 +15,7 @@ const findByExternalID = vi.fn()
 const findByTitle = vi.fn()
 const findLocale = vi.fn()
 const getExternalIDs = vi.fn()
+const findTvdbSpecial = vi.fn()
 const parseMetadataFromName = vi.fn()
 const isWithinAnyRoot = vi.fn()
 const resolveMediaFilePath = vi.fn<(path: string) => Promise<string>>()
@@ -31,6 +32,7 @@ beforeEach(() => {
     findByTitle.mockResolvedValue({})
     findLocale.mockResolvedValue(undefined)
     getExternalIDs.mockResolvedValue({})
+    findTvdbSpecial.mockResolvedValue(null)
     parseMetadataFromName.mockReturnValue({
         title: 'Parsed Title',
         sourceType: 'WEB-DL',
@@ -71,6 +73,9 @@ async function loadHandler() {
         findByTitle,
         findLocale,
         getExternalIDs,
+    }))
+    vi.doMock('../../../../server/services/tvdb', () => ({
+        findTvdbSpecial,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
         logger,
@@ -361,6 +366,84 @@ describe('GET /api/metadata route handler', () => {
         const result = await handler({} as never)
         expect(result.imdbId).toBeUndefined()
         expect(result.tvdbId).toBeUndefined()
+    })
+
+    it('enriches special when season=0 and tvdbId and specialName are present', async () => {
+        getQuery.mockReturnValue({ path: '/media/Top.Gear.S00E12.Polar.Challenge.1080i.mkv' })
+        parseMetadataFromName.mockReturnValue({
+            title: 'Top Gear',
+            season: 0,
+            episode: 12,
+            specialName: 'Polar Challenge',
+            sourceType: 'ENCODE',
+            source: 'BluRay',
+            service: undefined,
+            cut: undefined,
+            repack: 0,
+            proper: 0,
+            hybrid: false,
+            releaseGroup: 'FraMeSToR',
+        })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tvdbId: 74608 })
+        findByExternalID.mockResolvedValue({ id: 9, title: 'Top Gear', original_title: 'Top Gear', original_language: 'en', year: 2002, external_ids: { tvdb_id: 74608 } })
+        findTvdbSpecial.mockResolvedValue({ episodeNumber: 2, title: 'Polar Challenge' })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.season).toBe(0)
+        expect(result.episode).toBe(2)
+        expect(result.specialName).toBe('Polar Challenge')
+        expect(findTvdbSpecial).toHaveBeenCalledWith(74608, 'Polar Challenge')
+    })
+
+    it('keeps filename values when TVDb special lookup returns no match', async () => {
+        getQuery.mockReturnValue({ path: '/media/Top.Gear.S27E00.Nepal.Special.1080p.mkv' })
+        parseMetadataFromName.mockReturnValue({
+            title: 'Top Gear',
+            season: 27,
+            episode: 0,
+            specialName: 'Nepal Special',
+            sourceType: 'ENCODE',
+            source: 'BluRay',
+            service: undefined,
+            cut: undefined,
+            repack: 0,
+            proper: 0,
+            hybrid: false,
+            releaseGroup: 'TBN',
+        })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tvdbId: 74608 })
+        findByExternalID.mockResolvedValue({ id: 9, title: 'Top Gear', original_title: 'Top Gear', original_language: 'en', year: 2002, external_ids: { tvdb_id: 74608 } })
+        findTvdbSpecial.mockResolvedValue(null)
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.season).toBe(27)
+        expect(result.episode).toBe(0)
+        expect(result.specialName).toBe('Nepal Special')
+    })
+
+    it('skips TVDb special lookup when specialName is absent', async () => {
+        getQuery.mockReturnValue({ path: '/media/Show.S01E01.1080p.mkv' })
+        parseMetadataFromName.mockReturnValue({
+            title: 'Show',
+            season: 1,
+            episode: 1,
+            sourceType: 'ENCODE',
+            source: 'BluRay',
+            service: undefined,
+            cut: undefined,
+            repack: 0,
+            proper: 0,
+            hybrid: false,
+            releaseGroup: 'GRP',
+        })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tvdbId: 74608 })
+        findByExternalID.mockResolvedValue({ id: 9, title: 'Show', original_title: 'Show', original_language: 'en', year: 2010, external_ids: { tvdb_id: 74608 } })
+
+        const handler = await loadHandler()
+        await handler({} as never)
+        expect(findTvdbSpecial).not.toHaveBeenCalled()
     })
 
     it('calls findByTitle with undefined when parsed title is undefined', async () => {

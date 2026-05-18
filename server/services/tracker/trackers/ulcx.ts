@@ -25,7 +25,7 @@ async function buildTitle(metadata: TrackerUploadMetadata) {
         const series = await getTvdbSeries(metadata.tvdbId)
         if (series && hasYearQualifier(series.title)) parts.push(String(metadata.year))
     }
-    parts.push(buildSeasonEpisodeString(metadata.season, metadata.episode))
+    parts.push(buildSeasonEpisodeString(metadata.season, metadata.episode, metadata.specialName))
     if (metadata.cut) parts.push(metadata.cut)
     if (metadata.ratio) parts.push(metadata.ratio)
     if (metadata.hybrid && metadata.sourceType !== SOURCE_TYPES.WEB_DL) parts.push('Hybrid')
@@ -63,11 +63,12 @@ function hasYearQualifier(title: string): boolean {
     return YEAR_QUALIFIER_PATTERN.test(title.trim())
 }
 
-function buildSeasonEpisodeString(season?: number, episode?: number): string {
+function buildSeasonEpisodeString(season?: number, episode?: number, specialName?: string): string {
     if (season === undefined) return ''
     const s = `S${String(season).padStart(2, '0')}`
-    if (episode !== undefined) return `${s}E${String(episode).padStart(2, '0')}`
-    return s
+    const se = episode !== undefined ? `${s}E${String(episode).padStart(2, '0')}` : s
+    if (specialName && (season === 0 || episode === 0)) return `${se} ${specialName}`
+    return se
 }
 
 function buildSourceString(metadata: TrackerUploadMetadata): string {
