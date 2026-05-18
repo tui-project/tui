@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger'
+import { normaliseSearchString } from '../utils/string'
 
 const SKYHOOK_BASE_URL = 'https://skyhook.sonarr.tv/v1/tvdb/shows/en'
 
@@ -55,10 +56,8 @@ export async function findTvdbSpecial(tvdbId: number, specialName: string): Prom
         return null
     }
 
-    const normalise = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim()
-    const needle = normalise(specialName)
-
-    const exact = specials.find((ep) => normalise(ep.title) === needle)
+    const needle = normaliseSearchString(specialName)
+    const exact = specials.find((ep) => normaliseSearchString(ep.title) === needle)
     if (exact) {
         logger.debug('Exact TVDb special match found.', { tvdbId, episodeNumber: exact.episodeNumber, title: exact.title })
         return { episodeNumber: exact.episodeNumber, title: exact.title }
@@ -69,7 +68,7 @@ export async function findTvdbSpecial(tvdbId: number, specialName: string): Prom
     let bestScore = 0
     let bestMatch: SkyHookEpisode | null = null
     for (const ep of specials) {
-        const epNorm = normalise(ep.title)
+        const epNorm = normaliseSearchString(ep.title)
         const score = needleWords.filter((w) => epNorm.includes(w)).length
         if (score > bestScore) {
             bestScore = score

@@ -115,7 +115,12 @@ function parseSpecialName(name: string, season: number | undefined, episode: num
     const afterToken = name.slice(tokenEnd).replace(/-([^-]+)$/, '')
     const technicalMarkerMatch = findFileMetadataIndex(afterToken)
     const end = technicalMarkerMatch >= 0 ? technicalMarkerMatch : afterToken.length
-    let raw = afterToken.slice(0, end).replace(/^[.\s_-]+/, '').replace(/[.\s_-]+$/, '').replace(/[._]+/g, ' ').trim()
+    let raw = afterToken
+        .slice(0, end)
+        .replace(/^[.\s_-]+/, '')
+        .replace(/[.\s_-]+$/, '')
+        .replace(/[._]+/g, ' ')
+        .trim()
 
     const cut = parseCut(raw)
     if (cut) raw = raw.replace(cut, '').trim()

@@ -135,5 +135,5 @@ async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameM
 }
 
 function isSpecialEpisode(metadata: Metadata): boolean {
-    return (metadata.season === 0 && metadata.episode !== undefined) || (metadata.season !== undefined && metadata.season > 0 && metadata.episode === 0)
+    return metadata.season === 0 || metadata.episode === 0
 }
