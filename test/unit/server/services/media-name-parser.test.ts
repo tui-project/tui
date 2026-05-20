@@ -510,6 +510,13 @@ describe('media name parser', () => {
             expectedEpisode: 1,
             expectedSpecialName: undefined,
         },
+        {
+            name: 'splits hyphenated word in special name into separate words',
+            input: 'The.Lord.of.the.Rings.The.Rings.of.Power.S00E14.Stories.of.the.Second.Age.Khazad-dum.1080p.AMZN.WEB-DL.DDP5.1.H.264-FLUX.mkv',
+            expectedSeason: 0,
+            expectedEpisode: 14,
+            expectedSpecialName: 'Stories of the Second Age Khazad dum',
+        },
     ])('$name', ({ input, expectedSeason, expectedEpisode, expectedSpecialName }) => {
         const result = parseMetadataFromName(input)
         expect(result.season).toBe(expectedSeason)

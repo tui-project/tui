@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isBlank, normaliseBoolean, normalisePositiveInteger, normaliseRequiredString, normaliseString } from '../../../../server/utils/string'
+import { isBlank, normaliseBoolean, normalisePositiveInteger, normaliseRequiredString, normaliseSearchString, normaliseString } from '../../../../server/utils/string'
 
 describe('string utils', () => {
     it.each([undefined, null, '', '   ', '\n\t'])('returns true for blank value %j', (value) => {
@@ -53,5 +53,16 @@ describe('string utils', () => {
 
     it.each([0, -1, 1.5, '1', undefined, null])('normalisePositiveInteger returns null for invalid value %j', (value) => {
         expect(normalisePositiveInteger(value)).toBeNull()
+    })
+
+    it.each([
+        ['Hello World', 'hello world'],
+        ['  Hello   World  ', 'hello world'],
+        ['Númenór', 'numenor'],
+        ['Khazad-dûm', 'khazaddum'],
+        ['Stories of the Second Age – Númenór', 'stories of the second age numenor'],
+        ['Stories of the Second Age – Khazad-dûm', 'stories of the second age khazaddum'],
+    ])('normaliseSearchString %j -> %j', (input, expected) => {
+        expect(normaliseSearchString(input)).toBe(expected)
     })
 })

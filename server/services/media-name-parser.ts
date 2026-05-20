@@ -119,7 +119,7 @@ function parseSpecialName(name: string, season: number | undefined, episode: num
         .slice(0, end)
         .replace(/^[.\s_-]+/, '')
         .replace(/[.\s_-]+$/, '')
-        .replace(/[._]+/g, ' ')
+        .replace(/[._-]+/g, ' ')
         .trim()
 
     const cut = parseCut(raw)
