@@ -22,6 +22,15 @@ const schema = z
                 passKey: z.string().nullable().optional(),
             })
         ),
+        torrentClients: z.array(
+            z.object({
+                selected: z.boolean(),
+                code: z.string(),
+                name: z.string(),
+                url: z.string(),
+                apiKey: z.string(),
+            })
+        ),
         mediainfoPath: z.string().trim().min(1, 'Mediainfo Path is required.'),
         ffmpegPath: z.string().trim().min(1, 'FFmpeg Path is required.'),
         ffprobePath: z.string().trim().min(1, 'FFprobe Path is required.'),
@@ -58,6 +67,23 @@ const schema = z
                 ctx.addIssue({ code: 'custom', path: ['trackers', index, 'passKey'], message: `Pass Key is required for ${tracker.code}.` })
             }
         }
+
+        const selectedClients = value.torrentClients.filter((c) => c.selected)
+        if (selectedClients.length > 1) {
+            ctx.addIssue({ code: 'custom', path: ['torrentClients'], message: 'Only one torrent client can be selected at a time.' })
+        }
+
+        for (const [index, client] of value.torrentClients.entries()) {
+            if (!client.selected) continue
+
+            if (!client.url.trim()) {
+                ctx.addIssue({ code: 'custom', path: ['torrentClients', index, 'url'], message: `URL is required for ${client.name}.` })
+            }
+
+            if (!client.apiKey.trim()) {
+                ctx.addIssue({ code: 'custom', path: ['torrentClients', index, 'apiKey'], message: `API Key is required for ${client.name}.` })
+            }
+        }
     })
 
 const LOG_LEVEL_OPTIONS = [
@@ -74,6 +100,7 @@ const formState = reactive<AppSettings>({
     tmdbApiKey: '',
     imageHostProviders: [] as AppSettings['imageHostProviders'],
     trackers: [] as AppSettings['trackers'],
+    torrentClients: [] as AppSettings['torrentClients'],
     mediainfoPath: 'mediainfo',
     ffmpegPath: 'ffmpeg',
     ffprobePath: 'ffprobe',
@@ -129,6 +156,13 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
             name: tracker.name,
             ...(tracker.selected && tracker.apiKey ? { apiKey: tracker.apiKey } : {}),
             ...(tracker.selected && tracker.passKey ? { passKey: tracker.passKey } : {}),
+        })),
+        torrentClients: settings.torrentClients.map((client) => ({
+            selected: client.selected,
+            code: client.code,
+            name: client.name,
+            url: client.url,
+            apiKey: client.apiKey,
         })),
         mediainfoPath: settings.mediainfoPath,
         ffmpegPath: settings.ffmpegPath,
@@ -188,6 +222,40 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
                             </div>
                         </template>
                     </div>
+                </div>
+            </UCard>
+
+            <UCard title="Torrent client" description="Add completed uploads to a torrent client for cross-seeding. Only one client can be selected." variant="subtle" class="mt-4">
+                <div class="space-y-4">
+                    <template v-for="(client, index) in formState.torrentClients" :key="client.code">
+                        <div class="space-y-4">
+                            <UCheckbox
+                                v-model="client.selected"
+                                :label="client.name"
+                                :aria-label="client.name"
+                                @update:model-value="
+                                    (val) => {
+                                        if (val)
+                                            formState.torrentClients.forEach((c) => {
+                                                if (c.code !== client.code) c.selected = false
+                                            })
+                                    }
+                                "
+                            />
+
+                            <div v-if="client.selected" class="space-y-4 pl-6">
+                                <UFormField label="URL" :name="`torrentClients.${index}.url`" required>
+                                    <UInput v-model="client.url" size="xl" class="w-full" :placeholder="`e.g. http://localhost:7474`" />
+                                </UFormField>
+
+                                <UFormField label="API Key" :name="`torrentClients.${index}.apiKey`" required>
+                                    <UInput v-model="client.apiKey" size="xl" class="w-full" :placeholder="`Enter ${client.name} API key`" />
+                                </UFormField>
+                            </div>
+
+                            <USeparator v-if="index < formState.torrentClients.length - 1 && client.selected" />
+                        </div>
+                    </template>
                 </div>
             </UCard>
 

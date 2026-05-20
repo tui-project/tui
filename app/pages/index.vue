@@ -80,6 +80,22 @@ function isRetryable(status: string) {
     return status === trackerUploadStatuses.fail || status === trackerUploadStatuses.partialSuccess
 }
 
+function getTrackerUploadStatusColor(uploadStatus: 'success' | 'failed' | undefined) {
+    if (uploadStatus === 'success') return 'success'
+    if (uploadStatus === 'failed') return 'error'
+    return 'neutral'
+}
+
+function getInjectionBadgeProps(torrentClientInjected: boolean | undefined): { color: 'warning'; label: string } | null {
+    if (torrentClientInjected === true) return null
+    if (torrentClientInjected === false) return { color: 'warning', label: 'Injection failed' }
+    return null
+}
+
+function hasInjectionFailure(request: TrackerRequest) {
+    return request.trackers.some((t) => t.torrentClientInjected === false)
+}
+
 async function handleRetry(request: TrackerRequest) {
     await retryRequest(request.id)
     const result = await getRequests(LIMIT)
@@ -116,9 +132,19 @@ async function handleRetry(request: TrackerRequest) {
                             {{ getRequestLabel(request.filepath) }}
                         </div>
                         <div class="flex flex-wrap gap-1">
-                            <UBadge v-for="tracker in request.trackers" :key="tracker.code" color="neutral" variant="soft" size="lg">
-                                {{ tracker.code }}
-                            </UBadge>
+                            <template v-for="tracker in request.trackers" :key="tracker.code">
+                                <UBadge :color="getTrackerUploadStatusColor(tracker.uploadStatus)" variant="soft" size="lg">
+                                    {{ tracker.code }}
+                                </UBadge>
+                                <UBadge
+                                    v-if="getInjectionBadgeProps(tracker.torrentClientInjected)"
+                                    v-bind="getInjectionBadgeProps(tracker.torrentClientInjected)!"
+                                    variant="soft"
+                                    size="lg"
+                                >
+                                    {{ getInjectionBadgeProps(tracker.torrentClientInjected)!.label }}
+                                </UBadge>
+                            </template>
                         </div>
 
                         <div v-if="shouldShowProgress(request.status)" class="space-y-1">
@@ -129,9 +155,10 @@ async function handleRetry(request: TrackerRequest) {
                             <UProgress :model-value="request.torrentCreationProgress ?? 0" size="md" />
                         </div>
 
-                        <div v-else-if="hasFinalStatus(request.status) && request.failedTrackerCodes?.length" class="text-xs text-muted">
-                            Failed trackers: {{ request.failedTrackerCodes.join(', ') }}
-                        </div>
+                        <template v-else-if="hasFinalStatus(request.status)">
+                            <div v-if="request.failedTrackerCodes?.length" class="text-xs text-muted">Failed trackers: {{ request.failedTrackerCodes.join(', ') }}</div>
+                            <div v-if="hasInjectionFailure(request)" class="text-xs text-warning">Torrent client injection failed for one or more trackers.</div>
+                        </template>
 
                         <div v-if="isRetryable(request.status)" class="flex justify-end">
                             <UButton size="sm" variant="soft" color="neutral" icon="i-heroicons-arrow-path" @click="handleRetry(request)"> Retry </UButton>

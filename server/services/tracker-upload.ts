@@ -1,13 +1,14 @@
 import { TRACKER_UPLOAD_STATUSES, type TrackerItem } from '../model/tracker-upload-request'
 import { findGenericTorrentCacheByFilepath, saveGenericTorrentCache } from '../repositories/generic-torrent-cache-repository'
 import { getSettings } from '../repositories/settings-repository'
-import { updateTrackerUploadRequestStatus, updateTrackerUploadRequestTorrentCreationProgress } from '../repositories/tracker-request-repository'
+import { updateTrackerUploadRequestStatus, updateTrackerUploadRequestTorrentCreationProgress, updateTrackerItem } from '../repositories/tracker-request-repository'
 import { createGenericTorrent, createTrackerTorrent } from './torrent'
 import { analyzeMediaFileAsText } from './mediainfo'
 import { resolveMediaFilePath } from '../utils/file-system'
 import { createTrackerService } from './tracker/tracker-factory'
 import type { TrackerUploadMetadata } from './tracker/tracker'
 import { logger } from '../utils/logger'
+import { injectTorrent } from './torrent-client'
 
 export async function upload(uploadRequestId: string, filepath: string, trackers: TrackerItem[], metadata: TrackerUploadMetadata, description: string) {
     const trackerCodes = trackers.map((t) => t.code)
@@ -42,7 +43,7 @@ export async function upload(uploadRequestId: string, filepath: string, trackers
         const mediainfoText = await analyzeMediaFileAsText(mediaFilePath)
         logger.debug('Mediainfo text ready for tracker upload.', { id: uploadRequestId, mediaFilePath })
 
-        const failedTrackerCodes = await uploadToTrackers(trackerTorrentPaths, trackers, metadata, description, mediainfoText)
+        const failedTrackerCodes = await uploadToTrackers(uploadRequestId, trackerTorrentPaths, trackers, metadata, description, mediainfoText)
 
         if (failedTrackerCodes.length === 0) {
             await updateTrackerUploadRequestStatus(uploadRequestId, TRACKER_UPLOAD_STATUSES.SUCCESS)
@@ -68,27 +69,48 @@ async function createGenericTorrentForUploadRequest(uploadRequestId: string, fil
     return genericTorrentPath
 }
 
-async function uploadToTrackers(trackerTorrentPaths: Record<string, string>, trackers: TrackerItem[], metadata: TrackerUploadMetadata, description: string, mediainfoText: string) {
+async function uploadToTrackers(
+    uploadRequestId: string,
+    trackerTorrentPaths: Record<string, string>,
+    trackers: TrackerItem[],
+    metadata: TrackerUploadMetadata,
+    description: string,
+    mediainfoText: string
+) {
     const failedTrackerCodes: string[] = []
+    const settings = await getSettings()
+    const selectedTorrentClient = settings.torrentClients.find((c) => c.selected)
 
     for (const tracker of trackers) {
         const torrentPath = trackerTorrentPaths[tracker.code]
         if (!torrentPath) {
             logger.warn('Skipping tracker upload: no torrent path found.', { trackerCode: tracker.code })
             failedTrackerCodes.push(tracker.code)
+            await updateTrackerItem(uploadRequestId, tracker.code, { uploadStatus: 'failed' })
             continue
         }
 
         try {
             const trackerService = await createTrackerService(tracker.code)
-            await trackerService.upload(torrentPath, metadata, description, mediainfoText, {
+            const torrentDownloadUrl = await trackerService.upload(torrentPath, metadata, description, mediainfoText, {
                 title: tracker.title,
                 anonymous: tracker.anonymous,
                 modQueueOptIn: tracker.modQueueOptIn,
             })
+            await updateTrackerItem(uploadRequestId, tracker.code, { uploadStatus: 'success' })
+            logger.info('Successfully uploaded to tracker.', { trackerCode: tracker.code, torrentDownloadUrl })
+
+            if (selectedTorrentClient) {
+                const injected = await injectTorrent(torrentDownloadUrl, selectedTorrentClient)
+                await updateTrackerItem(uploadRequestId, tracker.code, { torrentClientInjected: injected })
+                if (!injected) {
+                    logger.warn('Torrent client injection failed after successful tracker upload.', { trackerCode: tracker.code, clientCode: selectedTorrentClient.code })
+                }
+            }
         } catch (error: unknown) {
             logger.error('Failed to upload to tracker.', error, { trackerCode: tracker.code })
             failedTrackerCodes.push(tracker.code)
+            await updateTrackerItem(uploadRequestId, tracker.code, { uploadStatus: 'failed' })
         }
     }
 

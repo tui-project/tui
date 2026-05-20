@@ -7,6 +7,8 @@ export interface TrackerItem {
     titleModified: boolean
     anonymous: boolean
     modQueueOptIn: boolean
+    uploadStatus?: 'success' | 'failed'
+    torrentClientInjected?: boolean
 }
 
 export interface TrackerRequest {

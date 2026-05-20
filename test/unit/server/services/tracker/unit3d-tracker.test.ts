@@ -52,16 +52,18 @@ describe('createUnit3dService — getTitle', () => {
     })
 })
 
+const MOCK_DOWNLOAD_URL = 'https://tracker.example.com/torrent/download/123'
+
 describe('createUnit3dService — upload', () => {
     beforeEach(() => {
-        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(undefined))
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ data: MOCK_DOWNLOAD_URL }))
     })
 
     it('reads the torrent file and logs upload info', async () => {
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
         await expect(
             service.upload('/path/to/movie.torrent', baseMetadata, 'description', 'mediainfo text', { title: 'Movie Title', anonymous: false, modQueueOptIn: false })
-        ).resolves.toBeUndefined()
+        ).resolves.toBe(MOCK_DOWNLOAD_URL)
         expect(readFileMock).toHaveBeenCalledWith('/path/to/movie.torrent')
     })
 
@@ -69,7 +71,7 @@ describe('createUnit3dService — upload', () => {
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
         await expect(
             service.upload('/path/to/movie.torrent', { ...baseMetadata, tvdbId: 99, season: 2, episode: 5 }, 'desc', 'mi', { title: 'T', anonymous: true, modQueueOptIn: false })
-        ).resolves.toBeUndefined()
+        ).resolves.toBe(MOCK_DOWNLOAD_URL)
     })
 
     it('strips tt prefix from imdbId', async () => {

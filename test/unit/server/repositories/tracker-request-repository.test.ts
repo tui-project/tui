@@ -277,6 +277,54 @@ describe('tracker upload request repository', () => {
         expect(found?.failedTrackerCodes).toBeUndefined()
     })
 
+    it('updates uploadStatus and torrentClientInjected on a specific tracker item', async () => {
+        const { saveTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerItem } = await import('../../../../server/repositories/tracker-request-repository')
+
+        await saveTrackerUploadRequest({
+            id: 'upload-tracker-item-1',
+            filepath: '/media/Movie.2024.1080p.mkv',
+            metadata: {
+                releaseGroup: 'GROUP',
+                mediaType: 'movie',
+                title: 'Movie',
+                originalTitle: 'Movie',
+                year: 2024,
+                language: ['English'],
+                originalLanguage: 'English',
+                sourceType: 'ENCODE',
+                source: 'BluRay',
+                repack: 0,
+                proper: 0,
+                hybrid: false,
+                resolution: '1080p',
+                hdr: [],
+                videoCodec: 'H.264',
+                audioCodec: 'DTS-HD MA',
+                audioChannels: '5.1',
+                tmdbId: 1,
+                imdbId: 'tt1234567',
+            },
+            description: '',
+            trackers: [
+                { code: 'ULCX', title: 'Title', titleModified: false, anonymous: false },
+                { code: 'ATH', title: 'Title', titleModified: false, anonymous: false },
+            ],
+            status: 'uploading',
+        })
+
+        await updateTrackerItem('upload-tracker-item-1', 'ULCX', { uploadStatus: 'success', torrentClientInjected: true })
+        const updated = await findTrackerUploadRequestById('upload-tracker-item-1')
+
+        expect(updated?.trackers.find((t) => t.code === 'ULCX')).toMatchObject({ uploadStatus: 'success', torrentClientInjected: true })
+        expect(updated?.trackers.find((t) => t.code === 'ATH')).not.toHaveProperty('uploadStatus')
+    })
+
+    it('does nothing when updateTrackerItem is called with a non-existent id', async () => {
+        const { updateTrackerItem } = await import('../../../../server/repositories/tracker-request-repository')
+
+        await expect(updateTrackerItem('nonexistent', 'ULCX', { uploadStatus: 'failed' })).resolves.toBeUndefined()
+    })
+
     it('returns null from resetTrackerUploadRequest when the id does not exist', async () => {
         const { resetTrackerUploadRequest } = await import('../../../../server/repositories/tracker-request-repository')
 

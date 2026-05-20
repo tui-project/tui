@@ -56,8 +56,9 @@ export function createUnit3dService(url: string, apiKey: string, buildTitle?: (m
         logger.info('Uploading torrent to UNIT3D tracker.', { trackerUrl: url, title, torrentPath })
         logger.debug('request', { formData: Object.fromEntries(formData.entries()) })
 
+        let torrentDownloadUrl: string
         try {
-            await $fetch(`${url}/api/torrents/upload`, {
+            const response = await $fetch<{ data: string }>(`${url}/api/torrents/upload`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${apiKey}`,
@@ -66,13 +67,15 @@ export function createUnit3dService(url: string, apiKey: string, buildTitle?: (m
                 body: formData,
                 redirect: 'error',
             })
+            torrentDownloadUrl = response.data
         } catch (error: unknown) {
             const err = error as { statusCode?: number; data?: unknown }
             const uploadError = new Error(`Upload failed: HTTP ${err.statusCode ?? 'unknown'} — ${JSON.stringify(err.data)}`)
             throw uploadError
         }
 
-        logger.info('Torrent uploaded successfully to UNIT3D tracker.', { trackerUrl: url, title })
+        logger.info('Torrent uploaded successfully to UNIT3D tracker.', { trackerUrl: url, title, torrentDownloadUrl })
+        return torrentDownloadUrl
     }
 
     return {

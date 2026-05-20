@@ -80,6 +80,51 @@ describe('POST /api/settings route handler', () => {
         })
     })
 
+    it('rejects selected torrent client without url', async () => {
+        readBody.mockResolvedValue(
+            baseRequest({
+                torrentClients: [{ code: 'QUI', name: 'qui', selected: true, url: '', apiKey: 'key' }],
+            })
+        )
+        const handler = await loadHandler()
+
+        await expect(handler({} as never)).rejects.toEqual({
+            statusCode: 400,
+            message: 'invalid_request',
+        })
+    })
+
+    it('rejects selected torrent client without api key', async () => {
+        readBody.mockResolvedValue(
+            baseRequest({
+                torrentClients: [{ code: 'QUI', name: 'qui', selected: true, url: 'http://localhost:7474', apiKey: '' }],
+            })
+        )
+        const handler = await loadHandler()
+
+        await expect(handler({} as never)).rejects.toEqual({
+            statusCode: 400,
+            message: 'invalid_request',
+        })
+    })
+
+    it('rejects when more than one torrent client is selected', async () => {
+        readBody.mockResolvedValue(
+            baseRequest({
+                torrentClients: [
+                    { code: 'QUI', name: 'qui', selected: true, url: 'http://localhost:7474', apiKey: 'key' },
+                    { code: 'OTHER', name: 'Other', selected: true, url: 'http://localhost:9090', apiKey: 'key2' },
+                ],
+            })
+        )
+        const handler = await loadHandler()
+
+        await expect(handler({} as never)).rejects.toEqual({
+            statusCode: 400,
+            message: 'invalid_request',
+        })
+    })
+
     it('rejects missing ffmpeg paths even when no image host provider is selected', async () => {
         readBody.mockResolvedValue(
             baseRequest({
@@ -116,6 +161,7 @@ describe('POST /api/settings route handler', () => {
             tmdbApiKey: 'abc',
             imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', url: 'https://api.imgbb.com/1/upload?key=', selected: true, apiKey: 'imgbb-key' }],
             trackers: [{ code: 'ULCX', name: 'Upload.cx', url: 'https://upload.cx', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
+            torrentClients: [{ code: 'QUI', name: 'qui', selected: false, url: '', apiKey: '' }],
             mediainfoPath: 'mediainfo',
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
@@ -130,6 +176,7 @@ describe('POST /api/settings route handler', () => {
             tmdbApiKey: 'abc',
             imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', selected: true, apiKey: 'imgbb-key' }],
             trackers: [{ code: 'ULCX', name: 'Upload.cx', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
+            torrentClients: [{ code: 'QUI', name: 'qui', selected: false, url: '', apiKey: '' }],
             mediainfoPath: 'mediainfo',
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
@@ -159,6 +206,7 @@ describe('POST /api/settings route handler', () => {
                     passKey: 'pass-key',
                 },
             ],
+            torrentClients: [{ code: 'QUI', name: 'qui', selected: false, url: '', apiKey: '' }],
             mediainfoPath: 'mediainfo',
             ffmpegPath: 'ffmpeg',
             ffprobePath: 'ffprobe',
@@ -175,6 +223,7 @@ function baseRequest(
         tmdbApiKey: unknown
         imageHostProviders: unknown
         trackers: unknown
+        torrentClients: unknown
         mediainfoPath: unknown
         ffmpegPath: unknown
         ffprobePath: unknown
@@ -188,6 +237,7 @@ function baseRequest(
         tmdbApiKey: 'abc',
         imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', selected: true, apiKey: 'imgbb-key' }],
         trackers: [{ code: 'ULCX', name: 'Upload.cx', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
+        torrentClients: [{ code: 'QUI', name: 'qui', selected: false, url: '', apiKey: '' }],
         mediainfoPath: 'mediainfo',
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',

@@ -49,6 +49,29 @@ describe('settings repository', () => {
         })
     })
 
+    it('merges saved torrent client values into defaults by code', async () => {
+        storedSettings = {
+            id: 'app-settings',
+            torrentClients: [{ code: 'QUI', selected: true, url: 'http://localhost:7474', apiKey: 'qui-key' }],
+        }
+        const { getSettings } = await loadRepository()
+
+        await expect(getSettings()).resolves.toMatchObject({
+            torrentClients: [{ code: 'QUI', name: 'qui', selected: true, url: 'http://localhost:7474', apiKey: 'qui-key' }],
+        })
+    })
+
+    it('returns default torrent clients when stored value is not an array', async () => {
+        storedSettings = {
+            id: 'app-settings',
+            torrentClients: null,
+        }
+        const { getSettings, DEFAULT_SETTINGS } = await loadRepository()
+
+        const result = await getSettings()
+        expect(result.torrentClients).toEqual(DEFAULT_SETTINGS.torrentClients)
+    })
+
     it('saves only the whitelisted fields', async () => {
         const { saveSettings } = await loadRepository()
 
@@ -57,6 +80,7 @@ describe('settings repository', () => {
             tmdbApiKey: 'abc',
             imageHostProviders: [{ code: 'imgbb', name: 'ImgBB', url: 'https://example.com', selected: true, apiKey: 'imgbb-key' }],
             trackers: [{ code: 'ULCX', name: 'Upload.cx', url: 'https://upload.cx', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
+            torrentClients: [{ code: 'QUI', name: 'qui', selected: true, url: 'http://localhost:7474', apiKey: 'qui-key' }],
             ffmpegPath: '/custom/ffmpeg',
             ffprobePath: '/custom/ffprobe',
             movieScreenshotCount: 9,
@@ -69,6 +93,7 @@ describe('settings repository', () => {
             tmdbApiKey: 'abc',
             imageHostProviders: [{ code: 'imgbb', selected: true, apiKey: 'imgbb-key' }],
             trackers: [{ code: 'ULCX', selected: true, apiKey: 'api-key', passKey: 'pass-key' }],
+            torrentClients: [{ code: 'QUI', selected: true, url: 'http://localhost:7474', apiKey: 'qui-key' }],
             ffmpegPath: '/custom/ffmpeg',
             ffprobePath: '/custom/ffprobe',
             movieScreenshotCount: 9,

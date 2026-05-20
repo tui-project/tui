@@ -4,6 +4,7 @@ export interface Settings {
     tmdbApiKey: string
     imageHostProviders: ImageHostProviderSettings[]
     trackers: TrackerSettings[]
+    torrentClients: TorrentClientSettings[]
     mediainfoPath: string
     ffmpegPath: string
     ffprobePath: string
@@ -27,4 +28,12 @@ export interface TrackerSettings {
     url: string
     apiKey?: string
     passKey?: string
+}
+
+export interface TorrentClientSettings {
+    selected: boolean
+    code: string
+    name: string
+    url: string
+    apiKey: string
 }

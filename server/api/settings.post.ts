@@ -57,18 +57,56 @@ const trackerSchema = z
         url: '',
     }))
 
-const settingsRequestSchema = z.object({
-    mediaPaths: z.array(z.string().trim().min(1)).transform((mediaPaths) => [...new Set(mediaPaths)]),
-    tmdbApiKey: z.string().trim().min(1),
-    imageHostProviders: z.array(imageHostProviderSchema),
-    trackers: z.array(trackerSchema),
-    mediainfoPath: z.string().trim().min(1),
-    ffmpegPath: z.string().trim().min(1),
-    ffprobePath: z.string().trim().min(1),
-    movieScreenshotCount: z.number().int().positive(),
-    episodePackScreenshotCount: z.number().int().positive(),
-    logLevel: z.number().int().min(0).max(5),
-})
+const torrentClientSchema = z
+    .object({
+        code: z.string().trim().min(1),
+        name: z.string().trim().min(1),
+        selected: z.boolean(),
+        url: z.string().trim(),
+        apiKey: z.string().trim(),
+    })
+    .superRefine((client, context) => {
+        if (client.selected && !client.url) {
+            context.addIssue({
+                code: 'custom',
+                path: ['url'],
+                message: 'URL is required when torrent client is selected',
+            })
+        }
+
+        if (client.selected && !client.apiKey) {
+            context.addIssue({
+                code: 'custom',
+                path: ['apiKey'],
+                message: 'apiKey is required when torrent client is selected',
+            })
+        }
+    })
+
+const settingsRequestSchema = z
+    .object({
+        mediaPaths: z.array(z.string().trim().min(1)).transform((mediaPaths) => [...new Set(mediaPaths)]),
+        tmdbApiKey: z.string().trim().min(1),
+        imageHostProviders: z.array(imageHostProviderSchema),
+        trackers: z.array(trackerSchema),
+        torrentClients: z.array(torrentClientSchema),
+        mediainfoPath: z.string().trim().min(1),
+        ffmpegPath: z.string().trim().min(1),
+        ffprobePath: z.string().trim().min(1),
+        movieScreenshotCount: z.number().int().positive(),
+        episodePackScreenshotCount: z.number().int().positive(),
+        logLevel: z.number().int().min(0).max(5),
+    })
+    .superRefine((value, context) => {
+        const selectedClients = value.torrentClients.filter((c) => c.selected)
+        if (selectedClients.length > 1) {
+            context.addIssue({
+                code: 'custom',
+                path: ['torrentClients'],
+                message: 'Only one torrent client can be selected at a time',
+            })
+        }
+    })
 
 export default defineEventHandler(async (event) => {
     logger.debug('Settings update request received.')

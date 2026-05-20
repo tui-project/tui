@@ -30,6 +30,14 @@ export async function updateTrackerUploadRequestTorrentCreationProgress(id: stri
     await trackerUploadRequestCollection.updateAsync({ id }, { $set: { torrentCreationProgress } }, {})
 }
 
+export async function updateTrackerItem(id: string, code: string, update: Partial<Pick<TrackerUploadRequest['trackers'][number], 'uploadStatus' | 'torrentClientInjected'>>) {
+    const request = await trackerUploadRequestCollection.findOneAsync({ id })
+    if (!request) return
+
+    const trackers = request.trackers.map((t) => (t.code === code ? { ...t, ...update } : t))
+    await trackerUploadRequestCollection.updateAsync({ id }, { $set: { trackers } }, {})
+}
+
 export async function resetTrackerUploadRequest(id: string) {
     await trackerUploadRequestCollection.updateAsync({ id }, { $set: { status: 'pending', torrentCreationProgress: 0 }, $unset: { failedTrackerCodes: true } }, {})
     return await trackerUploadRequestCollection.findOneAsync({ id })

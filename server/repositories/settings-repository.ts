@@ -1,4 +1,4 @@
-import type { Settings } from '../model/settings'
+import type { ImageHostProviderSettings, Settings, TorrentClientSettings, TrackerSettings } from '../model/settings'
 import { settingsCollection } from '../utils/db'
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -64,6 +64,15 @@ export const DEFAULT_SETTINGS: Settings = {
             passKey: undefined,
         },
     ],
+    torrentClients: [
+        {
+            code: 'QUI',
+            name: 'qui',
+            selected: false,
+            url: '',
+            apiKey: '',
+        },
+    ],
     mediainfoPath: 'mediainfo',
     ffmpegPath: 'ffmpeg',
     ffprobePath: 'ffprobe',
@@ -80,6 +89,7 @@ export async function getSettings() {
         ...settings,
         imageHostProviders: mergeImageHostProviders(settings?.imageHostProviders),
         trackers: mergeTrackers(settings?.trackers),
+        torrentClients: mergeTorrentClients(settings?.torrentClients),
     }
 }
 
@@ -99,6 +109,12 @@ export async function saveSettings(settingsInput: Omit<Settings, 'id'>) {
             apiKey: tracker.apiKey,
             passKey: tracker.passKey,
         })),
+        torrentClients: settingsInput.torrentClients.map((client) => ({
+            code: client.code,
+            selected: client.selected,
+            url: client.url,
+            apiKey: client.apiKey,
+        })),
         mediainfoPath: settingsInput.mediainfoPath,
         ffmpegPath: settingsInput.ffmpegPath,
         ffprobePath: settingsInput.ffprobePath,
@@ -110,7 +126,7 @@ export async function saveSettings(settingsInput: Omit<Settings, 'id'>) {
     await settingsCollection.updateAsync({ id: DEFAULT_SETTINGS.id }, settings, { upsert: true })
 }
 
-function mergeImageHostProviders(input: unknown): Settings['imageHostProviders'] {
+function mergeImageHostProviders(input: unknown): ImageHostProviderSettings[] {
     if (!Array.isArray(input)) {
         return DEFAULT_SETTINGS.imageHostProviders
     }
@@ -125,7 +141,7 @@ function mergeImageHostProviders(input: unknown): Settings['imageHostProviders']
     })
 }
 
-function mergeTrackers(input: unknown): Settings['trackers'] {
+function mergeTrackers(input: unknown): TrackerSettings[] {
     if (!Array.isArray(input)) {
         return DEFAULT_SETTINGS.trackers
     }
@@ -136,6 +152,21 @@ function mergeTrackers(input: unknown): Settings['trackers'] {
         return {
             ...tracker,
             ...savedTrackersByCode[tracker.code],
+        }
+    })
+}
+
+function mergeTorrentClients(input: unknown): TorrentClientSettings[] {
+    if (!Array.isArray(input)) {
+        return DEFAULT_SETTINGS.torrentClients
+    }
+
+    const savedClientsByCode = Object.fromEntries(input.map((client) => [client.code, client]))
+
+    return DEFAULT_SETTINGS.torrentClients.map((client) => {
+        return {
+            ...client,
+            ...savedClientsByCode[client.code],
         }
     })
 }

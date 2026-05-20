@@ -5,11 +5,13 @@ import { computed, ref } from 'vue'
 import IndexPage from '../../../app/pages/index.vue'
 
 const getRequestsMock = vi.fn()
+const retryRequestMock = vi.fn()
 const error = ref(false)
 
 mockNuxtImport('useTrackerRequests', () => {
     return () => ({
         getRequests: getRequestsMock,
+        retryRequest: retryRequestMock,
         error: computed(() => error.value),
         loading: ref(false),
     })
@@ -19,6 +21,7 @@ describe('index page', () => {
     beforeEach(() => {
         vi.useFakeTimers()
         getRequestsMock.mockReset()
+        retryRequestMock.mockReset()
         error.value = false
     })
 
@@ -199,7 +202,16 @@ describe('index page', () => {
     })
 
     it('retains displayed requests when a poll returns null', async () => {
-        getRequestsMock.mockResolvedValueOnce([{ id: 'req-1', filepath: '/media/Movie.mkv', status: 'success', trackerCodes: ['ULCX'] }]).mockResolvedValueOnce(null)
+        getRequestsMock
+            .mockResolvedValueOnce([
+                {
+                    id: 'req-1',
+                    filepath: '/media/Movie.mkv',
+                    status: 'success',
+                    trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false }],
+                },
+            ])
+            .mockResolvedValueOnce(null)
 
         await renderSuspended(IndexPage)
 
@@ -208,5 +220,52 @@ describe('index page', () => {
         await vi.advanceTimersByTimeAsync(2_000)
 
         expect(screen.getByText('Movie.mkv')).toBeTruthy()
+    })
+
+    it('shows injection failed badge when torrentClientInjected is false', async () => {
+        getRequestsMock.mockResolvedValue([
+            {
+                id: 'upload-1',
+                filepath: '/media/Movie.2024.mkv',
+                status: 'success',
+                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false, torrentClientInjected: false }],
+            },
+        ])
+
+        await renderSuspended(IndexPage)
+
+        expect(screen.getByText('Injection failed')).toBeTruthy()
+        expect(screen.getByText('Torrent client injection failed for one or more trackers.')).toBeTruthy()
+    })
+
+    it('retries the request and refreshes the list when the retry button is clicked', async () => {
+        retryRequestMock.mockResolvedValue(undefined)
+        getRequestsMock
+            .mockResolvedValueOnce([
+                {
+                    id: 'upload-1',
+                    filepath: '/media/Movie.2024.mkv',
+                    status: 'fail',
+                    trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false }],
+                    failedTrackerCodes: ['ULCX'],
+                },
+            ])
+            .mockResolvedValueOnce([
+                {
+                    id: 'upload-1',
+                    filepath: '/media/Movie.2024.mkv',
+                    status: 'pending',
+                    trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false }],
+                },
+            ])
+
+        const user = (await import('@testing-library/user-event')).default.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) })
+        await renderSuspended(IndexPage)
+
+        await user.click(screen.getByRole('button', { name: /retry/i }))
+
+        expect(retryRequestMock).toHaveBeenCalledWith('upload-1')
+        expect(getRequestsMock).toHaveBeenCalledTimes(2)
+        expect(screen.getByText('Pending')).toBeTruthy()
     })
 })

@@ -16,11 +16,20 @@ export interface TrackerSettings {
     passKey?: string
 }
 
+export interface TorrentClientSettings {
+    selected: boolean
+    code: string
+    name: string
+    url: string
+    apiKey: string
+}
+
 export interface AppSettings {
     mediaPaths: string[]
     tmdbApiKey: string
     imageHostProviders: ImageHostProviderSettings[]
     trackers: TrackerSettings[]
+    torrentClients: TorrentClientSettings[]
     mediainfoPath: string
     ffmpegPath: string
     ffprobePath: string

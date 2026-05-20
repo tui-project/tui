@@ -109,6 +109,10 @@ Coverage expectations:
 - For newly added or modified runtime code, add or update tests so touched files keep 100% line, statement, and branch coverage.
 - If a file is intentionally excluded from coverage (for example model/type-only files), document the reason in configuration comments.
 
+## HTTP Clients
+
+- Use `$fetch` (Nitro global, ofetch under the hood) for all server-side HTTP requests. Do not use the native `fetch` API. `$fetch` is available globally in Nitro without imports and automatically throws on non-2xx responses.
+
 ## Editing Notes
 
 - Keep changes small and aligned with existing patterns.

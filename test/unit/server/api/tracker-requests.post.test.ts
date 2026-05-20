@@ -15,20 +15,22 @@ const findGenericTorrentCacheByFilepath = vi.fn()
 const saveGenericTorrentCache = vi.fn()
 const updateTrackerUploadRequestStatus = vi.fn()
 const updateTrackerUploadRequestTorrentCreationProgress = vi.fn()
+const updateTrackerItem = vi.fn()
 const createGenericTorrent = vi.fn()
 const createTrackerTorrent = vi.fn()
 const getSettings = vi.fn()
 const createTrackerService = vi.fn()
 const resolveMediaFilePath = vi.fn()
 const analyzeMediaFileAsText = vi.fn()
+const injectTorrent = vi.fn()
 
 beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
     vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
     vi.stubGlobal('setResponseStatus', setResponseStatus)
-    getSettings.mockResolvedValue({ trackers: [] })
-    createTrackerService.mockResolvedValue({ upload: vi.fn().mockResolvedValue(undefined) })
+    getSettings.mockResolvedValue({ trackers: [], torrentClients: [] })
+    createTrackerService.mockResolvedValue({ upload: vi.fn().mockResolvedValue('https://tracker.example.com/torrent/download/1') })
     resolveMediaFilePath.mockResolvedValue('/media/Movie.2024.1080p.mkv')
     analyzeMediaFileAsText.mockResolvedValue('mediainfo output')
 })
@@ -50,6 +52,7 @@ async function loadHandler() {
         saveTrackerUploadRequest,
         updateTrackerUploadRequestStatus,
         updateTrackerUploadRequestTorrentCreationProgress,
+        updateTrackerItem,
     }))
     vi.doMock('../../../../server/repositories/settings-repository', () => ({
         getSettings,
@@ -66,6 +69,9 @@ async function loadHandler() {
     }))
     vi.doMock('../../../../server/services/mediainfo', () => ({
         analyzeMediaFileAsText,
+    }))
+    vi.doMock('../../../../server/services/torrent-client', () => ({
+        injectTorrent,
     }))
 
     const { default: handler } = await import('../../../../server/api/tracker/requests.post')
@@ -117,7 +123,7 @@ function mockEvent() {
 }
 
 async function flushPromises() {
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 20; i++) {
         await Promise.resolve()
     }
 }
@@ -272,6 +278,7 @@ describe('POST /api/tracker/requests route handler', () => {
         })
         getSettings.mockResolvedValue({
             trackers: [{ code: 'ULCX', url: 'https://ulcx.example.com', passKey: 'secret123' }],
+            torrentClients: [],
         })
         createTrackerTorrent.mockResolvedValue({
             trackerTorrentPath: '/config/tmp/torrents/ULCX/Movie.2024.1080p.torrent',
@@ -295,7 +302,7 @@ describe('POST /api/tracker/requests route handler', () => {
     })
 
     it('passes tracker override title and anonymous flag to service.upload', async () => {
-        const uploadMock = vi.fn().mockResolvedValue(undefined)
+        const uploadMock = vi.fn().mockResolvedValue('https://tracker.example.com/torrent/download/1')
         createTrackerService.mockResolvedValue({ upload: uploadMock })
         readBody.mockResolvedValue(buildRequest({ trackers: [{ code: 'ULCX', title: 'Custom Title', titleModified: true, anonymous: true, modQueueOptIn: true }] }))
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
@@ -307,6 +314,7 @@ describe('POST /api/tracker/requests route handler', () => {
         createGenericTorrent.mockResolvedValue({ genericTorrentPath: '/repo/config/torrents/generic-1.torrent' })
         getSettings.mockResolvedValue({
             trackers: [{ code: 'ULCX', url: 'https://ulcx.example.com', passKey: 'secret123' }],
+            torrentClients: [],
         })
         createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/ULCX/Movie.torrent' })
         const handler = await loadHandler()
@@ -322,7 +330,7 @@ describe('POST /api/tracker/requests route handler', () => {
     })
 
     it('passes tracker title and anonymous flag from tracker item to service.upload', async () => {
-        const uploadMock = vi.fn().mockResolvedValue(undefined)
+        const uploadMock = vi.fn().mockResolvedValue('https://tracker.example.com/torrent/download/1')
         createTrackerService.mockResolvedValue({ upload: uploadMock })
         readBody.mockResolvedValue(buildRequest())
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
@@ -334,6 +342,7 @@ describe('POST /api/tracker/requests route handler', () => {
         createGenericTorrent.mockResolvedValue({ genericTorrentPath: '/repo/config/torrents/generic-1.torrent' })
         getSettings.mockResolvedValue({
             trackers: [{ code: 'ULCX', url: 'https://ulcx.example.com', passKey: 'secret123' }],
+            torrentClients: [],
         })
         createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/ULCX/Movie.torrent' })
         const handler = await loadHandler()
@@ -360,7 +369,7 @@ describe('POST /api/tracker/requests route handler', () => {
     })
 
     it('marks the request as partial_success when some trackers fail', async () => {
-        const uploadMock = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('upload failed'))
+        const uploadMock = vi.fn().mockResolvedValueOnce('https://tracker.example.com/torrent/download/1').mockRejectedValueOnce(new Error('upload failed'))
         createTrackerService.mockResolvedValue({ upload: uploadMock })
         readBody.mockResolvedValue(
             buildRequest({
@@ -382,6 +391,7 @@ describe('POST /api/tracker/requests route handler', () => {
                 { code: 'ULCX', url: 'https://ulcx.example.com', passKey: 'secret' },
                 { code: 'ATH', url: 'https://ath.example.com', passKey: 'secret' },
             ],
+            torrentClients: [],
         })
         createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/tracker.torrent' })
         analyzeMediaFileAsText.mockResolvedValue('mediainfo output')
@@ -412,6 +422,7 @@ describe('POST /api/tracker/requests route handler', () => {
         createGenericTorrent.mockResolvedValue({ genericTorrentPath: '/repo/config/torrents/generic-1.torrent' })
         getSettings.mockResolvedValue({
             trackers: [{ code: 'ULCX', url: 'https://ulcx.example.com', passKey: 'secret' }],
+            torrentClients: [],
         })
         createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/tracker.torrent' })
         analyzeMediaFileAsText.mockResolvedValue('mediainfo output')
@@ -427,6 +438,55 @@ describe('POST /api/tracker/requests route handler', () => {
             trackerCodes: ['ULCX'],
         })
         expect(logger.error).toHaveBeenCalledWith('Failed to upload to tracker.', uploadError, { trackerCode: 'ULCX' })
+    })
+
+    it('injects the torrent into the selected torrent client after a successful upload', async () => {
+        injectTorrent.mockResolvedValue(true)
+        readBody.mockResolvedValue(buildRequest())
+        findGenericTorrentCacheByFilepath.mockResolvedValue(null)
+        saveTrackerUploadRequest.mockResolvedValue({ id: 'upload-1', ...buildRequest(), status: 'pending' })
+        createGenericTorrent.mockResolvedValue({ genericTorrentPath: '/repo/config/torrents/generic-1.torrent' })
+        getSettings.mockResolvedValue({
+            trackers: [{ code: 'ULCX', url: 'https://ulcx.example.com', passKey: 'secret' }],
+            torrentClients: [{ code: 'QUI', name: 'qui', selected: true, url: 'http://localhost:7474', apiKey: 'qui-key' }],
+        })
+        createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/ULCX/Movie.torrent' })
+        const handler = await loadHandler()
+
+        await handler(mockEvent())
+        await flushPromises()
+
+        expect(injectTorrent).toHaveBeenCalledWith('https://tracker.example.com/torrent/download/1', {
+            code: 'QUI',
+            name: 'qui',
+            selected: true,
+            url: 'http://localhost:7474',
+            apiKey: 'qui-key',
+        })
+        expect(updateTrackerItem).toHaveBeenCalledWith('upload-1', 'ULCX', { torrentClientInjected: true })
+    })
+
+    it('logs a warning when torrent client injection fails after a successful upload', async () => {
+        injectTorrent.mockResolvedValue(false)
+        readBody.mockResolvedValue(buildRequest())
+        findGenericTorrentCacheByFilepath.mockResolvedValue(null)
+        saveTrackerUploadRequest.mockResolvedValue({ id: 'upload-1', ...buildRequest(), status: 'pending' })
+        createGenericTorrent.mockResolvedValue({ genericTorrentPath: '/repo/config/torrents/generic-1.torrent' })
+        getSettings.mockResolvedValue({
+            trackers: [{ code: 'ULCX', url: 'https://ulcx.example.com', passKey: 'secret' }],
+            torrentClients: [{ code: 'QUI', name: 'qui', selected: true, url: 'http://localhost:7474', apiKey: 'qui-key' }],
+        })
+        createTrackerTorrent.mockResolvedValue({ trackerTorrentPath: '/config/tmp/torrents/ULCX/Movie.torrent' })
+        const handler = await loadHandler()
+
+        await handler(mockEvent())
+        await flushPromises()
+
+        expect(updateTrackerItem).toHaveBeenCalledWith('upload-1', 'ULCX', { torrentClientInjected: false })
+        expect(logger.warn).toHaveBeenCalledWith('Torrent client injection failed after successful tracker upload.', {
+            trackerCode: 'ULCX',
+            clientCode: 'QUI',
+        })
     })
 
     it('marks the request as failed when torrent creation fails', async () => {

@@ -28,12 +28,13 @@ mockNuxtImport('useSettings', () => {
     })
 })
 
-function buildSettings(overrides: Partial<AppSettings> = {}) {
+function buildSettings(overrides: Partial<AppSettings> = {}): AppSettings {
     return {
         mediaPaths: [],
         tmdbApiKey: 'tmdb-key',
         imageHostProviders: [{ selected: false, code: 'imgbb', name: 'ImgBB' }],
         trackers: [{ selected: false, code: 'ULCX', name: 'Upload.cx' }],
+        torrentClients: [{ selected: false, code: 'QUI', name: 'qui', url: '', apiKey: '' }],
         mediainfoPath: 'mediainfo',
         ffmpegPath: 'ffmpeg',
         ffprobePath: 'ffprobe',
@@ -517,8 +518,10 @@ describe('settings page', () => {
         }
 
         const checkboxes = wrapper.findAllComponents({ name: 'UCheckbox' })
-        await checkboxes[0]?.vm.$emit('update:model-value', true)
-        await checkboxes[1]?.vm.$emit('update:model-value', true)
+        const trackerCheckbox = checkboxes.find((c) => c.props('label')?.includes('ULCX'))
+        const imageHostCheckbox = checkboxes.find((c) => c.props('label') === 'ImgBB')
+        await trackerCheckbox?.vm.$emit('update:model-value', true)
+        await imageHostCheckbox?.vm.$emit('update:model-value', true)
 
         const ffmpegInput = wrapper.findAllComponents({ name: 'UInput' }).find((component) => component.props('placeholder') === 'ffmpeg')
         const ffprobeInput = wrapper.findAllComponents({ name: 'UInput' }).find((component) => component.props('placeholder') === 'ffprobe')
@@ -530,5 +533,60 @@ describe('settings page', () => {
         expect(vm.formState.imageHostProviders[0]?.selected).toBe(true)
         expect(vm.formState.ffmpegPath).toBe('/evented/ffmpeg')
         expect(vm.formState.ffprobePath).toBe('/evented/ffprobe')
+    })
+
+    it('shows url and api key inputs when a torrent client is selected', async () => {
+        getSettingsMock.mockResolvedValue(
+            buildSettings({
+                mediaPaths: ['/media/a'],
+                torrentClients: [{ selected: false, code: 'QUI', name: 'qui', url: '', apiKey: '' }],
+            })
+        )
+        const user = userEvent.setup()
+
+        await renderSuspended(SettingsPage)
+        await user.click(screen.getByRole('checkbox', { name: 'qui' }))
+
+        expect(screen.getByPlaceholderText('e.g. http://localhost:7474')).toBeTruthy()
+        expect(screen.getByPlaceholderText('Enter qui API key')).toBeTruthy()
+    })
+
+    it('shows inline torrent client validation errors when url or api key is missing', async () => {
+        getSettingsMock.mockResolvedValue(
+            buildSettings({
+                mediaPaths: ['/media/a'],
+                torrentClients: [{ selected: true, code: 'QUI', name: 'qui', url: '', apiKey: '' }],
+            })
+        )
+        const user = userEvent.setup()
+
+        await renderSuspended(SettingsPage)
+        await user.click(screen.getByRole('button', { name: /save/i }))
+
+        expect(await screen.findByText('URL is required for qui.')).toBeDefined()
+        expect(screen.getByText('API Key is required for qui.')).toBeDefined()
+        expect(saveSettingsMock).not.toHaveBeenCalled()
+    })
+
+    it('deselects other torrent clients when one is selected', async () => {
+        getSettingsMock.mockResolvedValue(
+            buildSettings({
+                mediaPaths: ['/media/a'],
+                torrentClients: [
+                    { selected: true, code: 'QUI', name: 'qui', url: 'http://localhost:7474', apiKey: 'key' },
+                    { selected: false, code: 'OTHER', name: 'Other', url: '', apiKey: '' },
+                ],
+            })
+        )
+
+        const wrapper = await mountSuspended(SettingsPage)
+        const vm = wrapper.vm as unknown as { formState: AppSettings }
+
+        const checkboxes = wrapper.findAllComponents({ name: 'UCheckbox' })
+        const otherCheckbox = checkboxes.find((c) => c.props('label') === 'Other')
+        await otherCheckbox?.vm.$emit('update:model-value', true)
+
+        expect(vm.formState.torrentClients[0]?.selected).toBe(false)
+        expect(vm.formState.torrentClients[1]?.selected).toBe(true)
     })
 })
