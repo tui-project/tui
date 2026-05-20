@@ -495,6 +495,38 @@ describe('tmdb service', () => {
         await expect(findByTitle('Funny Games', 'movie')).resolves.toMatchObject({ id: 1, origin_country: 'AT' })
     })
 
+    it('detectLocale returns undefined when tv duplicates are from the same country', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { findByTitle } = await loadTMDbService()
+        vi.stubGlobal(
+            '$fetch',
+            vi.fn().mockResolvedValue({
+                results: [
+                    { id: 20, media_type: 'tv', name: 'Queer Eye', first_air_date: '2018-02-07', origin_country: ['US'] },
+                    { id: 10, media_type: 'tv', name: 'Queer Eye', first_air_date: '2003-07-15', origin_country: ['US'] },
+                ],
+            })
+        )
+
+        await expect(findByTitle('Queer Eye', 'tv')).resolves.toMatchObject({ id: 20, origin_country: undefined })
+    })
+
+    it('detectLocale returns undefined when movie duplicates are from the same country', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { findByTitle } = await loadTMDbService()
+        vi.stubGlobal(
+            '$fetch',
+            vi.fn().mockResolvedValue({
+                results: [
+                    { id: 2, media_type: 'movie', title: 'Halloween', original_language: 'en', release_date: '2007-08-31', origin_country: ['US'] },
+                    { id: 1, media_type: 'movie', title: 'Halloween', original_language: 'en', release_date: '2007-08-31', origin_country: ['US'] },
+                ],
+            })
+        )
+
+        await expect(findByTitle('Halloween', 'movie')).resolves.toMatchObject({ id: 2, origin_country: 'US' })
+    })
+
     it('detectLocale returns undefined locale when one item has undefined year (NaN sort keeps match as first)', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByTitle } = await loadTMDbService()

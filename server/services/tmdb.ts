@@ -144,6 +144,7 @@ function extractYearFromDate(value: string | undefined) {
 function detectLocale(match: TMDbSearchResult, allResults: TMDbSearchResult[], mediaType: MediaType): string | undefined {
     const duplicates = allResults.filter((item) => item.title === match.title && (mediaType !== MEDIA_TYPES.MOVIE || item.year === match.year)).sort((a, b) => a.year - b.year)
     if (duplicates.length < 2 || duplicates[0]?.id === match.id) return undefined
+    if (duplicates[0]?.origin_country === match.origin_country) return undefined
 
     return match.origin_country
 }

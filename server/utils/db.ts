@@ -20,7 +20,7 @@ const AUTO_COMPACTION_INTERVAL_MS = 60_000
 const dataDir = process.env.DATABASE_DIR ?? join(process.cwd(), 'config', 'database')
 
 mkdirSync(dataDir, { recursive: true })
-logger.trace(`Initialising database in data directory: ${dataDir}`)
+logger.debug(`Initialising database in data directory: ${dataDir}`)
 
 const userCollectionDataDir = join(dataDir, 'users.db')
 export const userCollection = new Datastore<User>({
