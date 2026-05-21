@@ -23,6 +23,7 @@ function createMetadata(overrides: Partial<Metadata> = {}): Metadata {
         year: 2021,
         season: null,
         episode: null,
+        episodeEnd: null,
         specialName: '',
         language: ['en'],
         originalLanguage: 'en',
@@ -684,6 +685,49 @@ describe('StepMetadata', () => {
         })
     })
 
+    it('shows Last Episode input when multi-episode toggle is enabled', async () => {
+        const user = userEvent.setup()
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 1, episode: 3, tvdbId: 999 })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.queryByRole('spinbutton', { name: 'Last Episode' })).toBeNull()
+
+        await user.click(screen.getByRole('switch', { name: 'Multi-episode' }))
+
+        expect(screen.getByRole('spinbutton', { name: 'Last Episode' })).toBeDefined()
+        expect(screen.getByRole('spinbutton', { name: 'First Episode' })).toBeDefined()
+    })
+
+    it('initialises multi-episode toggle from loaded metadata with episodeEnd', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 0, episode: 3, episodeEnd: 8, tvdbId: 311711 })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.getByRole('switch', { name: 'Multi-episode' }).getAttribute('aria-checked')).toBe('true')
+        expect(screen.getByRole('spinbutton', { name: 'First Episode' }).getAttribute('value')).toBe('3')
+        expect(screen.getByRole('spinbutton', { name: 'Last Episode' }).getAttribute('value')).toBe('8')
+    })
+
+    it('hides Last Episode input when multi-episode toggle is turned off but preserves the value', async () => {
+        const user = userEvent.setup()
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 0, episode: 3, episodeEnd: 8, tvdbId: 311711 })))
+
+        const modelRef = ref<Metadata | undefined>()
+        await renderSuspended(StepMetadata, { props: { selectedPath }, attrs: { modelValue: modelRef } })
+        await screen.findByDisplayValue('Dune')
+
+        // toggle off — input should hide but state.episodeEnd not yet cleared
+        await user.click(screen.getByRole('switch', { name: 'Multi-episode' }))
+        expect(screen.queryByRole('spinbutton', { name: 'Last Episode' })).toBeNull()
+
+        // toggle back on — value should still be there
+        await user.click(screen.getByRole('switch', { name: 'Multi-episode' }))
+        expect(screen.getByRole('spinbutton', { name: 'Last Episode' }).getAttribute('value')).toBe('8')
+    })
+
     it('shows Special Name field when season is 0 (TVDb special S00E##)', async () => {
         vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 0, episode: 12, specialName: 'Polar Challenge', tvdbId: 74608 })))
 
@@ -770,6 +814,48 @@ describe('StepMetadata', () => {
         await waitFor(() => {
             expect(screen.getByRole('checkbox', { name: 'RERip' }).getAttribute('data-state')).toBe('checked')
             expect(screen.getByRole('checkbox', { name: '3D' }).getAttribute('data-state')).toBe('checked')
+        })
+    })
+
+    it('shows validation error when episodeEnd is set but episode is null', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 1, episode: null, episodeEnd: 5, tvdbId: 999 })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+        await screen.findByDisplayValue('Dune')
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+        await waitFor(() => {
+            expect(screen.getByText('First episode is required for a range')).toBeDefined()
+        })
+    })
+
+    it('shows validation error when episodeEnd is not greater than episode', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 1, episode: 5, episodeEnd: 5, tvdbId: 999 })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+        await screen.findByDisplayValue('Dune')
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+        await waitFor(() => {
+            expect(screen.getByText('Must be greater than the first episode')).toBeDefined()
+        })
+    })
+
+    it('clears episodeEnd on submit when multi-episode toggle is off', async () => {
+        const onUpdateModelValue = vi.fn()
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 0, episode: 3, episodeEnd: 8, tvdbId: 311711 })))
+
+        const user = userEvent.setup()
+        await renderSuspended(StepMetadata, { props: { selectedPath, 'onUpdate:modelValue': onUpdateModelValue } })
+        await screen.findByDisplayValue('Dune')
+
+        await user.click(screen.getByRole('switch', { name: 'Multi-episode' }))
+        await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+        await waitFor(() => {
+            expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ episodeEnd: null }))
         })
     })
 })

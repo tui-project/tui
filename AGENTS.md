@@ -12,12 +12,20 @@ Server-side persistence currently uses NeDB via `@seald-io/nedb`. The database i
 
 - Run unit tests: `pnpm vitest run --project unit`
 - Run a focused unit test: `pnpm vitest run --project unit path/to/file.test.ts`
+- Run nuxt component tests: `pnpm vitest run --project nuxt`
+- Run all tests: `pnpm test`
 - Run typecheck: `pnpm typecheck`
 - Run lint: `pnpm lint`
 - Start dev server: `pnpm dev`
 
-Prefer running the focused test first after a small change, then the full unit project before finishing.
-Always run `pnpm typecheck` after making code changes before wrapping up.
+Before finishing any change, always run both:
+
+```bash
+pnpm test        # all test projects must pass
+pnpm typecheck   # must produce no errors
+```
+
+Prefer running the focused test first after a small change, then the full test suite, then typecheck.
 
 ## Server Route Conventions
 

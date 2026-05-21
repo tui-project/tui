@@ -5,6 +5,7 @@ import { logger } from '../utils/logger'
 export interface ParsedNameMetadata {
     season?: number
     episode?: number
+    episodeEnd?: number
     specialName?: string
     sourceType: SourceType
     source: Source
@@ -26,7 +27,7 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
     const nameWithoutExtension = stripFileExtension(name)
     const tokens = nameWithoutExtension.split(/[.\s_-]+/).filter(Boolean)
     const upperTokens = tokens.map((token) => token.toUpperCase())
-    const { season, episode, index, tokenEnd } = parseSeasonEpisode(nameWithoutExtension)
+    const { season, episode, episodeEnd, index, tokenEnd } = parseSeasonEpisode(nameWithoutExtension)
     const title = parseTitle(nameWithoutExtension, index, nameWithoutExtension !== name)
     const specialName = parseSpecialName(nameWithoutExtension, season, episode, tokenEnd)
     const sourceType = parseSourceType(upperTokens)
@@ -45,6 +46,7 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
         title,
         season,
         episode,
+        episodeEnd,
         specialName,
         sourceType,
         source,
@@ -88,11 +90,23 @@ function stripFileExtension(name: string) {
 }
 
 function parseSeasonEpisode(name: string) {
+    const rangeMatch = /S(\d{1,2})E(\d{1,3})-E?(\d{1,3})/i.exec(name)
+    if (rangeMatch) {
+        return {
+            season: Number(rangeMatch[1]),
+            episode: Number(rangeMatch[2]),
+            episodeEnd: Number(rangeMatch[3]),
+            index: rangeMatch.index,
+            tokenEnd: rangeMatch.index + rangeMatch[0].length,
+        }
+    }
+
     const seasonEpisodeMatch = /S(\d{1,2})E(\d{1,3})/i.exec(name)
     if (seasonEpisodeMatch) {
         return {
             season: Number(seasonEpisodeMatch[1]),
             episode: Number(seasonEpisodeMatch[2]),
+            episodeEnd: undefined,
             index: seasonEpisodeMatch.index,
             tokenEnd: seasonEpisodeMatch.index + seasonEpisodeMatch[0].length,
         }
@@ -103,6 +117,7 @@ function parseSeasonEpisode(name: string) {
     return {
         season: seasonOnlyMatch ? Number(seasonOnlyMatch[1]) : undefined,
         episode: undefined,
+        episodeEnd: undefined,
         index: seasonOnlyMatch ? seasonOnlyMatch.index : -1,
         tokenEnd: seasonOnlyMatch ? seasonOnlyMatch.index + seasonOnlyMatch[0].length : -1,
     }

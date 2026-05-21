@@ -9,6 +9,7 @@ export type Metadata = {
     year: number | null
     season: number | null
     episode: number | null
+    episodeEnd: number | null
     specialName: string
     language: string[]
     originalLanguage: string

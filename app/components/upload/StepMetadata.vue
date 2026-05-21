@@ -214,6 +214,7 @@ const requiredNumber = (message: string) =>
 
 const schema = z
     .object({
+        fileName: z.string(),
         mediaType: z
             .string()
             .trim()
@@ -221,6 +222,7 @@ const schema = z
                 message: 'Media type is required',
             }),
         title: requiredString('Title is required'),
+        originalTitle: z.string(),
         year: requiredNumber('Year is required'),
         source: requiredString('Source is required'),
         sourceType: requiredString('Type is required'),
@@ -230,26 +232,41 @@ const schema = z
         videoCodec: requiredString('Video codec is required'),
         audioCodec: requiredString('Audio codec is required'),
         audioChannels: requiredString('Audio channels are required'),
+        audioMetadata: z.string(),
         tmdbId: requiredNumber('TMDb ID is required'),
         imdbId: requiredString('IMDb ID is required'),
         season: z.number().nullable(),
+        episode: z.number().nullable(),
+        episodeEnd: z.number().nullable(),
+        specialName: z.string(),
         tvdbId: z.number().nullable(),
+        releaseGroup: z.string(),
+        service: z.string(),
+        repack: z.number(),
+        proper: z.number(),
+        rerip: z.boolean(),
+        threeD: z.boolean(),
+        cut: z.string(),
+        ratio: z.string(),
+        hybrid: z.boolean(),
+        hi10p: z.boolean(),
+        hdr: z.array(z.string()),
+        locale: z.string(),
     })
     .superRefine((value, ctx) => {
         if (value.mediaType === 'tv') {
             if (value.season === null) {
-                ctx.addIssue({
-                    code: 'custom',
-                    path: ['season'],
-                    message: 'Season is required',
-                })
+                ctx.addIssue({ code: 'custom', path: ['season'], message: 'Season is required' })
             }
             if (value.tvdbId === null) {
-                ctx.addIssue({
-                    code: 'custom',
-                    path: ['tvdbId'],
-                    message: 'TVDB ID is required',
-                })
+                ctx.addIssue({ code: 'custom', path: ['tvdbId'], message: 'TVDB ID is required' })
+            }
+            if (value.episodeEnd !== null) {
+                if (value.episode === null) {
+                    ctx.addIssue({ code: 'custom', path: ['episode'], message: 'First episode is required for a range' })
+                } else if (value.episodeEnd <= value.episode) {
+                    ctx.addIssue({ code: 'custom', path: ['episodeEnd'], message: 'Must be greater than the first episode' })
+                }
             }
         }
     })
@@ -263,6 +280,7 @@ const state = reactive<Metadata>({
     year: null,
     season: null,
     episode: null,
+    episodeEnd: null,
     specialName: '',
     language: [],
     originalLanguage: '',
@@ -290,8 +308,12 @@ const state = reactive<Metadata>({
 })
 
 const { getMetadata, loading, error } = useMetadata()
+
+const showMultiEpisode = ref(false)
+
 const isTV = computed(() => state?.mediaType === 'tv')
 const isSpecial = computed(() => isTV.value && (state.season === 0 || state.episode === 0))
+const isMultiEpisode = computed(() => showMultiEpisode.value)
 const isWebSource = computed(() => state?.source === 'Web')
 const selectedPathLabel = computed(() => (props.selectedPath?.folder ? 'Folder' : 'File'))
 const selectedPathValue = computed(() => props.selectedPath?.value)
@@ -305,11 +327,15 @@ onMounted(async () => {
 
     if (metadata.value?.fileName) {
         Object.assign(state, metadata.value)
+        showMultiEpisode.value = state.episodeEnd !== null
+
         return
     }
 
     const data = await getMetadata(path)
     Object.assign(state, data)
+
+    showMultiEpisode.value = state.episodeEnd !== null
     metadata.value = state
 })
 
@@ -320,8 +346,13 @@ watch(
     }
 )
 
-function onSubmit(_: FormSubmitEvent<Schema>) {
-    metadata.value = state
+function onToggleMultiEpisode(value: boolean) {
+    showMultiEpisode.value = value
+}
+
+function onSubmit(event: FormSubmitEvent<Schema>) {
+    if (!showMultiEpisode.value) event.data.episodeEnd = null
+    metadata.value = event.data
     emit('next')
 }
 </script>
@@ -386,8 +417,13 @@ function onSubmit(_: FormSubmitEvent<Schema>) {
                                 :format-options="{ useGrouping: false }"
                             />
                         </UFormField>
+                    </div>
+                </section>
 
-                        <UFormField v-if="isTV" label="Season" name="season" required>
+                <section v-if="isTV" class="rounded-xl border border-default/70 bg-elevated/30 p-4 space-y-4 shadow-xs">
+                    <h3 class="text-sm font-semibold text-default">TV Details</h3>
+                    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <UFormField label="Season" name="season" required>
                             <UInputNumber
                                 v-model="state.season"
                                 size="xl"
@@ -399,16 +435,37 @@ function onSubmit(_: FormSubmitEvent<Schema>) {
                             />
                         </UFormField>
 
-                        <UFormField v-if="isTV" label="Episode">
-                            <UInputNumber
-                                v-model="state.episode"
-                                size="xl"
-                                class="w-full"
-                                placeholder="Enter episode"
-                                :increment="false"
-                                :decrement="false"
-                                :format-options="{ useGrouping: false }"
-                            />
+                        <UFormField name="episode" label="Episode">
+                            <template #hint>
+                                <USwitch :model-value="isMultiEpisode" size="sm" label="Multi-episode" aria-label="Multi-episode" @update:model-value="onToggleMultiEpisode" />
+                            </template>
+                            <div class="flex items-center gap-2">
+                                <UInputNumber
+                                    v-model="state.episode"
+                                    size="xl"
+                                    class="w-full"
+                                    :placeholder="isMultiEpisode ? 'First' : 'Enter episode'"
+                                    :aria-label="isMultiEpisode ? 'First Episode' : 'Episode'"
+                                    :increment="false"
+                                    :decrement="false"
+                                    :format-options="{ useGrouping: false }"
+                                />
+                                <template v-if="isMultiEpisode">
+                                    <span class="text-muted shrink-0 text-sm font-medium">–</span>
+                                    <UFormField name="episodeEnd" class="w-full">
+                                        <UInputNumber
+                                            v-model="state.episodeEnd"
+                                            size="xl"
+                                            class="w-full"
+                                            placeholder="Last"
+                                            aria-label="Last Episode"
+                                            :increment="false"
+                                            :decrement="false"
+                                            :format-options="{ useGrouping: false }"
+                                        />
+                                    </UFormField>
+                                </template>
+                            </div>
                         </UFormField>
 
                         <UFormField v-if="isSpecial" label="Special Name">

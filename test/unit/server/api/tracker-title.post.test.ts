@@ -70,6 +70,25 @@ describe('POST /api/tracker/[trackerCode]/title route handler', () => {
         expect(logger.debug).toHaveBeenCalledWith('Tracker title built.', { trackerCode: 'ULCX', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP' })
     })
 
+    it('passes episodeEnd through to getTitle when present', async () => {
+        const tvMetadata = {
+            ...validMetadata,
+            mediaType: 'tv',
+            season: 0,
+            episode: 3,
+            episodeEnd: 8,
+            specialName: 'The Selection',
+            tvdbId: 311711,
+        }
+        readBody.mockResolvedValue({ metadata: tvMetadata })
+        getTitleMock.mockReturnValue('The Good Place S00E03-08 The Selection 1080p AMZN WEB-DL DD+ 2.0 H.264-MRKT')
+        const handler = await loadHandler()
+
+        await handler({} as never)
+
+        expect(getTitleMock).toHaveBeenCalledWith(expect.objectContaining({ episodeEnd: 8 }))
+    })
+
     it('rejects a request with missing metadata', async () => {
         readBody.mockResolvedValue({})
         const handler = await loadHandler()

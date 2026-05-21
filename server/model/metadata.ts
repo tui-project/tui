@@ -9,6 +9,7 @@ export interface Metadata {
     year?: number
     season?: number
     episode?: number
+    episodeEnd?: number
     specialName?: string
     language?: string[]
     originalLanguage?: string
@@ -219,6 +220,7 @@ export const MetadataSchema = z
             .refine((value) => /^\d{4}$/.test(String(value)), 'Invalid year format'),
         season: z.number().int().optional(),
         episode: z.number().int().optional(),
+        episodeEnd: z.number().int().optional(),
         specialName: z.string().trim().min(1).optional(),
         language: z.array(z.string().trim().min(1)),
         originalLanguage: z.string().trim().min(1),

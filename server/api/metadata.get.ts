@@ -9,7 +9,7 @@ import { findByExternalID, findByTitle, findLocale, getDetails, getExternalIDs, 
 import { isWithinAnyRoot, resolveMediaFilePath } from '../utils/file-system'
 import { MEDIA_TYPES, type Metadata } from '../model/metadata'
 import { parseValidatedQuery } from '../utils/request-validator'
-import { findTvdbSpecial } from '../services/tvdb'
+import { findTvdbSpecial, findTvdbSpecialRange } from '../services/tvdb'
 
 const metadataQuerySchema = z.object({
     path: z.string().trim().min(1),
@@ -120,14 +120,26 @@ async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameM
         }
     }
 
-    if (isSpecialEpisode(metadata) && metadata.tvdbId && metadata.specialName) {
-        logger.debug('Attempting TVDb special lookup.', { tvdbId: metadata.tvdbId, specialName: metadata.specialName })
+    if (isSpecialEpisode(metadata) && metadata.tvdbId) {
+        if (metadata.episode != null && metadata.episodeEnd != null) {
+            logger.debug('Attempting TVDb special range lookup.', { tvdbId: metadata.tvdbId, episodeStart: metadata.episode, episodeEnd: metadata.episodeEnd })
 
-        const match = await findTvdbSpecial(metadata.tvdbId, metadata.specialName)
-        if (match) {
-            metadata.season = 0
-            metadata.episode = match.episodeNumber
-            metadata.specialName = match.title
+            const match = await findTvdbSpecialRange(metadata.tvdbId, metadata.episode, metadata.episodeEnd)
+            if (match) {
+                metadata.season = 0
+                metadata.episode = match.episodeStart
+                metadata.episodeEnd = match.episodeEnd
+                metadata.specialName = match.title
+            }
+        } else if (metadata.specialName) {
+            logger.debug('Attempting TVDb special lookup.', { tvdbId: metadata.tvdbId, specialName: metadata.specialName })
+
+            const match = await findTvdbSpecial(metadata.tvdbId, metadata.specialName)
+            if (match) {
+                metadata.season = 0
+                metadata.episode = match.episodeNumber
+                metadata.specialName = match.title
+            }
         }
     }
 

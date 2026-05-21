@@ -469,6 +469,54 @@ describe('media name parser', () => {
 
     it.each([
         {
+            name: 'parses episode range with E-prefixed end (S00E03-E08)',
+            input: 'The.Good.Place.S00E03-E08.The.Selection.1080p.AMZN.WEB-DL.DDP.2.0.H.264-MRKT.mkv',
+            expected: {
+                season: 0,
+                episode: 3,
+                episodeEnd: 8,
+                specialName: 'The Selection',
+                sourceType: 'WEB-DL',
+                source: 'Web',
+                service: 'AMZN',
+                cut: undefined,
+                ratio: undefined,
+                repack: 0,
+                proper: 0,
+                rerip: false,
+                threeD: false,
+                hybrid: false,
+                releaseGroup: 'MRKT',
+                title: 'The Good Place',
+            },
+        },
+        {
+            name: 'parses episode range without E-prefix on end (S01E01-03)',
+            input: 'Some.Show.S01E01-03.1080p.WEB-DL-GRP',
+            expected: {
+                season: 1,
+                episode: 1,
+                episodeEnd: 3,
+                sourceType: 'WEB-DL',
+                source: 'Web',
+                service: undefined,
+                cut: undefined,
+                ratio: undefined,
+                repack: 0,
+                proper: 0,
+                rerip: false,
+                threeD: false,
+                hybrid: false,
+                releaseGroup: 'GRP',
+                title: 'Some Show',
+            },
+        },
+    ])('$name', ({ input, expected }) => {
+        expect(parseMetadataFromName(input)).toEqual(expected)
+    })
+
+    it.each([
+        {
             name: 'extracts special name for S00E## (TVDb special)',
             input: 'Top.Gear.S00E12.Polar.Challenge.1080i.DD2.0.AVC.REMUX-FraMeSToR.mkv',
             expectedSeason: 0,
@@ -515,12 +563,22 @@ describe('media name parser', () => {
             input: 'The.Lord.of.the.Rings.The.Rings.of.Power.S00E14.Stories.of.the.Second.Age.Khazad-dum.1080p.AMZN.WEB-DL.DDP5.1.H.264-FLUX.mkv',
             expectedSeason: 0,
             expectedEpisode: 14,
+            expectedEpisodeEnd: undefined,
             expectedSpecialName: 'Stories of the Second Age Khazad dum',
         },
-    ])('$name', ({ input, expectedSeason, expectedEpisode, expectedSpecialName }) => {
+        {
+            name: 'extracts special name and episodeEnd for a multi-episode special range',
+            input: 'The.Good.Place.S00E03-E08.The.Selection.1080p.AMZN.WEB-DL.DDP.2.0.H.264-MRKT.mkv',
+            expectedSeason: 0,
+            expectedEpisode: 3,
+            expectedEpisodeEnd: 8,
+            expectedSpecialName: 'The Selection',
+        },
+    ])('$name', ({ input, expectedSeason, expectedEpisode, expectedEpisodeEnd, expectedSpecialName }) => {
         const result = parseMetadataFromName(input)
         expect(result.season).toBe(expectedSeason)
         expect(result.episode).toBe(expectedEpisode)
+        expect(result.episodeEnd).toBe(expectedEpisodeEnd)
         expect(result.specialName).toBe(expectedSpecialName)
     })
 })

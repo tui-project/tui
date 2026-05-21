@@ -54,6 +54,7 @@ const metadata: Metadata = {
     year: 2024,
     season: null,
     episode: null,
+    episodeEnd: null,
     specialName: '',
     language: ['English'],
     originalLanguage: 'English',

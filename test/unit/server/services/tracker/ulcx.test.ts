@@ -84,6 +84,19 @@ describe('createUlcxTrackerService — getTitle', () => {
         expect(title).not.toContain('Some Name')
     })
 
+    it('formats multi-episode special range as S00E03-08 with special name', async () => {
+        fetchMock.mockResolvedValue({ title: 'The Good Place' })
+        const title = await service.getTitle({ ...tvBaseMetadata, season: 0, episode: 3, episodeEnd: 8, specialName: 'The Selection' })
+        expect(title).toContain('S00E03-08 The Selection')
+    })
+
+    it('formats multi-episode range for regular seasons without appending special name', async () => {
+        fetchMock.mockResolvedValue({ title: 'Show' })
+        const title = await service.getTitle({ ...tvBaseMetadata, season: 1, episode: 1, episodeEnd: 3, specialName: 'Some Name' })
+        expect(title).toContain('S01E01-03')
+        expect(title).not.toContain('Some Name')
+    })
+
     it('includes PROPER and REPACK flags', async () => {
         const title = await service.getTitle({ ...baseMetadata, proper: 1, repack: 1 })
         expect(title).toContain('PROPER')

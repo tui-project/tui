@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getTvdbSeries, findTvdbSpecial } from '../../../../server/services/tvdb'
+import { getTvdbSeries, findTvdbSpecial, findTvdbSpecialRange } from '../../../../server/services/tvdb'
 
 vi.mock('../../../../server/utils/logger', () => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
@@ -62,6 +62,20 @@ const SPECIALS_RESPONSE = {
     ],
 }
 
+const SELECTION_RESPONSE = {
+    tvdbId: 311711,
+    title: 'The Good Place',
+    episodes: [
+        { tvdbId: 7359016, seasonNumber: 0, episodeNumber: 3, title: 'The Selection, Part 1: The Mission' },
+        { tvdbId: 7359017, seasonNumber: 0, episodeNumber: 4, title: 'The Selection, Part 2: The Candidates' },
+        { tvdbId: 7359018, seasonNumber: 0, episodeNumber: 5, title: 'The Selection, Part 3: The Takeout Order' },
+        { tvdbId: 7359019, seasonNumber: 0, episodeNumber: 6, title: 'The Selection, Part 4: The Storm Out' },
+        { tvdbId: 7359020, seasonNumber: 0, episodeNumber: 7, title: 'The Selection, Part 5: The Talk' },
+        { tvdbId: 7359021, seasonNumber: 0, episodeNumber: 8, title: 'The Selection, Part 6: The Solution' },
+        { tvdbId: 7569102, seasonNumber: 0, episodeNumber: 9, title: 'Series Finale After Show' },
+    ],
+}
+
 describe('findTvdbSpecial', () => {
     beforeEach(() => {
         fetchMock.mockReset()
@@ -107,5 +121,57 @@ describe('findTvdbSpecial', () => {
         fetchMock.mockRejectedValue(new Error('network error'))
         const result = await findTvdbSpecial(74608, 'Polar Challenge')
         expect(result).toBeNull()
+    })
+})
+
+describe('findTvdbSpecialRange', () => {
+    beforeEach(() => {
+        fetchMock.mockReset()
+    })
+
+    it('extracts the shared base title by stripping Part N: suffixes', async () => {
+        fetchMock.mockResolvedValue(SELECTION_RESPONSE)
+        const result = await findTvdbSpecialRange(311711, 3, 8)
+        expect(result).toEqual({ episodeStart: 3, episodeEnd: 8, title: 'The Selection' })
+    })
+
+    it('returns the actual first and last episode numbers found in the range', async () => {
+        fetchMock.mockResolvedValue(SELECTION_RESPONSE)
+        // request a wider range than exists for "The Selection" subset — should clamp to 3–8
+        const result = await findTvdbSpecialRange(311711, 3, 8)
+        expect(result?.episodeStart).toBe(3)
+        expect(result?.episodeEnd).toBe(8)
+    })
+
+    it('returns null when no season 0 episodes exist in the requested range', async () => {
+        fetchMock.mockResolvedValue(SELECTION_RESPONSE)
+        const result = await findTvdbSpecialRange(311711, 20, 25)
+        expect(result).toBeNull()
+    })
+
+    it('returns a single-episode range correctly when start equals end', async () => {
+        fetchMock.mockResolvedValue(SELECTION_RESPONSE)
+        const result = await findTvdbSpecialRange(311711, 9, 9)
+        expect(result).toEqual({ episodeStart: 9, episodeEnd: 9, title: 'Series Finale After Show' })
+    })
+
+    it('returns null when the series fetch fails', async () => {
+        fetchMock.mockRejectedValue(new Error('network error'))
+        const result = await findTvdbSpecialRange(311711, 3, 8)
+        expect(result).toBeNull()
+    })
+
+    it('returns null when the series has no episodes', async () => {
+        fetchMock.mockResolvedValue({ tvdbId: 311711, title: 'The Good Place' })
+        const result = await findTvdbSpecialRange(311711, 3, 8)
+        expect(result).toBeNull()
+    })
+
+    it('ignores non-season-0 episodes when building the range', async () => {
+        fetchMock.mockResolvedValue(SPECIALS_RESPONSE)
+        // episodeNumber 1 of season 1 ("Regular Episode") should be ignored
+        const result = await findTvdbSpecialRange(74608, 1, 3)
+        expect(result?.title).not.toBe('Regular Episode')
+        expect(result?.episodeEnd).toBe(3)
     })
 })
