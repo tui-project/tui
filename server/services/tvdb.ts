@@ -13,7 +13,7 @@ interface SkyHookEpisode {
     tvdbId: number
     seasonNumber: number
     episodeNumber: number
-    title: string
+    title: string | undefined
 }
 
 export interface TvdbSpecial {
@@ -50,8 +50,8 @@ function toLoggableFetchError(error: unknown) {
     }
 }
 
-export async function findTvdbSpecial(tvdbId: number, specialName: string): Promise<TvdbSpecial | null> {
-    logger.debug('SkyHook special lookup request prepared.', { tvdbId, specialName })
+export async function findTvdbSpecial(tvdbId: number, episodeNumber: number, specialName?: string): Promise<TvdbSpecial | null> {
+    logger.debug('SkyHook special lookup request prepared.', { tvdbId, episodeNumber, specialName })
 
     const series = await getTvdbSeries(tvdbId)
     if (!series) return null
@@ -62,33 +62,69 @@ export async function findTvdbSpecial(tvdbId: number, specialName: string): Prom
         return null
     }
 
-    const needle = normaliseSearchString(specialName)
-    const exact = specials.find((ep) => normaliseSearchString(ep.title) === needle)
-    if (exact) {
-        logger.debug('Exact TVDb special match found.', { tvdbId, episodeNumber: exact.episodeNumber, title: exact.title })
-        return { episodeNumber: exact.episodeNumber, title: exact.title }
+    const byNumber = specials.find((ep) => ep.episodeNumber === episodeNumber) ?? null
+
+    if (byNumber && specialName) {
+        const needle = normaliseSearchString(specialName)
+        const byNumberTitle = byNumber.title ? normaliseSearchString(byNumber.title) : undefined
+
+        if (byNumberTitle === needle) {
+            logger.debug('TVDb special matched by episode number with exact title.', { tvdbId, episodeNumber: byNumber.episodeNumber, title: byNumber.title })
+            return { episodeNumber: byNumber.episodeNumber, title: byNumber.title! }
+        }
+
+        // Title doesn't match — only override the episode number if another special scores strictly higher
+        const byNumberScore = byNumberTitle ? scoreTitleMatch(needle, byNumberTitle) : 0
+        const betterMatch = findBestTitleMatch(specials, needle, byNumberScore)
+        if (betterMatch && betterMatch.episodeNumber !== byNumber.episodeNumber) {
+            logger.debug('TVDb special matched by title (overriding episode number).', { tvdbId, episodeNumber: betterMatch.episodeNumber, title: betterMatch.title })
+            return { episodeNumber: betterMatch.episodeNumber, title: betterMatch.title! }
+        }
+
+        // No better title match — trust the episode number
+        const fallbackTitle = byNumber.title ?? specialName
+        logger.debug('TVDb special matched by episode number (no better title match).', { tvdbId, episodeNumber: byNumber.episodeNumber, title: fallbackTitle })
+        return { episodeNumber: byNumber.episodeNumber, title: fallbackTitle }
     }
 
-    // Fuzzy: score by number of needle words present in episode title
-    const needleWords = needle.split(' ').filter(Boolean)
-    let bestScore = 0
+    if (byNumber && byNumber.title) {
+        logger.debug('TVDb special matched by episode number (no special name to compare).', { tvdbId, episodeNumber: byNumber.episodeNumber, title: byNumber.title })
+        return { episodeNumber: byNumber.episodeNumber, title: byNumber.title }
+    }
+
+    // Episode number not found — fall back to title matching if available
+    if (specialName) {
+        const match = findBestTitleMatch(specials, normaliseSearchString(specialName))
+        if (match) {
+            logger.debug('TVDb special matched by title (episode number not found).', { tvdbId, episodeNumber: match.episodeNumber, title: match.title })
+            return { episodeNumber: match.episodeNumber, title: match.title! }
+        }
+    }
+
+    logger.debug('No TVDb special match found.', { tvdbId, episodeNumber, specialName })
+    return null
+}
+
+function scoreTitleMatch(needle: string, normalisedTitle: string): number {
+    return needle.split(' ').filter((w) => normalisedTitle.includes(w)).length
+}
+
+function findBestTitleMatch(specials: SkyHookEpisode[], needle: string, minScore = 0): SkyHookEpisode | null {
+    const exact = specials.find((ep) => ep.title && normaliseSearchString(ep.title) === needle)
+    if (exact) return exact
+
+    let bestScore = minScore
     let bestMatch: SkyHookEpisode | null = null
     for (const ep of specials) {
-        const epNorm = normaliseSearchString(ep.title)
-        const score = needleWords.filter((w) => epNorm.includes(w)).length
+        if (!ep.title) continue
+        const score = scoreTitleMatch(needle, normaliseSearchString(ep.title))
         if (score > bestScore) {
             bestScore = score
             bestMatch = ep
         }
     }
 
-    if (bestMatch && bestScore > 0) {
-        logger.debug('Fuzzy TVDb special match found.', { tvdbId, episodeNumber: bestMatch.episodeNumber, title: bestMatch.title, score: bestScore })
-        return { episodeNumber: bestMatch.episodeNumber, title: bestMatch.title }
-    }
-
-    logger.debug('No TVDb special match found.', { tvdbId, specialName })
-    return null
+    return bestMatch
 }
 
 export async function findTvdbSpecialRange(tvdbId: number, episodeStart: number, episodeEnd: number): Promise<TvdbSpecialRange | null> {
@@ -105,7 +141,7 @@ export async function findTvdbSpecialRange(tvdbId: number, episodeStart: number,
         return null
     }
 
-    const title = extractCommonTitle(rangeEpisodes.map((ep) => ep.title))
+    const title = extractCommonTitle(rangeEpisodes.map((ep) => ep.title).filter((t): t is string => t !== undefined))
     logger.debug('TVDb special range resolved.', { tvdbId, episodeStart, episodeEnd: rangeEpisodes[rangeEpisodes.length - 1]!.episodeNumber, title })
 
     return {

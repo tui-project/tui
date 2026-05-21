@@ -131,10 +131,10 @@ async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameM
                 metadata.episodeEnd = match.episodeEnd
                 metadata.specialName = match.title
             }
-        } else if (metadata.specialName) {
-            logger.debug('Attempting TVDb special lookup.', { tvdbId: metadata.tvdbId, specialName: metadata.specialName })
+        } else if (metadata.episode != null) {
+            logger.debug('Attempting TVDb special lookup.', { tvdbId: metadata.tvdbId, episode: metadata.episode, specialName: metadata.specialName })
 
-            const match = await findTvdbSpecial(metadata.tvdbId, metadata.specialName)
+            const match = await findTvdbSpecial(metadata.tvdbId, metadata.episode, metadata.specialName)
             if (match) {
                 metadata.season = 0
                 metadata.episode = match.episodeNumber

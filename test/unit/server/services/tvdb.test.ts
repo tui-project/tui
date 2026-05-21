@@ -81,45 +81,98 @@ describe('findTvdbSpecial', () => {
         fetchMock.mockReset()
     })
 
-    it('returns exact match from season 0 episodes', async () => {
+    it('matches by episode number with exact title', async () => {
         fetchMock.mockResolvedValue(SPECIALS_RESPONSE)
-        const result = await findTvdbSpecial(74608, 'Polar Challenge')
+        const result = await findTvdbSpecial(74608, 2, 'Polar Challenge')
         expect(result).toEqual({ episodeNumber: 2, title: 'Polar Challenge' })
     })
 
-    it('returns fuzzy match when exact title not found', async () => {
+    it('matches by episode number when no special name provided', async () => {
         fetchMock.mockResolvedValue(SPECIALS_RESPONSE)
-        const result = await findTvdbSpecial(74608, 'Nepal')
+        const result = await findTvdbSpecial(74608, 2)
+        expect(result).toEqual({ episodeNumber: 2, title: 'Polar Challenge' })
+    })
+
+    it('uses episode number when title is a partial match and no better candidate exists', async () => {
+        fetchMock.mockResolvedValue(SPECIALS_RESPONSE)
+        // "Polar" only matches E2 — no better candidate, so episode number wins
+        const result = await findTvdbSpecial(74608, 2, 'Polar')
+        expect(result).toEqual({ episodeNumber: 2, title: 'Polar Challenge' })
+    })
+
+    it('overrides episode number when a different special has a better title match', async () => {
+        fetchMock.mockResolvedValue(SPECIALS_RESPONSE)
+        // E1 is "Series 1 Best of", but the title matches E3 "Nepal Special" better
+        const result = await findTvdbSpecial(74608, 1, 'Nepal Special')
         expect(result).toEqual({ episodeNumber: 3, title: 'Nepal Special' })
     })
 
-    it('ignores non-season-0 episodes when matching', async () => {
+    it('falls back to title matching when episode number is not found', async () => {
         fetchMock.mockResolvedValue(SPECIALS_RESPONSE)
-        const result = await findTvdbSpecial(74608, 'Regular Episode')
+        // E99 does not exist — fall back to fuzzy title match
+        const result = await findTvdbSpecial(74608, 99, 'Nepal')
+        expect(result).toEqual({ episodeNumber: 3, title: 'Nepal Special' })
+    })
+
+    it('ignores non-season-0 episodes when matching by title', async () => {
+        fetchMock.mockResolvedValue(SPECIALS_RESPONSE)
+        const result = await findTvdbSpecial(74608, 99, 'Regular Episode')
         expect(result).toBeNull()
+    })
+
+    it('returns null when episode is found by number but has no title and no special name provided', async () => {
+        fetchMock.mockResolvedValue({ tvdbId: 74608, title: 'Top Gear', episodes: [{ tvdbId: 150000, seasonNumber: 0, episodeNumber: 1 }] })
+        const result = await findTvdbSpecial(74608, 1)
+        expect(result).toBeNull()
+    })
+
+    it('falls back to specialName as title when episode found by number has no title', async () => {
+        fetchMock.mockResolvedValue({
+            tvdbId: 74608,
+            title: 'Top Gear',
+            episodes: [
+                { tvdbId: 150000, seasonNumber: 0, episodeNumber: 1 },
+                { tvdbId: 339925, seasonNumber: 0, episodeNumber: 2, title: 'Polar Challenge' },
+            ],
+        })
+        const result = await findTvdbSpecial(74608, 1, 'Untitled Special')
+        expect(result).toEqual({ episodeNumber: 1, title: 'Untitled Special' })
+    })
+
+    it('skips untitled episodes when fuzzy matching', async () => {
+        fetchMock.mockResolvedValue({
+            tvdbId: 74608,
+            title: 'Top Gear',
+            episodes: [
+                { tvdbId: 150000, seasonNumber: 0, episodeNumber: 1 },
+                { tvdbId: 339925, seasonNumber: 0, episodeNumber: 2, title: 'Nepal Special' },
+            ],
+        })
+        const result = await findTvdbSpecial(74608, 99, 'Nepal')
+        expect(result).toEqual({ episodeNumber: 2, title: 'Nepal Special' })
     })
 
     it('returns null when no match found', async () => {
         fetchMock.mockResolvedValue(SPECIALS_RESPONSE)
-        const result = await findTvdbSpecial(74608, 'Completely Unrelated Title')
+        const result = await findTvdbSpecial(74608, 99, 'Completely Unrelated Title')
         expect(result).toBeNull()
     })
 
     it('returns null when series has no episodes', async () => {
         fetchMock.mockResolvedValue({ tvdbId: 74608, title: 'Top Gear' })
-        const result = await findTvdbSpecial(74608, 'Polar Challenge')
+        const result = await findTvdbSpecial(74608, 2, 'Polar Challenge')
         expect(result).toBeNull()
     })
 
     it('returns null when series has no season 0 episodes', async () => {
         fetchMock.mockResolvedValue({ tvdbId: 74608, title: 'Top Gear', episodes: [{ tvdbId: 500000, seasonNumber: 1, episodeNumber: 1, title: 'Episode 1' }] })
-        const result = await findTvdbSpecial(74608, 'Polar Challenge')
+        const result = await findTvdbSpecial(74608, 2, 'Polar Challenge')
         expect(result).toBeNull()
     })
 
     it('returns null when the request fails', async () => {
         fetchMock.mockRejectedValue(new Error('network error'))
-        const result = await findTvdbSpecial(74608, 'Polar Challenge')
+        const result = await findTvdbSpecial(74608, 2, 'Polar Challenge')
         expect(result).toBeNull()
     })
 })

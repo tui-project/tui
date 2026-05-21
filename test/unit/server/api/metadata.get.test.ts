@@ -396,7 +396,7 @@ describe('GET /api/metadata route handler', () => {
         expect(result.season).toBe(0)
         expect(result.episode).toBe(2)
         expect(result.specialName).toBe('Polar Challenge')
-        expect(findTvdbSpecial).toHaveBeenCalledWith(74608, 'Polar Challenge')
+        expect(findTvdbSpecial).toHaveBeenCalledWith(74608, 12, 'Polar Challenge')
     })
 
     it('keeps filename values when TVDb special lookup returns no match', async () => {
@@ -516,15 +516,39 @@ describe('GET /api/metadata route handler', () => {
         const handler = await loadHandler()
         await handler({} as never)
         expect(findTvdbSpecialRange).not.toHaveBeenCalled()
-        expect(findTvdbSpecial).toHaveBeenCalledWith(74608, 'Polar Challenge')
+        expect(findTvdbSpecial).toHaveBeenCalledWith(74608, 12, 'Polar Challenge')
     })
 
-    it('skips TVDb special lookup when season is 0 but specialName is absent', async () => {
+    it('calls findTvdbSpecial with episode number even when specialName is absent', async () => {
         getQuery.mockReturnValue({ path: '/media/Show.S00E05.1080p.mkv' })
         parseMetadataFromName.mockReturnValue({
             title: 'Show',
             season: 0,
             episode: 5,
+            sourceType: 'ENCODE',
+            source: 'BluRay',
+            service: undefined,
+            cut: undefined,
+            repack: 0,
+            proper: 0,
+            hybrid: false,
+            releaseGroup: 'GRP',
+        })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tvdbId: 74608 })
+        findByExternalID.mockResolvedValue({ id: 9, title: 'Show', original_title: 'Show', original_language: 'en', year: 2010, external_ids: { tvdb_id: 74608 } })
+
+        const handler = await loadHandler()
+        await handler({} as never)
+        expect(findTvdbSpecial).toHaveBeenCalledWith(74608, 5, undefined)
+        expect(findTvdbSpecialRange).not.toHaveBeenCalled()
+    })
+
+    it('skips TVDb special lookup when season is 0 but episode number is absent', async () => {
+        getQuery.mockReturnValue({ path: '/media/Show.S00.1080p.mkv' })
+        parseMetadataFromName.mockReturnValue({
+            title: 'Show',
+            season: 0,
+            episode: undefined,
             sourceType: 'ENCODE',
             source: 'BluRay',
             service: undefined,
