@@ -114,12 +114,28 @@ Do not add unit tests that import Nitro route handlers directly.
 
 Coverage expectations:
 
-- For newly added or modified runtime code, add or update tests so touched files keep 100% line, statement, and branch coverage.
+- For every change — new code or modified existing code — add or update tests so all touched files have 100% line, statement, and branch coverage, including error paths and null guards.
+- Run `pnpm test:coverage` after every change and verify coverage before reporting the task as complete.
 - If a file is intentionally excluded from coverage (for example model/type-only files), document the reason in configuration comments.
 
 ## HTTP Clients
 
 - Use `$fetch` (Nitro global, ofetch under the hood) for all server-side HTTP requests. Do not use the native `fetch` API. `$fetch` is available globally in Nitro without imports and automatically throws on non-2xx responses.
+
+## Commit Messages
+
+Use the conventional commits format: `type: short summary` (under 72 chars).
+
+Follow the subject line with 1–2 sentences explaining what changed and why — enough context to understand the fix without reading the diff. No bullet points, no lengthy descriptions.
+
+Example:
+```
+fix: use episode number as primary key for TVDb special matching
+
+Resolves incorrect special episode resolution (e.g. S00E08 matching E07)
+by trusting the parsed episode number first and only overriding it when
+another special scores strictly higher on title matching.
+```
 
 ## Editing Notes
 

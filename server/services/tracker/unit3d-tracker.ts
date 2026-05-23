@@ -49,7 +49,7 @@ export function createUnit3dService(url: string, apiKey: string, buildTitle?: (m
         formData.append('imdb', metadata.imdbId.replace(/^tt/, ''))
         if (metadata.tvdbId != null) formData.append('tvdb', String(metadata.tvdbId))
         if (metadata.season != null) formData.append('season_number', String(metadata.season))
-        if (metadata.episode != null) formData.append('episode_number', String(metadata.episode))
+        if (metadata.season != null) formData.append('episode_number', String(metadata.episode ?? 0))
         formData.append('anonymous', anonymous ? '1' : '0')
         formData.append('mod_queue_opt_in', modQueueOptIn ? '1' : '0')
 

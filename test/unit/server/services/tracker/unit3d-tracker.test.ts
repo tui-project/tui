@@ -74,6 +74,21 @@ describe('createUnit3dService — upload', () => {
         ).resolves.toBe(MOCK_DOWNLOAD_URL)
     })
 
+    it('sends episode_number=0 for season packs (season set, episode undefined)', async () => {
+        const appendSpy = vi.spyOn(FormData.prototype, 'append')
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        await service.upload('/path/to/show.torrent', { ...baseMetadata, mediaType: MEDIA_TYPES.TV, season: 1, episode: undefined }, 'desc', 'mi', { title: 'T', anonymous: false, modQueueOptIn: false })
+        expect(appendSpy).toHaveBeenCalledWith('season_number', '1')
+        expect(appendSpy).toHaveBeenCalledWith('episode_number', '0')
+    })
+
+    it('does not send episode_number when season is absent (movie)', async () => {
+        const appendSpy = vi.spyOn(FormData.prototype, 'append')
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        await service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false, modQueueOptIn: false })
+        expect(appendSpy).not.toHaveBeenCalledWith('episode_number', expect.anything())
+    })
+
     it('strips tt prefix from imdbId', async () => {
         readFileMock.mockResolvedValue(Buffer.from('data') as never)
         const appendSpy = vi.spyOn(FormData.prototype, 'append')
