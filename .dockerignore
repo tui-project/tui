@@ -1,0 +1,16 @@
+.output
+.nuxt
+.nitro
+.cache
+node_modules
+.pnpm-store
+dist
+coverage
+config
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.claude
+test
