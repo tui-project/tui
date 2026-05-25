@@ -148,7 +148,7 @@ describe('POST /api/settings route handler', () => {
 
         await expect(handler({} as never)).rejects.toEqual({
             statusCode: 400,
-            message: 'invalid_media_path',
+            message: 'Media path does not exist: /missing',
         })
     })
 

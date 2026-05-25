@@ -9,7 +9,7 @@ const emit = defineEmits<{
     next: []
 }>()
 
-const { getSettings, loading, error } = useSettings()
+const { getSettings, loading, loadError: error } = useSettings()
 const trackers = ref<Array<{ name: string; code: string }>>([])
 const canProceed = computed(() => selectedTrackers.value.length > 0)
 

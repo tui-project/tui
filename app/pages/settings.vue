@@ -5,7 +5,7 @@ import type { AppSettings } from '../composables/useSettings'
 
 type SettingsFormState = z.output<typeof schema>
 
-const { getSettings, saveSettings, loading, error } = useSettings()
+const { getSettings, saveSettings, loading, loadError, saveError } = useSettings()
 const toast = useToast()
 
 const schema = z
@@ -123,7 +123,12 @@ async function onError(event: FormErrorEvent) {
 async function onSubmit(event: FormSubmitEvent<SettingsFormState>) {
     const response = await saveSettings(buildSaveSettingsRequest(event.data))
 
-    if (error.value) {
+    if (saveError.value) {
+        toast.add({
+            title: 'Failed to save settings.',
+            description: saveError.value,
+            color: 'error',
+        })
         return
     }
 
@@ -183,7 +188,7 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
             <USkeleton class="h-20 w-full" />
         </div>
 
-        <UAlert v-else-if="error" color="error" variant="soft" title="Failed to load settings. Please try again." />
+        <UAlert v-else-if="loadError" color="error" variant="soft" title="Failed to load settings. Please try again." />
 
         <UForm v-else :schema="schema" :state="formState" @submit="onSubmit" @error="onError">
             <UCard title="Media paths" description="Root directory paths to access media" variant="subtle">
@@ -227,6 +232,7 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
 
             <UCard title="Torrent client" description="Add completed uploads to a torrent client for cross-seeding. Only one client can be selected." variant="subtle" class="mt-4">
                 <div class="space-y-4">
+                    <UFormField name="torrentClients" />
                     <template v-for="(client, index) in formState.torrentClients" :key="client.code">
                         <div class="space-y-4">
                             <UCheckbox

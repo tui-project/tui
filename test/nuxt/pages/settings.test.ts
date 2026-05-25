@@ -7,7 +7,8 @@ import SettingsPage from '../../../app/pages/settings.vue'
 import type { AppSettings } from '../../../app/composables/useSettings'
 
 const loadingRef = ref(false)
-const errorRef = ref(false)
+const loadErrorRef = ref(false)
+const saveErrorRef = ref<string | null>(null)
 
 const { getSettingsMock, saveSettingsMock, toastAddMock } = vi.hoisted(() => ({
     getSettingsMock: vi.fn(),
@@ -24,7 +25,8 @@ mockNuxtImport('useSettings', () => {
         getSettings: getSettingsMock,
         saveSettings: saveSettingsMock,
         loading: loadingRef,
-        error: errorRef,
+        loadError: loadErrorRef,
+        saveError: saveErrorRef,
     })
 })
 
@@ -55,7 +57,8 @@ describe('settings page', () => {
         saveSettingsMock.mockReset()
         toastAddMock.mockReset()
         loadingRef.value = false
-        errorRef.value = false
+        loadErrorRef.value = false
+        saveErrorRef.value = null
     })
 
     it('adds/removes paths and submits updated settings', async () => {
@@ -449,11 +452,11 @@ describe('settings page', () => {
         expect(vm.formState.episodePackScreenshotCount).toBe(5)
     })
 
-    it('does not show a toast when save fails', async () => {
+    it('shows error toast with API message when save fails', async () => {
         getSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'] }))
         saveSettingsMock.mockImplementation(async () => {
-            errorRef.value = true
-            return undefined
+            saveErrorRef.value = 'Media path does not exist: /missing'
+            return null
         })
         const user = userEvent.setup()
 
@@ -461,7 +464,25 @@ describe('settings page', () => {
         await user.click(screen.getByRole('button', { name: /save/i }))
 
         await waitFor(() => {
-            expect(toastAddMock).not.toHaveBeenCalled()
+            expect(toastAddMock).toHaveBeenCalledWith(
+                expect.objectContaining({ title: 'Failed to save settings.', description: 'Media path does not exist: /missing', color: 'error' })
+            )
+        })
+    })
+
+    it('does not show success toast when save fails', async () => {
+        getSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'] }))
+        saveSettingsMock.mockImplementation(async () => {
+            saveErrorRef.value = 'Media path does not exist: /missing'
+            return null
+        })
+        const user = userEvent.setup()
+
+        await renderSuspended(SettingsPage)
+        await user.click(screen.getByRole('button', { name: /save/i }))
+
+        await waitFor(() => {
+            expect(toastAddMock).not.toHaveBeenCalledWith(expect.objectContaining({ color: 'success' }))
         })
     })
 
@@ -483,6 +504,54 @@ describe('settings page', () => {
         const wrapper = await mountSuspended(SettingsPage)
 
         expect(wrapper.find('[data-media-paths-input]').exists()).toBe(false)
+    })
+
+    it('shows load error alert when settings fail to load', async () => {
+        loadErrorRef.value = true
+        getSettingsMock.mockResolvedValue(null)
+
+        await renderSuspended(SettingsPage)
+
+        expect(await screen.findByText('Failed to load settings. Please try again.')).toBeDefined()
+        expect(screen.queryByRole('button', { name: /save/i })).toBeNull()
+    })
+
+    it('shows separator between selected trackers when there are multiple', async () => {
+        getSettingsMock.mockResolvedValue(
+            buildSettings({
+                mediaPaths: ['/media/a'],
+                trackers: [
+                    { selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'key1', passKey: 'pass1' },
+                    { selected: true, code: 'BHD', name: 'BeyondHD', apiKey: 'key2', passKey: 'pass2' },
+                ],
+            })
+        )
+
+        const wrapper = await mountSuspended(SettingsPage)
+
+        expect(wrapper.findAllComponents({ name: 'USeparator' }).length).toBeGreaterThan(0)
+    })
+
+    it('does not deselect other torrent clients when a client is deselected', async () => {
+        getSettingsMock.mockResolvedValue(
+            buildSettings({
+                mediaPaths: ['/media/a'],
+                torrentClients: [
+                    { selected: true, code: 'QUI', name: 'qui', url: 'http://localhost:7474', apiKey: 'key' },
+                    { selected: false, code: 'OTHER', name: 'Other', url: '', apiKey: '' },
+                ],
+            })
+        )
+
+        const wrapper = await mountSuspended(SettingsPage)
+        const vm = wrapper.vm as unknown as { formState: AppSettings }
+
+        const checkboxes = wrapper.findAllComponents({ name: 'UCheckbox' })
+        const quiCheckbox = checkboxes.find((c) => c.props('label') === 'qui')
+        await quiCheckbox?.vm.$emit('update:model-value', false)
+
+        expect(vm.formState.torrentClients[0]?.selected).toBe(false)
+        expect(vm.formState.torrentClients[1]?.selected).toBe(false)
     })
 
     it('blocks submit when mediainfoPath is empty', async () => {
@@ -588,5 +657,24 @@ describe('settings page', () => {
 
         expect(vm.formState.torrentClients[0]?.selected).toBe(false)
         expect(vm.formState.torrentClients[1]?.selected).toBe(true)
+    })
+
+    it('shows validation error and blocks submit when more than one torrent client is selected', async () => {
+        getSettingsMock.mockResolvedValue(
+            buildSettings({
+                mediaPaths: ['/media/a'],
+                torrentClients: [
+                    { selected: true, code: 'QUI', name: 'qui', url: 'http://localhost:7474', apiKey: 'key' },
+                    { selected: true, code: 'OTHER', name: 'Other', url: 'http://localhost:8080', apiKey: 'key2' },
+                ],
+            })
+        )
+        const user = userEvent.setup()
+
+        await renderSuspended(SettingsPage)
+        await user.click(screen.getByRole('button', { name: /save/i }))
+
+        expect(await screen.findByText('Only one torrent client can be selected at a time.')).toBeDefined()
+        expect(saveSettingsMock).not.toHaveBeenCalled()
     })
 })

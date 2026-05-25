@@ -122,7 +122,7 @@ export default defineEventHandler(async (event) => {
 
             throw createError({
                 statusCode: 400,
-                message: 'invalid_media_path',
+                message: `Media path does not exist: ${mediaPath}`,
             })
         }
     }

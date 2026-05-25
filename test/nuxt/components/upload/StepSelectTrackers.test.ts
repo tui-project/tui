@@ -7,13 +7,13 @@ import StepSelectTrackers from '~/components/upload/StepSelectTrackers.vue'
 
 const getSettingsMock = vi.fn()
 const loading = ref(false)
-const error = ref(false)
+const loadError = ref(false)
 
 vi.mock('~/composables/useSettings', () => ({
     useSettings: () => ({
         getSettings: getSettingsMock,
         loading,
-        error,
+        loadError,
     }),
 }))
 
@@ -23,7 +23,7 @@ describe('StepSelectTrackers', () => {
     beforeEach(() => {
         getSettingsMock.mockReset()
         loading.value = false
-        error.value = false
+        loadError.value = false
     })
 
     it('loads only selected trackers from settings and toggles upload targets', async () => {
@@ -80,7 +80,7 @@ describe('StepSelectTrackers', () => {
 
     it('shows an error alert when trackers fail to load', async () => {
         getSettingsMock.mockResolvedValue(null)
-        error.value = true
+        loadError.value = true
 
         await renderSuspended(StepSelectTrackers, {
             props: { modelValue: [] },

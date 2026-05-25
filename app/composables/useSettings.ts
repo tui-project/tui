@@ -40,7 +40,8 @@ export interface AppSettings {
 
 export function useSettings() {
     const loading = ref(false)
-    const error = ref(false)
+    const loadError = ref(false)
+    const saveError = ref<string | null>(null)
 
     async function getSettings() {
         if (loading.value) {
@@ -48,12 +49,12 @@ export function useSettings() {
         }
 
         loading.value = true
-        error.value = false
+        loadError.value = false
 
         try {
             return await $fetch<AppSettings>('/api/settings')
         } catch {
-            error.value = true
+            loadError.value = true
             return null
         } finally {
             loading.value = false
@@ -66,15 +67,16 @@ export function useSettings() {
         }
 
         loading.value = true
-        error.value = false
+        saveError.value = null
 
         try {
             return await $fetch<AppSettings>('/api/settings', {
                 method: 'POST',
                 body: settings,
             })
-        } catch {
-            error.value = true
+        } catch (err: unknown) {
+            const message = (err as { data?: { message?: string } })?.data?.message ?? null
+            saveError.value = message ?? 'An unexpected error occurred.'
             return null
         } finally {
             loading.value = false
@@ -85,6 +87,7 @@ export function useSettings() {
         getSettings,
         saveSettings,
         loading: readonly(loading),
-        error: readonly(error),
+        loadError: readonly(loadError),
+        saveError: readonly(saveError),
     }
 }

@@ -41,26 +41,26 @@ describe('useSettings composable', () => {
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useSettings } = await import('../../../../app/composables/useSettings')
-        const { getSettings, loading, error } = useSettings()
+        const { getSettings, loading, loadError } = useSettings()
         const result = await getSettings()
 
         expect(fetchMock).toHaveBeenCalledWith('/api/settings')
         expect(result).toEqual(settings)
         expect(loading.value).toBe(false)
-        expect(error.value).toBe(false)
+        expect(loadError.value).toBe(false)
     })
 
-    it('returns null and sets error when loading settings fails', async () => {
+    it('returns null and sets loadError when loading settings fails', async () => {
         const fetchMock = vi.fn().mockRejectedValue(new Error('network'))
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useSettings } = await import('../../../../app/composables/useSettings')
-        const { getSettings, loading, error } = useSettings()
+        const { getSettings, loading, loadError } = useSettings()
         const result = await getSettings()
 
         expect(result).toBeNull()
         expect(loading.value).toBe(false)
-        expect(error.value).toBe(true)
+        expect(loadError.value).toBe(true)
     })
 
     it('saves settings successfully', async () => {
@@ -74,7 +74,7 @@ describe('useSettings composable', () => {
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useSettings } = await import('../../../../app/composables/useSettings')
-        const { saveSettings, loading, error } = useSettings()
+        const { saveSettings, loading, saveError } = useSettings()
         const result = await saveSettings(settings)
 
         expect(fetchMock).toHaveBeenCalledWith('/api/settings', {
@@ -83,20 +83,31 @@ describe('useSettings composable', () => {
         })
         expect(result).toEqual(settings)
         expect(loading.value).toBe(false)
-        expect(error.value).toBe(false)
+        expect(saveError.value).toBeNull()
     })
 
-    it('returns null and sets error when saving settings fails', async () => {
-        const fetchMock = vi.fn().mockRejectedValue(new Error('network'))
+    it('returns null and sets saveError message when saving settings fails', async () => {
+        const fetchMock = vi.fn().mockRejectedValue({ data: { message: 'Media path does not exist: /missing' } })
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useSettings } = await import('../../../../app/composables/useSettings')
-        const { saveSettings, loading, error } = useSettings()
+        const { saveSettings, loading, saveError } = useSettings()
         const result = await saveSettings(buildSettings())
 
         expect(result).toBeNull()
         expect(loading.value).toBe(false)
-        expect(error.value).toBe(true)
+        expect(saveError.value).toBe('Media path does not exist: /missing')
+    })
+
+    it('sets fallback saveError message when API error has no message', async () => {
+        const fetchMock = vi.fn().mockRejectedValue(new Error('network'))
+        vi.stubGlobal('$fetch', fetchMock)
+
+        const { useSettings } = await import('../../../../app/composables/useSettings')
+        const { saveSettings, saveError } = useSettings()
+        await saveSettings(buildSettings())
+
+        expect(saveError.value).toBe('An unexpected error occurred.')
     })
 
     it('does not call fetch when already loading', async () => {
