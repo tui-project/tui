@@ -9,11 +9,6 @@ const stepItems: StepperItem[] = [
         slot: 'select-media',
     },
     {
-        title: 'Select Trackers',
-        icon: 'i-lucide-server',
-        slot: 'select-trackers',
-    },
-    {
         title: 'Metadata',
         icon: 'i-lucide-file-pen-line',
         slot: 'metadata',
@@ -22,6 +17,11 @@ const stepItems: StepperItem[] = [
         title: 'Description',
         icon: 'i-lucide-file-text',
         slot: 'description',
+    },
+    {
+        title: 'Select Trackers',
+        icon: 'i-lucide-server',
+        slot: 'select-trackers',
     },
     {
         title: 'Review',
@@ -63,9 +63,6 @@ function goToPrevStep() {
             <template #select-media>
                 <UploadStepSelectMedia v-model="selectedPath" @next="goToNextStep" />
             </template>
-            <template #select-trackers>
-                <UploadStepSelectTrackers v-model="selectedTrackers" @back="goToPrevStep" @next="goToNextStep" />
-            </template>
             <template #metadata>
                 <UploadStepMetadata v-model="reviewedMetadata" :selected-path="selectedPath" @back="goToPrevStep" @next="goToNextStep" />
             </template>
@@ -78,6 +75,9 @@ function goToPrevStep() {
                     @back="goToPrevStep"
                     @next="goToNextStep"
                 />
+            </template>
+            <template #select-trackers>
+                <UploadStepSelectTrackers v-model="selectedTrackers" @back="goToPrevStep" @next="goToNextStep" />
             </template>
             <template #review>
                 <UploadStepReview
