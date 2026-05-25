@@ -1,8 +1,8 @@
 services:
-  tui:
-    build: .
-    ports:
-      - "4000:4000"
-    volumes:
-      - ./config:/app/config
-    restart: unless-stopped
+    tui:
+        build: .
+        ports:
+            - '4000:4000'
+        volumes:
+            - ./config:/app/config
+        restart: unless-stopped

@@ -129,6 +129,7 @@ Use the conventional commits format: `type: short summary` (under 72 chars).
 Follow the subject line with 1–2 sentences explaining what changed and why — enough context to understand the fix without reading the diff. No bullet points, no lengthy descriptions.
 
 Example:
+
 ```
 fix: use episode number as primary key for TVDb special matching
 

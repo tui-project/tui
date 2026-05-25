@@ -228,6 +228,17 @@ describe('StepDescription', () => {
         expect(vm.description).toBe('Base[i][/i] text')
     })
 
+    it('disables back and next navigation buttons while screenshots are generating', async () => {
+        screenshotLoading.value = true
+
+        await renderSuspended(StepDescription, {
+            props: { selectedPath },
+        })
+
+        expect(screen.getByRole('button', { name: 'Back' }).getAttribute('disabled')).not.toBeNull()
+        expect(screen.getByRole('button', { name: 'Next' }).getAttribute('disabled')).not.toBeNull()
+    })
+
     it('returns early from addScreenshots when the service resolves without screenshots', async () => {
         createScreenshotsMock.mockResolvedValue(undefined)
         const wrapper = await mountSuspended(StepDescription, {

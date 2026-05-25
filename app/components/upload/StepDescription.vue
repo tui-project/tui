@@ -190,6 +190,6 @@ async function addScreenshots() {
             </div>
         </div>
 
-        <StepNavigationButtons @back="emit('back')" @next="emit('next')" />
+        <StepNavigationButtons :back="{ disabled: isGeneratingScreenshots }" :next="{ disabled: isGeneratingScreenshots }" @back="emit('back')" @next="emit('next')" />
     </UCard>
 </template>
