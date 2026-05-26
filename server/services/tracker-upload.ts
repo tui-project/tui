@@ -1,3 +1,4 @@
+import { rm } from 'node:fs/promises'
 import { TRACKER_UPLOAD_STATUSES, type TrackerItem } from '../model/tracker-upload-request'
 import { findGenericTorrentCacheByFilepath, saveGenericTorrentCache } from '../repositories/generic-torrent-cache-repository'
 import { getSettings } from '../repositories/settings-repository'
@@ -12,6 +13,7 @@ import { injectTorrent } from './torrent-client'
 
 export async function upload(uploadRequestId: string, filepath: string, trackers: TrackerItem[], metadata: TrackerUploadMetadata, description: string) {
     const trackerCodes = trackers.map((t) => t.code)
+    let trackerTorrentPaths: Record<string, string> = {}
 
     try {
         await updateTrackerUploadRequestStatus(uploadRequestId, TRACKER_UPLOAD_STATUSES.TORRENT_CREATION)
@@ -27,7 +29,7 @@ export async function upload(uploadRequestId: string, filepath: string, trackers
             await saveGenericTorrentCache({ filepath, genericTorrentPath })
         }
 
-        const trackerTorrentPaths = await createTrackerTorrents(genericTorrentPath, filepath, trackerCodes)
+        trackerTorrentPaths = await createTrackerTorrents(genericTorrentPath, filepath, trackerCodes)
 
         await updateTrackerUploadRequestStatus(uploadRequestId, TRACKER_UPLOAD_STATUSES.UPLOADING)
         logger.info('Tracker upload request uploading to trackers.', {
@@ -58,6 +60,8 @@ export async function upload(uploadRequestId: string, filepath: string, trackers
     } catch (error: unknown) {
         await updateTrackerUploadRequestStatus(uploadRequestId, TRACKER_UPLOAD_STATUSES.FAIL)
         logger.error('Failed to process tracker upload request.', error, { id: uploadRequestId, filepath })
+    } finally {
+        await removeTrackerTorrents(trackerTorrentPaths)
     }
 }
 
@@ -115,6 +119,18 @@ async function uploadToTrackers(
     }
 
     return failedTrackerCodes
+}
+
+async function removeTrackerTorrents(trackerTorrentPaths: Record<string, string>) {
+    await Promise.all(
+        Object.values(trackerTorrentPaths).map(async (torrentPath) => {
+            try {
+                await rm(torrentPath, { force: true })
+            } catch {
+                logger.warn('Failed to remove tracker-specific torrent file.', { torrentPath })
+            }
+        })
+    )
 }
 
 async function createTrackerTorrents(genericTorrentPath: string, filepath: string, trackerCodes: string[]): Promise<Record<string, string>> {
