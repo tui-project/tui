@@ -463,6 +463,26 @@ describe('media name parser', () => {
                 title: 'The Show',
             },
         },
+        {
+            name: 'strips trailing closing parenthesis from release group in parenthesized tech-info filename',
+            input: 'The Lord of the Rings - The Rings of Power (2022) S00E13 (1080p AMZN WEB-DL H265 SDR DDP 5.1 English - HONE).mkv',
+            expected: {
+                season: 0,
+                episode: 13,
+                sourceType: 'WEB-DL',
+                source: 'Web',
+                service: 'AMZN',
+                cut: undefined,
+                ratio: undefined,
+                repack: 0,
+                proper: 0,
+                rerip: false,
+                threeD: false,
+                hybrid: false,
+                releaseGroup: 'HONE',
+                title: 'The Lord of the Rings - The Rings of Power',
+            },
+        },
     ])('$name', ({ input, expected }) => {
         expect(parseMetadataFromName(input)).toEqual(expected)
     })

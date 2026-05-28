@@ -218,7 +218,7 @@ function parseRatio(name: string): Ratio {
 
 function parseReleaseGroup(name: string) {
     const match = /-([^-]+)$/.exec(name)
-    return match ? match[1] : ''
+    return match ? match[1]!.replace(/\)+$/, '').trim() : ''
 }
 
 function parseTitle(name: string, seasonEpisodeIndex: number, isFileName: boolean) {
@@ -228,14 +228,21 @@ function parseTitle(name: string, seasonEpisodeIndex: number, isFileName: boolea
     const rawTitle = beforeGroup.slice(0, cutIndex)
 
     if (isFileName) {
-        return rawTitle.replace(/[._]+/g, ' ').trim()
+        return rawTitle.replace(/[._]+/g, ' ').replace(/\s*\(\d{4}\)\s*$/, '').trim()
     }
 
-    return rawTitle.replace(/[._-]+/g, ' ').trim()
+    return rawTitle.replace(/[._-]+/g, ' ').replace(/\s*\(\d{4}\)\s*$/, '').trim()
 }
 
 function findFileMetadataIndex(name: string) {
-    const metadataStartPatterns = [/\b(?:19|20)\d{2}\b/, /\b(?:480|576|720|1080|2160|4320)[pi]\b/i, /\bREMUX\b/i, /\bBlu[.\s_-]*ray\b/i, /\bWEB[.\s_-]*(?:DL|RIP)?\b/i]
+    const metadataStartPatterns = [
+        /\b(?:19|20)\d{2}\b/,
+        /\b(?:480|576|720|1080|2160|4320)[pi]\b/i,
+        /\((?=(?:480|576|720|1080|2160|4320)[pi]\b)/i,
+        /\bREMUX\b/i,
+        /\bBlu[.\s_-]*ray\b/i,
+        /\bWEB[.\s_-]*(?:DL|RIP)?\b/i,
+    ]
     const indexes = metadataStartPatterns.map((pattern) => pattern.exec(name)?.index ?? -1).filter((index) => index >= 0)
 
     return indexes.length > 0 ? Math.min(...indexes) : -1
