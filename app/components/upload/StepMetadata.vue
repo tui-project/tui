@@ -26,8 +26,13 @@ const mediaTypeOptions: SelectOption[] = [
 
 const sourceOptions: SelectOption[] = [
     { label: 'Web', value: 'Web' },
-    { label: 'BluRay', value: 'BluRay' },
     { label: 'DVD', value: 'DVD' },
+    { label: 'NTSC DVD', value: 'NTSC DVD' },
+    { label: 'PAL DVD', value: 'PAL DVD' },
+    { label: 'HDDVD', value: 'HDDVD' },
+    { label: '3D BluRay', value: '3D BluRay' },
+    { label: 'BluRay', value: 'BluRay' },
+    { label: 'UHD BluRay', value: 'UHD BluRay' },
 ]
 
 const sourceTypeOptions: SelectOption[] = [
@@ -362,7 +367,6 @@ const schema = z
         repack: z.number(),
         proper: z.number(),
         rerip: z.number(),
-        threeD: z.boolean(),
         cut: z.string(),
         ratio: z.string(),
         hybrid: z.boolean(),
@@ -407,7 +411,6 @@ const state = reactive<Metadata>({
     repack: 0,
     proper: 0,
     rerip: 0,
-    threeD: false,
     cut: '',
     ratio: '',
     hybrid: false,
@@ -673,7 +676,6 @@ function onSubmit(event: FormSubmitEvent<Schema>) {
                                     />
                                     <UInput v-if="state.rerip > 0" v-model.number="state.rerip" type="number" size="sm" :min="1" class="w-14" aria-label="ReRip number" />
                                 </div>
-                                <UCheckbox v-model="state.threeD" size="xl" label="3D" color="neutral" aria-label="3D" />
                                 <UCheckbox v-model="state.hybrid" size="xl" label="Hybrid" color="neutral" aria-label="Hybrid" />
                                 <UCheckbox
                                     v-if="state.videoCodec === 'AVC' || state.videoCodec === 'H.264' || state.videoCodec === 'x264'"

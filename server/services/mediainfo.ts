@@ -16,6 +16,8 @@ import {
     type Resolution,
     type SourceType,
     type VideoCodec,
+    type VideoStandard,
+    VIDEO_STANDARDS,
 } from '../model/metadata'
 
 interface MediaInfoTrack {
@@ -32,6 +34,8 @@ interface MediaInfoResult {
 export interface ParsedMediainfoMetadata {
     resolution?: Resolution
     videoCodec?: VideoCodec
+    videoStandard?: VideoStandard
+    frameRate?: number
     hi10p: boolean
     hdr: HDR[]
     language: string[]
@@ -58,8 +62,14 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
 
     const format = toStringValue(video, 'Format')
     const formatVersion = toStringValue(video, 'Format_Version')
-    const formatProfile = toStringValue(video, 'Format_Profile')
     const videoCodec = parseVideoCodec(format, formatVersion, sourceType)
+
+    const standard = toStringValue(video, 'Standard')
+    const videoStandard = parseVideoStandard(standard)
+
+    const frameRate = parseNumberValue(video, 'FrameRate')
+
+    const formatProfile = toStringValue(video, 'Format_Profile')
     const hi10p = parseHi10p(format, formatProfile)
 
     const hdrFormat = toStringValue(video, 'HDR_Format')
@@ -88,6 +98,8 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
     const parsedMetadata = {
         resolution,
         videoCodec,
+        videoStandard,
+        frameRate,
         hi10p,
         hdr,
         audioCodec,
@@ -105,6 +117,8 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
         trackCount: tracks.length,
         resolution: parsedMetadata.resolution,
         videoCodec: parsedMetadata.videoCodec,
+        videoStandard: parsedMetadata.videoStandard,
+        frameRate: parsedMetadata.frameRate,
         hdr: parsedMetadata.hdr,
         audioCodec: parsedMetadata.audioCodec,
         audioChannels: parsedMetadata.audioChannels,
@@ -207,6 +221,13 @@ function parseVideoCodec(format: string, formatVersion: string, sourceType: Sour
             logger.warn('Unknown video codec from mediainfo.', { format, formatVersion, sourceType })
             return undefined
     }
+}
+
+function parseVideoStandard(standard: string): VideoStandard | undefined {
+    if (standard === 'NTSC') return VIDEO_STANDARDS.NTSC
+    if (standard === 'PAL') return VIDEO_STANDARDS.PAL
+
+    return undefined
 }
 
 function parseHi10p(format: string, formatProfile: string): boolean {
@@ -321,6 +342,16 @@ function normalizeAudioLanguage(value: string) {
     if (!trimmed) return ''
     const dashIndex = trimmed.indexOf('-')
     return (dashIndex > 0 ? trimmed.slice(0, dashIndex) : trimmed).trim().toLowerCase()
+}
+
+function parseNumberValue(track: MediaInfoTrack | undefined, key: string): number | undefined {
+    const stringValue = toStringValue(track, key)
+    if (!stringValue) return undefined
+
+    const match = stringValue.match(/\d+(\.\d+)?/)
+    if (!match) return undefined
+
+    return Number(match[0])
 }
 
 function parseIntegerValue(track: MediaInfoTrack | undefined, key: string): number | undefined {

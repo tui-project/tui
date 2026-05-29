@@ -44,7 +44,6 @@ const validMetadata = {
     repack: 0,
     proper: 0,
     rerip: 0,
-    threeD: false,
     hybrid: false,
     hi10p: false,
     resolution: '1080p',

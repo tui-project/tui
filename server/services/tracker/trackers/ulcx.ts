@@ -1,4 +1,4 @@
-import { MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, SOURCES, type SourceType } from '../../../model/metadata'
+import { MEDIA_TYPES, SOURCE_TYPES, SOURCES, type SourceType } from '../../../model/metadata'
 import { getTvdbSeries } from '../../tvdb'
 import type { RuleViolation, TrackerService, TrackerUploadMetadata } from '../tracker'
 import { createUnit3dService } from '../unit3d-tracker'
@@ -66,6 +66,13 @@ function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
         })
     }
 
+    if (metadata.source === SOURCES.DVD) {
+        violations.push({
+            rule: 'invalid_source',
+            message: 'Source "DVD" is not allowed on ULCX. Use NTSC DVD, PAL DVD, or HDDVD instead.',
+        })
+    }
+
     return violations
 }
 
@@ -98,8 +105,7 @@ async function buildTitle(metadata: TrackerUploadMetadata) {
     if (metadata.repack) parts.push(metadata.repack === 1 ? 'REPACK' : `REPACK${metadata.repack}`)
     if (metadata.proper) parts.push(metadata.proper === 1 ? 'PROPER' : `PROPER${metadata.proper}`)
     if (metadata.rerip) parts.push(metadata.rerip === 1 ? 'RERIP' : `RERIP${metadata.rerip}`)
-    if (metadata.threeD) parts.push('3D')
-    if (metadata.source !== SOURCES.DVD) parts.push(metadata.resolution)
+    if (!isDvdSource(metadata.source)) parts.push(metadata.resolution)
     parts.push(buildSourceString(metadata))
     parts.push(buildTypeString(metadata.sourceType))
 
@@ -138,18 +144,44 @@ function buildSeasonEpisodeString(season?: number, episode?: number, episodeEnd?
     return se
 }
 
+function isDvdSource(source: string): boolean {
+    return source === SOURCES.DVD || source === SOURCES.NTSC_DVD || source === SOURCES.PAL_DVD || source === SOURCES.HD_DVD
+}
+
 function buildSourceString(metadata: TrackerUploadMetadata): string {
-    if (metadata.source === SOURCES.WEB) return metadata.service ?? ''
-    if (metadata.source === SOURCES.BLURAY) return metadata.resolution === RESOLUTIONS['2160p'] ? 'UHD BluRay' : 'BluRay'
-    if (metadata.source === SOURCES.DVD) return 'DVD'
-    return ''
+    switch (metadata.source) {
+        case SOURCES.WEB:
+            return metadata.service ?? ''
+        case SOURCES.DVD:
+            return 'DVD'
+        case SOURCES.NTSC_DVD:
+            return 'NTSC DVD'
+        case SOURCES.PAL_DVD:
+            return 'PAL DVD'
+        case SOURCES.HD_DVD:
+            return 'HDDVD'
+        case SOURCES.BLURAY_3D:
+            return '3D BluRay'
+        case SOURCES.BLURAY:
+            return 'BluRay'
+        case SOURCES.UHD_BLURAY:
+            return 'UHD BluRay'
+        default:
+            return ''
+    }
 }
 
 function buildTypeString(sourceType: SourceType): string {
-    if (sourceType === SOURCE_TYPES.REMUX) return 'REMUX'
-    if (sourceType === SOURCE_TYPES.WEB_DL) return 'WEB-DL'
-    if (sourceType === SOURCE_TYPES.WEBRIP) return 'WEBRip'
-    return ''
+    switch (sourceType) {
+        case SOURCE_TYPES.REMUX:
+            return 'REMUX'
+        case SOURCE_TYPES.WEB_DL:
+            return 'WEB-DL'
+        case SOURCE_TYPES.WEBRIP:
+            return 'WEBRip'
+        default:
+            return ''
+    }
 }
 
 function buildDubString(languages: string[], originalLanguage: string) {

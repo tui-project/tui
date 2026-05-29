@@ -33,7 +33,6 @@ function createMetadata(overrides: Partial<Metadata> = {}): Metadata {
         repack: 1,
         proper: 1,
         rerip: 0,
-        threeD: false,
         cut: 'Extened',
         ratio: '',
         hybrid: true,
@@ -395,8 +394,8 @@ describe('StepMetadata', () => {
         expect(screen.queryByRole('checkbox', { name: 'Hi10P' })).toBeNull()
     })
 
-    it('shows ReRip and 3D checkboxes', async () => {
-        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ rerip: 1, threeD: true })))
+    it('shows ReRip checkbox as checked', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ rerip: 1 })))
 
         await renderSuspended(StepMetadata, {
             props: { selectedPath },
@@ -405,7 +404,6 @@ describe('StepMetadata', () => {
         await screen.findByDisplayValue('Dune')
 
         expect(screen.getByRole('checkbox', { name: 'ReRip' }).getAttribute('data-state')).toBe('checked')
-        expect(screen.getByRole('checkbox', { name: '3D' }).getAttribute('data-state')).toBe('checked')
     })
 
     it('shows season and episode inputs for tv metadata', async () => {
@@ -791,10 +789,10 @@ describe('StepMetadata', () => {
         })
     })
 
-    it('toggles rerip and 3D checkboxes', async () => {
+    it('toggles rerip checkbox', async () => {
         const user = userEvent.setup()
 
-        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ rerip: 0, threeD: false })))
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ rerip: 0 })))
 
         await renderSuspended(StepMetadata, {
             props: { selectedPath },
@@ -803,17 +801,13 @@ describe('StepMetadata', () => {
         await screen.findByDisplayValue('Dune')
 
         const reripCheckbox = screen.getByRole('checkbox', { name: 'ReRip' })
-        const threeDCheckbox = screen.getByRole('checkbox', { name: '3D' })
 
         expect(reripCheckbox.getAttribute('data-state')).toBe('unchecked')
-        expect(threeDCheckbox.getAttribute('data-state')).toBe('unchecked')
 
         await user.click(reripCheckbox)
-        await user.click(threeDCheckbox)
 
         await waitFor(() => {
             expect(screen.getByRole('checkbox', { name: 'ReRip' }).getAttribute('data-state')).toBe('checked')
-            expect(screen.getByRole('checkbox', { name: '3D' }).getAttribute('data-state')).toBe('checked')
         })
     })
 

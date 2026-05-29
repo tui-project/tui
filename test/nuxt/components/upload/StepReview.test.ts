@@ -73,7 +73,6 @@ const metadata: Metadata = {
     repack: 0,
     proper: 0,
     rerip: 0,
-    threeD: false,
     cut: '',
     ratio: '',
     hybrid: false,

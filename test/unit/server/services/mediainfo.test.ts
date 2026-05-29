@@ -686,6 +686,32 @@ describe('mediainfo service', () => {
             expected: { hi10p: false, videoCodec: 'H.264' },
         },
         {
+            name: 'parses decimal FrameRate value',
+            sourceType: 'WEB-DL' as const,
+            result: {
+                media: {
+                    track: [
+                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', FrameRate: '23.976', HDR_Format: '', HDR_Format_Compatibility: '' },
+                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
+                    ],
+                },
+            },
+            expected: { resolution: '1080p' },
+        },
+        {
+            name: 'parses integer prefix from TMDB and TVDB ids and ignores decimal part',
+            sourceType: 'WEB-DL' as const,
+            result: {
+                media: {
+                    track: [
+                        { '@type': 'General', extra: { IMDB: 'tt123', TMDB: 'tmdb://55.9', TVDB: 'tvdb-66.9' } },
+                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
+                    ],
+                },
+            },
+            expected: { tmdbId: 55, tvdbId: 66 },
+        },
+        {
             name: 'hi10p false when non-AVC codec with High 10 profile',
             sourceType: 'WEB-DL' as const,
             result: {
@@ -697,6 +723,63 @@ describe('mediainfo service', () => {
                 },
             },
             expected: { hi10p: false },
+        },
+        {
+            name: 'parses NTSC video standard',
+            sourceType: 'REMUX' as const,
+            result: {
+                media: {
+                    track: [
+                        {
+                            '@type': 'Video',
+                            Height: '480',
+                            ScanType: 'Interlaced',
+                            Format: 'MPEG Video',
+                            Format_Version: '2',
+                            Standard: 'NTSC',
+                            HDR_Format: '',
+                            HDR_Format_Compatibility: '',
+                        },
+                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
+                    ],
+                },
+            },
+            expected: { videoStandard: 'NTSC' },
+        },
+        {
+            name: 'parses PAL video standard',
+            sourceType: 'REMUX' as const,
+            result: {
+                media: {
+                    track: [
+                        {
+                            '@type': 'Video',
+                            Height: '576',
+                            ScanType: 'Interlaced',
+                            Format: 'MPEG Video',
+                            Format_Version: '2',
+                            Standard: 'PAL',
+                            HDR_Format: '',
+                            HDR_Format_Compatibility: '',
+                        },
+                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
+                    ],
+                },
+            },
+            expected: { videoStandard: 'PAL' },
+        },
+        {
+            name: 'returns undefined frameRate when value has no digits',
+            sourceType: 'WEB-DL' as const,
+            result: {
+                media: {
+                    track: [
+                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', FrameRate: 'N/A', HDR_Format: '', HDR_Format_Compatibility: '' },
+                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
+                    ],
+                },
+            },
+            expected: { frameRate: undefined },
         },
     ])('parses mediainfo metadata across branches: $name', async ({ sourceType, result, expected }) => {
         const { parseMetadataFromMediainfo } = await loadService()

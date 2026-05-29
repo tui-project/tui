@@ -567,6 +567,26 @@ describe('GET /api/metadata route handler', () => {
         expect(findTvdbSpecialRange).not.toHaveBeenCalled()
     })
 
+    it('upgrades BluRay source to UHD BluRay when resolution is 2160p', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'BluRay', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], resolution: '2160p' })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.source).toBe('UHD BluRay')
+    })
+
+    it('does not upgrade BluRay source when resolution is not 2160p', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'BluRay', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], resolution: '1080p' })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.source).toBe('BluRay')
+    })
+
     it('calls findByTitle with undefined when parsed title is undefined', async () => {
         getQuery.mockReturnValue({ path: '/media/UnknownTitle.mkv' })
         parseMetadataFromName.mockReturnValue({
@@ -586,5 +606,75 @@ describe('GET /api/metadata route handler', () => {
         const handler = await loadHandler()
         await expect(handler({} as never)).resolves.toBeTruthy()
         expect(findByTitle).toHaveBeenCalledWith(undefined, 'movie')
+    })
+
+    it('upgrades DVD source to PAL DVD when videoStandard is PAL', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], videoStandard: 'PAL' })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.source).toBe('PAL DVD')
+    })
+
+    it('upgrades DVD source to PAL DVD when frameRate is 25', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], frameRate: 25 })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.source).toBe('PAL DVD')
+    })
+
+    it('upgrades DVD source to PAL DVD when frameRate is 50', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], frameRate: 50 })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.source).toBe('PAL DVD')
+    })
+
+    it('upgrades DVD source to NTSC DVD when videoStandard is NTSC', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], videoStandard: 'NTSC' })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.source).toBe('NTSC DVD')
+    })
+
+    it('upgrades DVD source to NTSC DVD when frameRate is present and not a PAL rate', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], frameRate: 29.97 })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.source).toBe('NTSC DVD')
+    })
+
+    it('does not upgrade source when source is not DVD', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'BluRay', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], videoStandard: 'PAL', frameRate: 25 })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.source).toBe('BluRay')
+    })
+
+    it('leaves DVD source unchanged when no videoStandard or frameRate is available', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [] })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.source).toBe('DVD')
     })
 })

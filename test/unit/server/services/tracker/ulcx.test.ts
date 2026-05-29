@@ -23,7 +23,6 @@ const baseMetadata: TrackerUploadMetadata = {
     repack: false,
     proper: false,
     rerip: 0,
-    threeD: false,
     hybrid: false,
     hi10p: false,
     resolution: RESOLUTIONS['1080p'],
@@ -171,20 +170,43 @@ describe('createUlcxTrackerService — getTitle', () => {
         expect(title).not.toContain('AKA')
     })
 
-    it('returns UHD BluRay for 2160p BluRay source', async () => {
-        const title = await service.getTitle({ ...baseMetadata, source: SOURCES.BLURAY, resolution: RESOLUTIONS['2160p'] })
+    it('returns UHD BluRay for UHD BluRay source', async () => {
+        const title = await service.getTitle({ ...baseMetadata, source: SOURCES.UHD_BLURAY })
         expect(title).toContain('UHD BluRay')
     })
 
-    it('returns BluRay for non-2160p BluRay source', async () => {
-        const title = await service.getTitle({ ...baseMetadata, source: SOURCES.BLURAY, resolution: RESOLUTIONS['1080p'] })
+    it('returns BluRay for BluRay source', async () => {
+        const title = await service.getTitle({ ...baseMetadata, source: SOURCES.BLURAY })
         expect(title).toContain('BluRay')
         expect(title).not.toContain('UHD')
+    })
+
+    it('returns 3D BluRay for BLURAY_3D source', async () => {
+        const title = await service.getTitle({ ...baseMetadata, source: SOURCES.BLURAY_3D })
+        expect(title).toContain('3D BluRay')
     })
 
     it('returns DVD for DVD source and omits resolution', async () => {
         const title = await service.getTitle({ ...baseMetadata, source: SOURCES.DVD })
         expect(title).toContain('DVD')
+        expect(title).not.toContain(baseMetadata.resolution)
+    })
+
+    it('returns NTSC DVD for NTSC_DVD source and omits resolution', async () => {
+        const title = await service.getTitle({ ...baseMetadata, source: SOURCES.NTSC_DVD })
+        expect(title).toContain('NTSC DVD')
+        expect(title).not.toContain(baseMetadata.resolution)
+    })
+
+    it('returns PAL DVD for PAL_DVD source and omits resolution', async () => {
+        const title = await service.getTitle({ ...baseMetadata, source: SOURCES.PAL_DVD })
+        expect(title).toContain('PAL DVD')
+        expect(title).not.toContain(baseMetadata.resolution)
+    })
+
+    it('returns HDDVD for HD_DVD source and omits resolution', async () => {
+        const title = await service.getTitle({ ...baseMetadata, source: SOURCES.HD_DVD })
+        expect(title).toContain('HDDVD')
         expect(title).not.toContain(baseMetadata.resolution)
     })
 
@@ -292,16 +314,6 @@ describe('createUlcxTrackerService — getTitle', () => {
         expect(title).not.toContain('IMAX')
         expect(title).not.toContain('Open Matte')
         expect(title).not.toContain('MAR')
-    })
-
-    it('includes 3D flag', async () => {
-        const title = await service.getTitle({ ...baseMetadata, threeD: true })
-        expect(title).toContain('3D')
-    })
-
-    it('omits 3D when false', async () => {
-        const title = await service.getTitle({ ...baseMetadata, threeD: false })
-        expect(title).not.toContain('3D')
     })
 
     it('includes Hi10P after audioChannels for non-remux sourceType', async () => {
@@ -445,6 +457,28 @@ describe('createUlcxTrackerService — checkRules', () => {
 
     it('returns no violations when releaseGroup is absent', () => {
         const violations = service.checkRules({ ...baseMetadata, releaseGroup: undefined })
+        expect(violations).toHaveLength(0)
+    })
+
+    it('returns a violation for DVD source', () => {
+        const violations = service.checkRules({ ...baseMetadata, source: SOURCES.DVD })
+        expect(violations).toHaveLength(1)
+        expect(violations[0]!.rule).toBe('invalid_source')
+        expect(violations[0]!.message).toContain('DVD')
+    })
+
+    it('returns no violation for NTSC DVD source', () => {
+        const violations = service.checkRules({ ...baseMetadata, source: SOURCES.NTSC_DVD })
+        expect(violations).toHaveLength(0)
+    })
+
+    it('returns no violation for PAL DVD source', () => {
+        const violations = service.checkRules({ ...baseMetadata, source: SOURCES.PAL_DVD })
+        expect(violations).toHaveLength(0)
+    })
+
+    it('returns no violation for HDDVD source', () => {
+        const violations = service.checkRules({ ...baseMetadata, source: SOURCES.HD_DVD })
         expect(violations).toHaveLength(0)
     })
 })

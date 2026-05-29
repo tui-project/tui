@@ -15,7 +15,6 @@ export interface ParsedNameMetadata {
     repack: number
     proper: number
     rerip: number
-    threeD: boolean
     hybrid: boolean
     releaseGroup?: string
     title: string
@@ -37,7 +36,6 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
     const repack = parseRepackProper(upperTokens, 'REPACK')
     const proper = parseRepackProper(upperTokens, 'PROPER')
     const rerip = parseRepackProper(upperTokens, 'RERIP')
-    const threeD = upperTokens.some((token) => token === '3D')
     const hybrid = upperTokens.some((token) => token === 'HYBRID')
     const ratio = parseRatio(nameWithoutExtension)
     const releaseGroup = parseReleaseGroup(nameWithoutExtension)
@@ -56,7 +54,6 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
         repack,
         proper,
         rerip,
-        threeD,
         hybrid,
         releaseGroup,
     }
@@ -160,14 +157,26 @@ function parseSourceType(tokens: string[]): SourceType {
 }
 
 function parseSource(tokens: string[], sourceType: SourceType): Source {
-    switch (true) {
-        case sourceType == SOURCE_TYPES.WEB_DL || sourceType == SOURCE_TYPES.WEBRIP:
-            return 'Web'
-        case tokens.includes(SOURCES.DVD):
-            return 'DVD'
-        default:
-            return 'BluRay'
+    if (sourceType === SOURCE_TYPES.WEB_DL || sourceType === SOURCE_TYPES.WEBRIP) return SOURCES.WEB
+
+    const hasBluRay = tokens.includes('BLURAY')
+    if (hasBluRay) {
+        if (tokens.includes('UHD')) return SOURCES.UHD_BLURAY
+        if (tokens.includes('3D')) return SOURCES.BLURAY_3D
+
+        return SOURCES.BLURAY
     }
+
+    const hasDvd = tokens.includes('DVD')
+    if (hasDvd) {
+        if (tokens.includes('HD')) return SOURCES.HD_DVD
+        if (tokens.includes('NTSC')) return SOURCES.NTSC_DVD
+        if (tokens.includes('PAL')) return SOURCES.PAL_DVD
+
+        return SOURCES.DVD
+    }
+
+    return SOURCES.BLURAY
 }
 
 function parseService(tokens: string[]): Service {
@@ -187,33 +196,21 @@ function parseService(tokens: string[]): Service {
 }
 
 function parseCut(name: string): Cut {
-    switch (true) {
-        case /super[.\s_-]*duper[.\s_-]*cut/i.test(name):
-            return 'Super Duper Cut'
-        case /director'?s[.\s_-]*cut/i.test(name):
-            return "Director's Cut"
-        case /special[.\s_-]*edition/i.test(name):
-            return 'Special Edition'
-        case /extended/i.test(name):
-            return 'Extended'
-        case /unrated/i.test(name):
-            return 'Unrated'
-        default:
-            return undefined
-    }
+    if (/super[.\s_-]*duper[.\s_-]*cut/i.test(name)) return 'Super Duper Cut'
+    if (/director'?s[.\s_-]*cut/i.test(name)) return "Director's Cut"
+    if (/special[.\s_-]*edition/i.test(name)) return 'Special Edition'
+    if (/extended/i.test(name)) return 'Extended'
+    if (/unrated/i.test(name)) return 'Unrated'
+
+    return undefined
 }
 
 function parseRatio(name: string): Ratio {
-    switch (true) {
-        case /\bIMAX\b/i.test(name):
-            return RATIOS.IMAX
-        case /open[.\s_-]*matte/i.test(name):
-            return RATIOS.OPEN_MATTE
-        case /\bMAR\b/.test(name):
-            return RATIOS.MAR
-        default:
-            return undefined
-    }
+    if (/\bIMAX\b/i.test(name)) return RATIOS.IMAX
+    if (/open[.\s_-]*matte/i.test(name)) return RATIOS.OPEN_MATTE
+    if (/\bMAR\b/.test(name)) return RATIOS.MAR
+
+    return undefined
 }
 
 function parseReleaseGroup(name: string) {

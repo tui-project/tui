@@ -19,7 +19,6 @@ export interface Metadata {
     repack?: number
     proper?: number
     rerip?: number
-    threeD?: boolean
     cut?: Cut
     ratio?: Ratio
     hybrid?: boolean
@@ -44,8 +43,13 @@ export type MediaType = (typeof MEDIA_TYPES)[keyof typeof MEDIA_TYPES]
 
 export const SOURCES = {
     WEB: 'Web',
-    BLURAY: 'BluRay',
     DVD: 'DVD',
+    NTSC_DVD: 'NTSC DVD',
+    PAL_DVD: 'PAL DVD',
+    HD_DVD: 'HDDVD',
+    BLURAY_3D: '3D BluRay',
+    BLURAY: 'BluRay',
+    UHD_BLURAY: 'UHD BluRay',
 } as const
 export type Source = (typeof SOURCES)[keyof typeof SOURCES]
 
@@ -300,6 +304,12 @@ export const VIDEO_CODECS = {
 } as const
 export type VideoCodec = (typeof VIDEO_CODECS)[keyof typeof VIDEO_CODECS]
 
+export const VIDEO_STANDARDS = {
+    NTSC: 'NTSC',
+    PAL: 'PAL',
+} as const
+export type VideoStandard = (typeof VIDEO_STANDARDS)[keyof typeof VIDEO_STANDARDS]
+
 export const AUDIO_CODECS = {
     DD_PLUS: 'DD+',
     DD: 'DD',
@@ -349,7 +359,6 @@ export const MetadataSchema = z
         repack: z.number().int().min(0),
         proper: z.number().int().min(0),
         rerip: z.number().int().min(0),
-        threeD: z.boolean(),
         cut: z.enum(CUTS).optional(),
         ratio: z.enum(RATIOS).optional(),
         hybrid: z.boolean(),

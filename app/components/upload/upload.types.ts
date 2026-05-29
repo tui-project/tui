@@ -19,7 +19,6 @@ export type Metadata = {
     repack: number
     proper: number
     rerip: number
-    threeD: boolean
     cut: string
     ratio: string
     hybrid: boolean

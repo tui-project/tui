@@ -7,7 +7,7 @@ import { parseMetadataFromName, type ParsedNameMetadata } from '../services/medi
 import { parseMetadataFromMediainfo, type ParsedMediainfoMetadata } from '../services/mediainfo'
 import { findByExternalID, findByTitle, findLocale, getDetails, getExternalIDs, ID_TYPES } from '../services/tmdb'
 import { isWithinAnyRoot, resolveMediaFilePath } from '../utils/file-system'
-import { MEDIA_TYPES, type Metadata } from '../model/metadata'
+import { MEDIA_TYPES, RESOLUTIONS, SOURCES, VIDEO_STANDARDS, type Metadata } from '../model/metadata'
 import { parseValidatedQuery } from '../utils/request-validator'
 import { findTvdbSpecial, findTvdbSpecialRange } from '../services/tvdb'
 
@@ -50,10 +50,11 @@ export default defineEventHandler(async (event) => {
 })
 
 async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameMetadata, metadataFromMediainfo: ParsedMediainfoMetadata): Promise<Metadata> {
+    const { videoStandard, frameRate, ...mediainfoFields } = metadataFromMediainfo
     const metadata: Metadata = {
         fileName,
         ...metadataFromFilename,
-        ...metadataFromMediainfo,
+        ...mediainfoFields,
     }
     metadata.mediaType = metadata.season === undefined ? 'movie' : 'tv'
 
@@ -140,6 +141,18 @@ async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameM
                 metadata.episode = match.episodeNumber
                 metadata.specialName = match.title
             }
+        }
+    }
+
+    if (metadata.source === SOURCES.BLURAY && metadata.resolution === RESOLUTIONS['2160p']) {
+        metadata.source = SOURCES.UHD_BLURAY
+    }
+
+    if (metadata.source === SOURCES.DVD) {
+        if (videoStandard === VIDEO_STANDARDS.PAL || frameRate === 25 || frameRate === 50) {
+            metadata.source = SOURCES.PAL_DVD
+        } else if (videoStandard === VIDEO_STANDARDS.NTSC || frameRate) {
+            metadata.source = SOURCES.NTSC_DVD
         }
     }
 

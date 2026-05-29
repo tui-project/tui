@@ -14,7 +14,6 @@ export type TrackerUploadMetadata = Omit<Metadata, 'fileName'> &
             | 'repack'
             | 'proper'
             | 'rerip'
-            | 'threeD'
             | 'hybrid'
             | 'hi10p'
             | 'resolution'
