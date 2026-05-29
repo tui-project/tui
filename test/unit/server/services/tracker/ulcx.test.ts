@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createUlcxTrackerService } from '../../../../../server/services/tracker/trackers/ulcx'
-import { MEDIA_TYPES, RATIOS, RESOLUTIONS, SOURCE_TYPES, SOURCES } from '../../../../../server/model/metadata'
+import { MEDIA_TYPES, RATIOS, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS } from '../../../../../server/model/metadata'
 import type { TrackerUploadMetadata } from '../../../../../server/services/tracker/tracker'
 
 vi.mock('../../../../../server/utils/logger', () => ({
@@ -26,7 +26,7 @@ const baseMetadata: TrackerUploadMetadata = {
     hybrid: false,
     hi10p: false,
     resolution: RESOLUTIONS['1080p'],
-    videoCodec: 'H.264',
+    videoCodec: VIDEO_CODECS.X264,
     audioCodec: 'DTS-HD MA',
     audioChannels: '5.1',
     tmdbId: 1,
@@ -48,7 +48,7 @@ describe('createUlcxTrackerService — getTitle', () => {
     })
 
     it('builds a basic movie title', async () => {
-        expect(await service.getTitle(baseMetadata)).toBe('Movie 2024 1080p BluRay DTS-HD MA 5.1 H.264-GROUP')
+        expect(await service.getTitle(baseMetadata)).toBe('Movie 2024 1080p BluRay DTS-HD MA 5.1 x264-GROUP')
     })
 
     it('includes TV season and episode when present', async () => {
@@ -377,6 +377,33 @@ describe('createUlcxTrackerService — getTitle', () => {
         const title = await service.getTitle({ ...baseMetadata, locale: 'KR' })
         expect(title).toContain('KR')
     })
+
+    it('returns HDTV for HDTV source', async () => {
+        const title = await service.getTitle({ ...baseMetadata, source: SOURCES.HDTV, sourceType: SOURCE_TYPES.HDTV, videoCodec: VIDEO_CODECS.H264 })
+        expect(title).toContain('HDTV')
+        expect(title).not.toContain('UHDTV')
+    })
+
+    it('returns UHDTV for UHDTV source', async () => {
+        const title = await service.getTitle({ ...baseMetadata, source: SOURCES.UHDTV, sourceType: SOURCE_TYPES.HDTV, videoCodec: VIDEO_CODECS.H265 })
+        expect(title).toContain('UHDTV')
+    })
+
+    it('omits video codec for DVD sources', async () => {
+        const title = await service.getTitle({ ...baseMetadata, source: SOURCES.NTSC_DVD })
+        expect(title).not.toContain(baseMetadata.videoCodec)
+    })
+
+    it('includes dub string for DVD sources', async () => {
+        const title = await service.getTitle({ ...baseMetadata, source: SOURCES.NTSC_DVD, language: ['en', 'fr'], originalLanguage: 'fr' })
+        expect(title).toContain('Dual-Audio')
+    })
+
+    it('omits video codec but includes dub for DVD sources in remux branch', async () => {
+        const title = await service.getTitle({ ...baseMetadata, source: SOURCES.NTSC_DVD, sourceType: SOURCE_TYPES.REMUX, language: ['en', 'fr'], originalLanguage: 'fr' })
+        expect(title).not.toContain(baseMetadata.videoCodec)
+        expect(title).toContain('Dual-Audio')
+    })
 })
 
 describe('createUlcxTrackerService — checkRules', () => {
@@ -480,5 +507,88 @@ describe('createUlcxTrackerService — checkRules', () => {
     it('returns no violation for HDDVD source', () => {
         const violations = service.checkRules({ ...baseMetadata, source: SOURCES.HD_DVD })
         expect(violations).toHaveLength(0)
+    })
+
+    describe('video codec rule', () => {
+        it('returns no violation for valid encode codec (x264)', () => {
+            expect(service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.ENCODE, videoCodec: VIDEO_CODECS.X264 })).toHaveLength(0)
+        })
+
+        it('returns no violation for valid encode codec (x265)', () => {
+            expect(service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.ENCODE, videoCodec: VIDEO_CODECS.X265 })).toHaveLength(0)
+        })
+
+        it('returns a violation for invalid encode codec (H.264)', () => {
+            const violations = service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.ENCODE, videoCodec: VIDEO_CODECS.H264 })
+            expect(violations).toHaveLength(1)
+            expect(violations[0]!.rule).toBe('invalid_video_codec')
+            expect(violations[0]!.message).toContain(VIDEO_CODECS.H264)
+        })
+
+        it('returns no violation for valid remux codec (AVC)', () => {
+            expect(service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX, videoCodec: VIDEO_CODECS.AVC })).toHaveLength(0)
+        })
+
+        it('returns no violation for valid remux codec (HEVC)', () => {
+            expect(service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX, videoCodec: VIDEO_CODECS.HEVC })).toHaveLength(0)
+        })
+
+        it('returns no violation for valid remux codec (MPEG-2)', () => {
+            expect(service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX, videoCodec: VIDEO_CODECS.MPEG_2 })).toHaveLength(0)
+        })
+
+        it('returns no violation for valid remux codec (VC-1)', () => {
+            expect(service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX, videoCodec: VIDEO_CODECS.VC_1 })).toHaveLength(0)
+        })
+
+        it('returns a violation for invalid remux codec (x264)', () => {
+            const violations = service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX, videoCodec: VIDEO_CODECS.X264 })
+            expect(violations).toHaveLength(1)
+            expect(violations[0]!.rule).toBe('invalid_video_codec')
+        })
+
+        it('returns no violation for valid WEB-DL codec (H.264)', () => {
+            expect(service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.WEB_DL, source: SOURCES.WEB, service: 'NF', videoCodec: VIDEO_CODECS.H264 })).toHaveLength(0)
+        })
+
+        it('returns no violation for valid WEB-DL codec (H.265)', () => {
+            expect(service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.WEB_DL, source: SOURCES.WEB, service: 'NF', videoCodec: VIDEO_CODECS.H265 })).toHaveLength(0)
+        })
+
+        it('returns no violation for valid WEB-DL codec (VP9)', () => {
+            expect(service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.WEB_DL, source: SOURCES.WEB, service: 'NF', videoCodec: VIDEO_CODECS.VP9 })).toHaveLength(0)
+        })
+
+        it('returns a violation for invalid WEB-DL codec (x265)', () => {
+            const violations = service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.WEB_DL, source: SOURCES.WEB, service: 'NF', videoCodec: VIDEO_CODECS.X265 })
+            expect(violations).toHaveLength(1)
+            expect(violations[0]!.rule).toBe('invalid_video_codec')
+        })
+
+        it('returns no violation for valid WEBRip codec (x265)', () => {
+            expect(service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.WEBRIP, source: SOURCES.WEB, service: 'NF', videoCodec: VIDEO_CODECS.X265 })).toHaveLength(0)
+        })
+
+        it('returns a violation for invalid WEBRip codec (H.264)', () => {
+            const violations = service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.WEBRIP, source: SOURCES.WEB, service: 'NF', videoCodec: VIDEO_CODECS.H264 })
+            expect(violations).toHaveLength(1)
+            expect(violations[0]!.rule).toBe('invalid_video_codec')
+        })
+
+        it('returns no violation for valid untouched HDTV codec (H.264)', () => {
+            expect(service.checkRules({ ...baseMetadata, source: SOURCES.HDTV, sourceType: SOURCE_TYPES.HDTV, videoCodec: VIDEO_CODECS.H264 })).toHaveLength(0)
+        })
+
+        it('returns a violation for invalid untouched HDTV codec (x264)', () => {
+            const violations = service.checkRules({ ...baseMetadata, source: SOURCES.HDTV, sourceType: SOURCE_TYPES.HDTV, videoCodec: VIDEO_CODECS.X264 })
+            expect(violations).toHaveLength(1)
+            expect(violations[0]!.rule).toBe('invalid_video_codec')
+        })
+
+        it('skips codec check for DVD sources', () => {
+            expect(service.checkRules({ ...baseMetadata, source: SOURCES.NTSC_DVD, videoCodec: VIDEO_CODECS.X264 })).toHaveLength(0)
+            expect(service.checkRules({ ...baseMetadata, source: SOURCES.PAL_DVD, videoCodec: VIDEO_CODECS.AVC })).toHaveLength(0)
+            expect(service.checkRules({ ...baseMetadata, source: SOURCES.HD_DVD, videoCodec: VIDEO_CODECS.H264 })).toHaveLength(0)
+        })
     })
 })

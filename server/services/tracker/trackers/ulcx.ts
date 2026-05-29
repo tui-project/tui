@@ -1,4 +1,4 @@
-import { MEDIA_TYPES, SOURCE_TYPES, SOURCES, type SourceType } from '../../../model/metadata'
+import { MEDIA_TYPES, SOURCE_TYPES, SOURCES, VIDEO_CODECS, type Source, type SourceType, type VideoCodec } from '../../../model/metadata'
 import { getTvdbSeries } from '../../tvdb'
 import type { RuleViolation, TrackerService, TrackerUploadMetadata } from '../tracker'
 import { createUnit3dService } from '../unit3d-tracker'
@@ -56,26 +56,6 @@ const BANNED_GROUPS = new Set(
     ].map((g) => g.toLowerCase())
 )
 
-function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
-    const violations: RuleViolation[] = []
-
-    if (metadata.releaseGroup && BANNED_GROUPS.has(metadata.releaseGroup.toLowerCase())) {
-        violations.push({
-            rule: 'banned_release_group',
-            message: `Release group "${metadata.releaseGroup}" is banned on ULCX.`,
-        })
-    }
-
-    if (metadata.source === SOURCES.DVD) {
-        violations.push({
-            rule: 'invalid_source',
-            message: 'Source "DVD" is not allowed on ULCX. Use NTSC DVD, PAL DVD, or HDDVD instead.',
-        })
-    }
-
-    return violations
-}
-
 export function createUlcxTrackerService(url: string, apiKey: string): TrackerService {
     return createUnit3dService(url, apiKey, buildTitle, checkRules)
 }
@@ -88,6 +68,7 @@ export function createUlcxTrackerService(url: string, apiKey: string): TrackerSe
  */
 async function buildTitle(metadata: TrackerUploadMetadata) {
     const isRemux = metadata.sourceType === SOURCE_TYPES.REMUX
+    const isDvd = isDvdSource(metadata.source)
     const parts: string[] = [metadata.title]
 
     if (metadata?.originalTitle !== metadata.title) parts.push(`AKA ${metadata.originalTitle}`)
@@ -105,14 +86,14 @@ async function buildTitle(metadata: TrackerUploadMetadata) {
     if (metadata.repack) parts.push(metadata.repack === 1 ? 'REPACK' : `REPACK${metadata.repack}`)
     if (metadata.proper) parts.push(metadata.proper === 1 ? 'PROPER' : `PROPER${metadata.proper}`)
     if (metadata.rerip) parts.push(metadata.rerip === 1 ? 'RERIP' : `RERIP${metadata.rerip}`)
-    if (!isDvdSource(metadata.source)) parts.push(metadata.resolution)
+    if (!isDvd) parts.push(metadata.resolution)
     parts.push(buildSourceString(metadata))
     parts.push(buildTypeString(metadata.sourceType))
 
     if (isRemux) {
         if (metadata.hi10p) parts.push('Hi10P')
         if (metadata.hdr && metadata.hdr.length > 0) parts.push(metadata.hdr.join(' '))
-        parts.push(metadata.videoCodec)
+        if (!isDvd) parts.push(metadata.videoCodec)
         parts.push(buildDubString(metadata.language, metadata.originalLanguage))
         parts.push(metadata.audioCodec)
         parts.push(metadata.audioChannels)
@@ -124,7 +105,7 @@ async function buildTitle(metadata: TrackerUploadMetadata) {
         if (metadata.audioMetadata) parts.push(metadata.audioMetadata)
         if (metadata.hi10p) parts.push('Hi10P')
         if (metadata.hdr && metadata.hdr.length > 0) parts.push(metadata.hdr.join(' '))
-        parts.push(metadata.videoCodec)
+        if (!isDvd) parts.push(metadata.videoCodec)
     }
 
     return `${parts.filter(Boolean).join(' ')}-${metadata.releaseGroup ?? 'NOGROUP'}`
@@ -144,7 +125,7 @@ function buildSeasonEpisodeString(season?: number, episode?: number, episodeEnd?
     return se
 }
 
-function isDvdSource(source: string): boolean {
+function isDvdSource(source: Source): boolean {
     return source === SOURCES.DVD || source === SOURCES.NTSC_DVD || source === SOURCES.PAL_DVD || source === SOURCES.HD_DVD
 }
 
@@ -158,12 +139,18 @@ function buildSourceString(metadata: TrackerUploadMetadata): string {
             return 'PAL DVD'
         case SOURCES.HD_DVD:
             return 'HDDVD'
+        case SOURCES.DVD:
+            return 'DVD'
         case SOURCES.BLURAY_3D:
             return '3D BluRay'
         case SOURCES.BLURAY:
             return 'BluRay'
         case SOURCES.UHD_BLURAY:
             return 'UHD BluRay'
+        case SOURCES.HDTV:
+            return 'HDTV'
+        case SOURCES.UHDTV:
+            return 'UHDTV'
         default:
             return ''
     }
@@ -187,4 +174,56 @@ function buildDubString(languages: string[], originalLanguage: string) {
     if (languages.length === 2 && languages.includes(originalLanguage)) return 'Dual-Audio'
     if (languages.length === 1 && languages.includes('en') && !languages.includes(originalLanguage)) return 'Dubbed'
     return ''
+}
+
+function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
+    const violations: RuleViolation[] = []
+
+    if (metadata.releaseGroup && BANNED_GROUPS.has(metadata.releaseGroup.toLowerCase())) {
+        violations.push({
+            rule: 'banned_release_group',
+            message: `Release group "${metadata.releaseGroup}" is banned.`,
+        })
+    }
+
+    if (metadata.source === SOURCES.DVD) {
+        violations.push({
+            rule: 'invalid_source',
+            message: 'Source "DVD" is not allowed. Use NTSC DVD, PAL DVD, or HDDVD instead.',
+        })
+    }
+
+    const isHdtvSource = metadata.source === SOURCES.HDTV || metadata.source === SOURCES.UHDTV
+
+    if (!isDvdSource(metadata.source) && metadata.sourceType === SOURCE_TYPES.REMUX) {
+        const allowed: VideoCodec[] = [VIDEO_CODECS.MPEG_2, VIDEO_CODECS.VC_1, VIDEO_CODECS.AVC, VIDEO_CODECS.HEVC]
+        if (!allowed.includes(metadata.videoCodec)) {
+            violations.push({
+                rule: 'invalid_video_codec',
+                message: `Video codec "${metadata.videoCodec}" is not allowed for Remuxes. Allowed: ${allowed.join(', ')}.`,
+            })
+        }
+    }
+
+    if (metadata.sourceType === SOURCE_TYPES.WEB_DL || (isHdtvSource && metadata.sourceType === SOURCE_TYPES.HDTV)) {
+        const allowed: VideoCodec[] = [VIDEO_CODECS.H264, VIDEO_CODECS.H265, VIDEO_CODECS.VP9, VIDEO_CODECS.MPEG_2]
+        if (!allowed.includes(metadata.videoCodec)) {
+            violations.push({
+                rule: 'invalid_video_codec',
+                message: `Video codec "${metadata.videoCodec}" is not allowed for WEB-DL and untouched HDTV. Allowed: ${allowed.join(', ')}.`,
+            })
+        }
+    }
+
+    if (!isDvdSource(metadata.source) && (metadata.sourceType === SOURCE_TYPES.ENCODE || metadata.sourceType === SOURCE_TYPES.WEBRIP)) {
+        const allowed: VideoCodec[] = [VIDEO_CODECS.X264, VIDEO_CODECS.X265]
+        if (!allowed.includes(metadata.videoCodec)) {
+            violations.push({
+                rule: 'invalid_video_codec',
+                message: `Video codec "${metadata.videoCodec}" is not allowed for Encodes and WEBRips. Allowed: ${allowed.join(', ')}.`,
+            })
+        }
+    }
+
+    return violations
 }
