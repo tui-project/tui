@@ -33,6 +33,8 @@ const sourceOptions: SelectOption[] = [
     { label: '3D BluRay', value: '3D BluRay' },
     { label: 'BluRay', value: 'BluRay' },
     { label: 'UHD BluRay', value: 'UHD BluRay' },
+    { label: 'HDTV', value: 'HDTV' },
+    { label: 'UHDTV', value: 'UHDTV' },
 ]
 
 const sourceTypeOptions: SelectOption[] = [

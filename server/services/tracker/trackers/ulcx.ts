@@ -152,8 +152,6 @@ function buildSourceString(metadata: TrackerUploadMetadata): string {
     switch (metadata.source) {
         case SOURCES.WEB:
             return metadata.service ?? ''
-        case SOURCES.DVD:
-            return 'DVD'
         case SOURCES.NTSC_DVD:
             return 'NTSC DVD'
         case SOURCES.PAL_DVD:

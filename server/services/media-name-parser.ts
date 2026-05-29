@@ -29,8 +29,8 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
     const { season, episode, episodeEnd, index, tokenEnd } = parseSeasonEpisode(nameWithoutExtension)
     const title = parseTitle(nameWithoutExtension, index, nameWithoutExtension !== name)
     const specialName = parseSpecialName(nameWithoutExtension, season, episode, tokenEnd)
-    const sourceType = parseSourceType(upperTokens)
-    const source = parseSource(upperTokens, sourceType)
+    const source = parseSource(upperTokens)
+    const sourceType = parseSourceType(upperTokens, source)
     const service = parseService(upperTokens)
     const cut = parseCut(nameWithoutExtension)
     const repack = parseRepackProper(upperTokens, 'REPACK')
@@ -140,24 +140,10 @@ function parseSpecialName(name: string, season: number | undefined, episode: num
     return raw || undefined
 }
 
-function parseSourceType(tokens: string[]): SourceType {
-    switch (true) {
-        case tokens.includes(SOURCE_TYPES.REMUX):
-            return SOURCE_TYPES.REMUX
-        case tokens.includes('WEBDL'):
-        case tokens.includes('WEB'):
-            return SOURCE_TYPES.WEB_DL
-        case tokens.includes(SOURCE_TYPES.WEBRIP):
-            return SOURCE_TYPES.WEBRIP
-        case tokens.includes(SOURCE_TYPES.HDTV):
-            return SOURCE_TYPES.HDTV
-        default:
-            return SOURCE_TYPES.ENCODE
-    }
-}
-
-function parseSource(tokens: string[], sourceType: SourceType): Source {
-    if (sourceType === SOURCE_TYPES.WEB_DL || sourceType === SOURCE_TYPES.WEBRIP) return SOURCES.WEB
+function parseSource(tokens: string[]): Source {
+    if (hasWeb(tokens)) return SOURCES.WEB
+    if (tokens.includes(SOURCES.UHDTV)) return SOURCES.UHDTV
+    if (tokens.includes(SOURCES.HDTV)) return SOURCES.HDTV
 
     const hasBluRay = tokens.includes('BLURAY')
     if (hasBluRay) {
@@ -177,6 +163,24 @@ function parseSource(tokens: string[], sourceType: SourceType): Source {
     }
 
     return SOURCES.BLURAY
+}
+
+function hasWeb(tokens: string[]): boolean {
+    return tokens.includes('WEBDL') || tokens.includes('WEB') || tokens.includes('WEBRIP')
+}
+
+function parseSourceType(tokens: string[], source: Source): SourceType {
+    if (source === SOURCES.HDTV || source === SOURCES.UHDTV) return SOURCE_TYPES.HDTV
+    if (tokens.includes(SOURCE_TYPES.REMUX)) return SOURCE_TYPES.REMUX
+    if (hasWeb(tokens)) {
+        if (tokens.includes(SOURCE_TYPES.WEBRIP)) {
+            return SOURCE_TYPES.WEBRIP
+        } else {
+            return SOURCE_TYPES.WEB_DL
+        }
+    }
+
+    return SOURCE_TYPES.ENCODE
 }
 
 function parseService(tokens: string[]): Service {

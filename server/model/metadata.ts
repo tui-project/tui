@@ -50,6 +50,8 @@ export const SOURCES = {
     BLURAY_3D: '3D BluRay',
     BLURAY: 'BluRay',
     UHD_BLURAY: 'UHD BluRay',
+    HDTV: 'HDTV',
+    UHDTV: 'UHDTV',
 } as const
 export type Source = (typeof SOURCES)[keyof typeof SOURCES]
 
