@@ -14,6 +14,7 @@ const { toastAddMock, navigateToMock } = vi.hoisted(() => ({
 const getSettingsMock = vi.fn()
 const uploadTorrentMock = vi.fn()
 const fetchTitleMock = vi.fn()
+const getViolationsMock = vi.fn()
 const settingsLoading = ref(false)
 const uploadLoading = ref(false)
 const uploadError = ref(false)
@@ -37,6 +38,14 @@ vi.mock('~/composables/useTrackerRequests', () => ({
 vi.mock('~/composables/useTrackerTitle', () => ({
     useTrackerTitle: () => ({
         getTitle: fetchTitleMock,
+        loading: ref(false),
+        error: ref(false),
+    }),
+}))
+
+vi.mock('~/composables/useTrackerRules', () => ({
+    useTrackerRules: () => ({
+        getViolations: getViolationsMock,
         loading: ref(false),
         error: ref(false),
     }),
@@ -88,6 +97,7 @@ describe('StepReview', () => {
         getSettingsMock.mockReset()
         uploadTorrentMock.mockReset()
         fetchTitleMock.mockReset()
+        getViolationsMock.mockReset()
         toastAddMock.mockReset()
         navigateToMock.mockReset()
         settingsLoading.value = false
@@ -100,6 +110,7 @@ describe('StepReview', () => {
             ],
         })
         fetchTitleMock.mockResolvedValue(DEFAULT_TITLE)
+        getViolationsMock.mockResolvedValue([])
     })
 
     it('renders a card per selected tracker with a server-generated title and anonymous checkbox', async () => {
@@ -213,6 +224,39 @@ describe('StepReview', () => {
         await waitFor(() => expect(fetchTitleMock).toHaveBeenCalledWith('ATH', expect.any(Object)))
     })
 
+    it('shows Title is required and disables submit when title is cleared', async () => {
+        const user = userEvent.setup()
+        await renderSuspended(StepReview, {
+            props: { selectedTrackers: ['ULCX'], metadata, sourcePath: '/media/movie.mkv' },
+        })
+
+        await waitFor(() => expect(screen.getByPlaceholderText('Title for ULCX')).toHaveProperty('value', DEFAULT_TITLE))
+        await user.clear(screen.getByPlaceholderText('Title for ULCX'))
+
+        await waitFor(() => expect(screen.getByText('Title is required')).toBeTruthy())
+        expect(screen.getByRole('button', { name: 'Submit Upload' })).toHaveProperty('disabled', true)
+    })
+
+    it('renders anonymous and mod-queue checkboxes for each tracker', async () => {
+        await renderSuspended(StepReview, {
+            props: { selectedTrackers: ['ULCX'], metadata, sourcePath: '/media/movie.mkv' },
+        })
+
+        await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Upload anonymously' })).toBeTruthy())
+        expect(screen.getByRole('checkbox', { name: 'Opt in to mod queue' })).toBeTruthy()
+    })
+
+    it('emits back when the Back button is clicked', async () => {
+        const user = userEvent.setup()
+        const { emitted } = await renderSuspended(StepReview, {
+            props: { selectedTrackers: ['ULCX'], metadata, sourcePath: '/media/movie.mkv' },
+        })
+
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Back' })).toBeTruthy())
+        await user.click(screen.getByRole('button', { name: 'Back' }))
+        expect(emitted()).toHaveProperty('back')
+    })
+
     it('shows loading skeletons while settings or titles are loading', async () => {
         settingsLoading.value = true
 
@@ -221,5 +265,83 @@ describe('StepReview', () => {
         })
 
         expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0)
+    })
+
+    describe('rule violations', () => {
+        it('shows violation message and skipped notice when tracker has an unaccepted violation', async () => {
+            getViolationsMock.mockResolvedValue([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }])
+
+            await renderSuspended(StepReview, {
+                props: { selectedTrackers: ['ULCX'], metadata, sourcePath: '/media/movie.mkv' },
+            })
+
+            await waitFor(() => expect(screen.getByText('Release group "YIFY" is banned on ULCX.')).toBeTruthy())
+            expect(screen.getByText('Rule violations detected — this tracker will be skipped')).toBeTruthy()
+            expect(screen.getByRole('checkbox', { name: 'I understand and want to upload to this tracker anyway' })).toBeTruthy()
+        })
+
+        it('hides the skipped notice after user accepts the violation', async () => {
+            const user = userEvent.setup()
+            getViolationsMock.mockResolvedValue([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }])
+
+            await renderSuspended(StepReview, {
+                props: { selectedTrackers: ['ULCX'], metadata, sourcePath: '/media/movie.mkv' },
+            })
+
+            await waitFor(() => expect(screen.getByText('Rule violations detected — this tracker will be skipped')).toBeTruthy())
+            await user.click(screen.getByRole('checkbox', { name: 'I understand and want to upload to this tracker anyway' }))
+            await waitFor(() => expect(screen.queryByText('Rule violations detected — this tracker will be skipped')).toBeNull())
+        })
+
+        it('submits only trackers without unaccepted violations', async () => {
+            const user = userEvent.setup()
+            uploadTorrentMock.mockResolvedValue(undefined)
+            getViolationsMock.mockImplementation((code: string) =>
+                code === 'ULCX' ? Promise.resolve([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }]) : Promise.resolve([])
+            )
+            fetchTitleMock.mockImplementation((code: string) => Promise.resolve(`Title for ${code}`))
+
+            await renderSuspended(StepReview, {
+                props: { selectedTrackers: ['ULCX', 'ATH'], metadata, sourcePath: '/media/movie.mkv' },
+            })
+
+            await waitFor(() => expect(screen.getByRole('button', { name: 'Submit Upload' })).toBeTruthy())
+            await user.click(screen.getByRole('button', { name: 'Submit Upload' }))
+
+            await waitFor(() => expect(uploadTorrentMock).toHaveBeenCalledWith('/media/movie.mkv', metadata, undefined, [expect.objectContaining({ code: 'ATH' })]))
+            expect(uploadTorrentMock).not.toHaveBeenCalledWith(
+                expect.anything(),
+                expect.anything(),
+                expect.anything(),
+                expect.arrayContaining([expect.objectContaining({ code: 'ULCX' })])
+            )
+        })
+
+        it('includes a tracker with violations once the user accepts', async () => {
+            const user = userEvent.setup()
+            uploadTorrentMock.mockResolvedValue(undefined)
+            getViolationsMock.mockResolvedValue([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }])
+
+            await renderSuspended(StepReview, {
+                props: { selectedTrackers: ['ULCX'], metadata, sourcePath: '/media/movie.mkv' },
+            })
+
+            await waitFor(() => expect(screen.getByRole('checkbox', { name: 'I understand and want to upload to this tracker anyway' })).toBeTruthy())
+            await user.click(screen.getByRole('checkbox', { name: 'I understand and want to upload to this tracker anyway' }))
+            await user.click(screen.getByRole('button', { name: 'Submit Upload' }))
+
+            await waitFor(() => expect(uploadTorrentMock).toHaveBeenCalledWith('/media/movie.mkv', metadata, undefined, [expect.objectContaining({ code: 'ULCX' })]))
+        })
+
+        it('disables Submit Upload when all trackers have unaccepted violations', async () => {
+            getViolationsMock.mockResolvedValue([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }])
+
+            await renderSuspended(StepReview, {
+                props: { selectedTrackers: ['ULCX'], metadata, sourcePath: '/media/movie.mkv' },
+            })
+
+            await waitFor(() => expect(screen.getByText('Rule violations detected — this tracker will be skipped')).toBeTruthy())
+            expect(screen.getByRole('button', { name: 'Submit Upload' })).toHaveProperty('disabled', true)
+        })
     })
 })

@@ -32,7 +32,13 @@ export interface TrackerUploadOptions {
     title: string
 }
 
+export interface RuleViolation {
+    rule: string
+    message: string
+}
+
 export interface TrackerService {
     getTitle(metadata: TrackerUploadMetadata): Promise<string>
     upload(torrentPath: string, metadata: TrackerUploadMetadata, description: string, mediainfoText: string, options: TrackerUploadOptions): Promise<string>
+    checkRules(metadata: TrackerUploadMetadata): RuleViolation[]
 }

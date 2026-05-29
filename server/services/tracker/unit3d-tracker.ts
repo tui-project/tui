@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { basename } from 'node:path'
 import { MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, type MediaType, type Resolution, type SourceType } from '../../model/metadata'
 import { logger } from '../../utils/logger'
-import type { TrackerService, TrackerUploadMetadata, TrackerUploadOptions } from './tracker'
+import type { RuleViolation, TrackerService, TrackerUploadMetadata, TrackerUploadOptions } from './tracker'
 
 const CATEGORY_IDS: Record<MediaType, number> = {
     [MEDIA_TYPES.MOVIE]: 1,
@@ -29,7 +29,12 @@ const RESOLUTION_IDS: Record<Resolution, number> = {
     [RESOLUTIONS['480i']]: 9,
 }
 
-export function createUnit3dService(url: string, apiKey: string, buildTitle?: (metadata: TrackerUploadMetadata) => Promise<string>): TrackerService {
+export function createUnit3dService(
+    url: string,
+    apiKey: string,
+    buildTitle?: (metadata: TrackerUploadMetadata) => Promise<string>,
+    checkRules?: (metadata: TrackerUploadMetadata) => RuleViolation[]
+): TrackerService {
     /*
      * refer to: https://hdinnovations.github.io/UNIT3D/torrent_api.html
      */
@@ -80,6 +85,7 @@ export function createUnit3dService(url: string, apiKey: string, buildTitle?: (m
 
     return {
         getTitle: buildTitle ?? (() => Promise.resolve('')),
+        checkRules: checkRules ?? (() => []),
         upload,
     }
 }

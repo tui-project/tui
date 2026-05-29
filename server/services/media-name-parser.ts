@@ -228,10 +228,16 @@ function parseTitle(name: string, seasonEpisodeIndex: number, isFileName: boolea
     const rawTitle = beforeGroup.slice(0, cutIndex)
 
     if (isFileName) {
-        return rawTitle.replace(/[._]+/g, ' ').replace(/\s*\(\d{4}\)\s*$/, '').trim()
+        return rawTitle
+            .replace(/[._]+/g, ' ')
+            .replace(/\s*\(\d{4}\)\s*$/, '')
+            .trim()
     }
 
-    return rawTitle.replace(/[._-]+/g, ' ').replace(/\s*\(\d{4}\)\s*$/, '').trim()
+    return rawTitle
+        .replace(/[._-]+/g, ' ')
+        .replace(/\s*\(\d{4}\)\s*$/, '')
+        .trim()
 }
 
 function findFileMetadataIndex(name: string) {

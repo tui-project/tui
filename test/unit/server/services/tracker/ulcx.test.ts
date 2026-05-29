@@ -360,3 +360,85 @@ describe('createUlcxTrackerService — getTitle', () => {
         expect(title).toContain('KR')
     })
 })
+
+describe('createUlcxTrackerService — checkRules', () => {
+    const service = createUlcxTrackerService('https://upload.cx', 'apikey')
+
+    it('returns a violation for a banned release group', () => {
+        const violations = service.checkRules({ ...baseMetadata, releaseGroup: 'YIFY' })
+        expect(violations).toHaveLength(1)
+        expect(violations[0]!.rule).toBe('banned_release_group')
+        expect(violations[0]!.message).toContain('YIFY')
+    })
+
+    it('returns a violation for every banned group', () => {
+        const bannedGroups = [
+            '4K4U',
+            'Alcaide_Kira',
+            'AROMA',
+            'd3g',
+            'EDGE2020',
+            'EMBER',
+            'FGT',
+            'FnP',
+            'FRDS',
+            'Grym',
+            'HDT',
+            'Hi10',
+            'iAHD',
+            'INFINITY',
+            'ION10',
+            'iVy',
+            'Judas',
+            'LAMA',
+            'MeGusta',
+            'NAHOM',
+            'Niblets',
+            'nikt0',
+            'NuBz',
+            'OFT',
+            'PHOCiS',
+            'QxR',
+            'R&H',
+            'Ralphy',
+            'RARBG',
+            'seedpool',
+            'Sicario',
+            'SM737',
+            'SPDVD',
+            'SPx',
+            'SWTYBLZ',
+            'TAoE',
+            'TGx',
+            'Tigole',
+            'TSP',
+            'TSPxL',
+            'VXT',
+            'Vyndros',
+            'Will1869',
+            'x0r',
+            'YIFY',
+        ]
+        for (const group of bannedGroups) {
+            const violations = service.checkRules({ ...baseMetadata, releaseGroup: group })
+            expect(violations, `expected violation for group: ${group}`).toHaveLength(1)
+            expect(violations[0]!.rule).toBe('banned_release_group')
+        }
+    })
+
+    it('matches banned groups case-insensitively', () => {
+        expect(service.checkRules({ ...baseMetadata, releaseGroup: 'yify' })).toHaveLength(1)
+        expect(service.checkRules({ ...baseMetadata, releaseGroup: 'Yify' })).toHaveLength(1)
+        expect(service.checkRules({ ...baseMetadata, releaseGroup: 'YIFY' })).toHaveLength(1)
+    })
+
+    it('returns no violations for an allowed release group', () => {
+        const violations = service.checkRules({ ...baseMetadata, releaseGroup: 'BHDStudio' })
+        expect(violations).toHaveLength(0)
+    })
+
+    it('returns no violations when releaseGroup is absent', () => {
+        const violations = service.checkRules({ ...baseMetadata, releaseGroup: undefined })
+        expect(violations).toHaveLength(0)
+    })
+})

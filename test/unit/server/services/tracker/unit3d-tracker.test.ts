@@ -38,6 +38,21 @@ beforeEach(() => {
     readFileMock.mockResolvedValue(Buffer.from('torrent-data') as never)
 })
 
+describe('createUnit3dService — checkRules', () => {
+    it('returns empty array when no checkRules override is provided', () => {
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        expect(service.checkRules(baseMetadata)).toEqual([])
+    })
+
+    it('uses a custom checkRules function when provided', () => {
+        const customCheck = vi.fn().mockReturnValue([{ rule: 'test', message: 'Test violation' }])
+        const service = createUnit3dService('https://tracker.example.com', 'apikey', undefined, customCheck)
+        const result = service.checkRules(baseMetadata)
+        expect(result).toEqual([{ rule: 'test', message: 'Test violation' }])
+        expect(customCheck).toHaveBeenCalledWith(baseMetadata)
+    })
+})
+
 describe('createUnit3dService — getTitle', () => {
     it('returns empty string when no buildTitle is provided', async () => {
         const service = createUnit3dService('https://tracker.example.com', 'apikey')

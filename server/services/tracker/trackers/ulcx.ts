@@ -1,10 +1,76 @@
 import { MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, SOURCES, type SourceType } from '../../../model/metadata'
 import { getTvdbSeries } from '../../tvdb'
-import type { TrackerService, TrackerUploadMetadata } from '../tracker'
+import type { RuleViolation, TrackerService, TrackerUploadMetadata } from '../tracker'
 import { createUnit3dService } from '../unit3d-tracker'
 
+/**
+ * Refer to: https://upload.cx/wikis/6
+ */
+const BANNED_GROUPS = new Set(
+    [
+        '4K4U',
+        'Alcaide_Kira',
+        'AROMA',
+        'd3g',
+        'EDGE2020',
+        'EMBER',
+        'FGT',
+        'FnP',
+        'FRDS',
+        'Grym',
+        'HDT',
+        'Hi10',
+        'iAHD',
+        'INFINITY',
+        'ION10',
+        'iVy',
+        'Judas',
+        'LAMA',
+        'MeGusta',
+        'NAHOM',
+        'Niblets',
+        'nikt0',
+        'NuBz',
+        'OFT',
+        'PHOCiS',
+        'QxR',
+        'R&H',
+        'Ralphy',
+        'RARBG',
+        'seedpool',
+        'Sicario',
+        'SM737',
+        'SPDVD',
+        'SPx',
+        'SWTYBLZ',
+        'TAoE',
+        'TGx',
+        'Tigole',
+        'TSP',
+        'TSPxL',
+        'VXT',
+        'Vyndros',
+        'Will1869',
+        'x0r',
+        'YIFY',
+    ].map((g) => g.toLowerCase())
+)
+
+function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
+    const violations: RuleViolation[] = []
+
+    if (metadata.releaseGroup && BANNED_GROUPS.has(metadata.releaseGroup.toLowerCase())) {
+        violations.push({
+            rule: 'banned_release_group',
+            message: `Release group "${metadata.releaseGroup}" is banned on ULCX.`,
+        })
+    }
+
+    return violations
+}
+
 export function createUlcxTrackerService(url: string, apiKey: string): TrackerService {
-    return createUnit3dService(url, apiKey, buildTitle)
+    return createUnit3dService(url, apiKey, buildTitle, checkRules)
 }
 
 /**
