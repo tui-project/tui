@@ -96,7 +96,7 @@ function buildRequest(overrides: Partial<Record<string, unknown>> = {}) {
             service: undefined,
             repack: 0,
             proper: 0,
-            rerip: false,
+            rerip: 0,
             threeD: false,
             cut: undefined,
             ratio: undefined,

@@ -97,7 +97,7 @@ async function buildTitle(metadata: TrackerUploadMetadata) {
     if (metadata.hybrid && metadata.sourceType !== SOURCE_TYPES.WEB_DL) parts.push('Hybrid')
     if (metadata.repack) parts.push(metadata.repack === 1 ? 'REPACK' : `REPACK${metadata.repack}`)
     if (metadata.proper) parts.push(metadata.proper === 1 ? 'PROPER' : `PROPER${metadata.proper}`)
-    if (metadata.rerip) parts.push('RERip')
+    if (metadata.rerip) parts.push(metadata.rerip === 1 ? 'RERIP' : `RERIP${metadata.rerip}`)
     if (metadata.threeD) parts.push('3D')
     if (metadata.source !== SOURCES.DVD) parts.push(metadata.resolution)
     parts.push(buildSourceString(metadata))

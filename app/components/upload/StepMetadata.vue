@@ -361,7 +361,7 @@ const schema = z
         service: z.string(),
         repack: z.number(),
         proper: z.number(),
-        rerip: z.boolean(),
+        rerip: z.number(),
         threeD: z.boolean(),
         cut: z.string(),
         ratio: z.string(),
@@ -406,7 +406,7 @@ const state = reactive<Metadata>({
     service: '',
     repack: 0,
     proper: 0,
-    rerip: false,
+    rerip: 0,
     threeD: false,
     cut: '',
     ratio: '',
@@ -662,7 +662,17 @@ function onSubmit(event: FormSubmitEvent<Schema>) {
                                     />
                                     <UInput v-if="state.proper > 0" v-model.number="state.proper" type="number" size="sm" :min="1" class="w-14" aria-label="Proper number" />
                                 </div>
-                                <UCheckbox v-model="state.rerip" size="xl" label="RERip" color="neutral" aria-label="RERip" />
+                                <div class="flex items-center gap-1.5">
+                                    <UCheckbox
+                                        :model-value="state.rerip > 0"
+                                        size="xl"
+                                        label="ReRip"
+                                        color="neutral"
+                                        aria-label="ReRip"
+                                        @update:model-value="(v) => (state.rerip = v ? 1 : 0)"
+                                    />
+                                    <UInput v-if="state.rerip > 0" v-model.number="state.rerip" type="number" size="sm" :min="1" class="w-14" aria-label="ReRip number" />
+                                </div>
                                 <UCheckbox v-model="state.threeD" size="xl" label="3D" color="neutral" aria-label="3D" />
                                 <UCheckbox v-model="state.hybrid" size="xl" label="Hybrid" color="neutral" aria-label="Hybrid" />
                                 <UCheckbox

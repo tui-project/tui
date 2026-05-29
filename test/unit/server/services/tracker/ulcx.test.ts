@@ -22,7 +22,7 @@ const baseMetadata: TrackerUploadMetadata = {
     source: SOURCES.BLURAY,
     repack: false,
     proper: false,
-    rerip: false,
+    rerip: 0,
     threeD: false,
     hybrid: false,
     hi10p: false,
@@ -256,14 +256,20 @@ describe('createUlcxTrackerService — getTitle', () => {
         expect(title).toContain(String(baseMetadata.year))
     })
 
-    it('includes RERip flag', async () => {
-        const title = await service.getTitle({ ...baseMetadata, rerip: true })
-        expect(title).toContain('RERip')
+    it('includes RERIP flag', async () => {
+        const title = await service.getTitle({ ...baseMetadata, rerip: 1 })
+        expect(title).toContain('RERIP')
+        expect(title).not.toContain('RERIP2')
     })
 
-    it('omits RERip when false', async () => {
-        const title = await service.getTitle({ ...baseMetadata, rerip: false })
-        expect(title).not.toContain('RERip')
+    it('includes RERIP2 for second rerip', async () => {
+        const title = await service.getTitle({ ...baseMetadata, rerip: 2 })
+        expect(title).toContain('RERIP2')
+    })
+
+    it('omits RERIP when 0', async () => {
+        const title = await service.getTitle({ ...baseMetadata, rerip: 0 })
+        expect(title).not.toContain('RERIP')
     })
 
     it('includes IMAX ratio', async () => {

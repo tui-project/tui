@@ -72,7 +72,7 @@ const metadata: Metadata = {
     service: '',
     repack: 0,
     proper: 0,
-    rerip: false,
+    rerip: 0,
     threeD: false,
     cut: '',
     ratio: '',

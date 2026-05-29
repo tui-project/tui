@@ -32,7 +32,7 @@ function createMetadata(overrides: Partial<Metadata> = {}): Metadata {
         service: 'NF',
         repack: 1,
         proper: 1,
-        rerip: false,
+        rerip: 0,
         threeD: false,
         cut: 'Extened',
         ratio: '',
@@ -395,8 +395,8 @@ describe('StepMetadata', () => {
         expect(screen.queryByRole('checkbox', { name: 'Hi10P' })).toBeNull()
     })
 
-    it('shows RERip and 3D checkboxes', async () => {
-        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ rerip: true, threeD: true })))
+    it('shows ReRip and 3D checkboxes', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ rerip: 1, threeD: true })))
 
         await renderSuspended(StepMetadata, {
             props: { selectedPath },
@@ -404,7 +404,7 @@ describe('StepMetadata', () => {
 
         await screen.findByDisplayValue('Dune')
 
-        expect(screen.getByRole('checkbox', { name: 'RERip' }).getAttribute('data-state')).toBe('checked')
+        expect(screen.getByRole('checkbox', { name: 'ReRip' }).getAttribute('data-state')).toBe('checked')
         expect(screen.getByRole('checkbox', { name: '3D' }).getAttribute('data-state')).toBe('checked')
     })
 
@@ -794,7 +794,7 @@ describe('StepMetadata', () => {
     it('toggles rerip and 3D checkboxes', async () => {
         const user = userEvent.setup()
 
-        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ rerip: false, threeD: false })))
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ rerip: 0, threeD: false })))
 
         await renderSuspended(StepMetadata, {
             props: { selectedPath },
@@ -802,7 +802,7 @@ describe('StepMetadata', () => {
 
         await screen.findByDisplayValue('Dune')
 
-        const reripCheckbox = screen.getByRole('checkbox', { name: 'RERip' })
+        const reripCheckbox = screen.getByRole('checkbox', { name: 'ReRip' })
         const threeDCheckbox = screen.getByRole('checkbox', { name: '3D' })
 
         expect(reripCheckbox.getAttribute('data-state')).toBe('unchecked')
@@ -812,7 +812,7 @@ describe('StepMetadata', () => {
         await user.click(threeDCheckbox)
 
         await waitFor(() => {
-            expect(screen.getByRole('checkbox', { name: 'RERip' }).getAttribute('data-state')).toBe('checked')
+            expect(screen.getByRole('checkbox', { name: 'ReRip' }).getAttribute('data-state')).toBe('checked')
             expect(screen.getByRole('checkbox', { name: '3D' }).getAttribute('data-state')).toBe('checked')
         })
     })

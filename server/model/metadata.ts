@@ -18,7 +18,7 @@ export interface Metadata {
     service?: Service
     repack?: number
     proper?: number
-    rerip?: boolean
+    rerip?: number
     threeD?: boolean
     cut?: Cut
     ratio?: Ratio
@@ -273,6 +273,7 @@ export const CUTS = {
     SPECIAL_EDITION: 'Special Edition',
     EXTENDED: 'Extended',
     UNRATED: 'Unrated',
+    UNCUT: 'Uncut',
 } as const
 export type Cut = (typeof CUTS)[keyof typeof CUTS] | undefined
 
@@ -347,7 +348,7 @@ export const MetadataSchema = z
         service: z.enum(SERVICES).optional(),
         repack: z.number().int().min(0),
         proper: z.number().int().min(0),
-        rerip: z.boolean(),
+        rerip: z.number().int().min(0),
         threeD: z.boolean(),
         cut: z.enum(CUTS).optional(),
         ratio: z.enum(RATIOS).optional(),

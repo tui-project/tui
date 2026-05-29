@@ -23,7 +23,7 @@ const baseMetadata: TrackerUploadMetadata = {
     source: SOURCES.BLURAY,
     repack: 0,
     proper: 0,
-    rerip: false,
+    rerip: 0,
     threeD: false,
     hybrid: false,
     resolution: RESOLUTIONS['1080p'],

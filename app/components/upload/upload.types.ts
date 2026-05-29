@@ -18,7 +18,7 @@ export type Metadata = {
     service: string
     repack: number
     proper: number
-    rerip: boolean
+    rerip: number
     threeD: boolean
     cut: string
     ratio: string

@@ -14,7 +14,7 @@ export interface ParsedNameMetadata {
     ratio: Ratio
     repack: number
     proper: number
-    rerip: boolean
+    rerip: number
     threeD: boolean
     hybrid: boolean
     releaseGroup?: string
@@ -36,7 +36,7 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
     const cut = parseCut(nameWithoutExtension)
     const repack = parseRepackProper(upperTokens, 'REPACK')
     const proper = parseRepackProper(upperTokens, 'PROPER')
-    const rerip = upperTokens.some((token) => token === 'RERIP')
+    const rerip = parseRepackProper(upperTokens, 'RERIP')
     const threeD = upperTokens.some((token) => token === '3D')
     const hybrid = upperTokens.some((token) => token === 'HYBRID')
     const ratio = parseRatio(nameWithoutExtension)
