@@ -1,4 +1,4 @@
-import { MEDIA_TYPES, SOURCE_TYPES, SOURCES, VIDEO_CODECS, type Source, type SourceType, type VideoCodec } from '../../../model/metadata'
+import { MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS, type Resolution, type Source, type SourceType, type VideoCodec } from '../../../model/metadata'
 import { getTvdbSeries } from '../../tvdb'
 import type { RuleViolation, TrackerService, TrackerUploadMetadata } from '../tracker'
 import { createUnit3dService } from '../unit3d-tracker'
@@ -223,6 +223,42 @@ function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
                 message: `Video codec "${metadata.videoCodec}" is not allowed for Encodes and WEBRips. Allowed: ${allowed.join(', ')}.`,
             })
         }
+    }
+
+    if (metadata.sourceType === SOURCE_TYPES.ENCODE) {
+        const minimumResolutions: Resolution[] = [RESOLUTIONS['720p'], RESOLUTIONS['1080i'], RESOLUTIONS['1080p'], RESOLUTIONS['2160p'], RESOLUTIONS['4320p']]
+        if (!minimumResolutions.includes(metadata.resolution)) {
+            violations.push({
+                rule: 'resolution_too_low',
+                message: `Encodes must be at least 720p. "${metadata.resolution}" is not allowed.`,
+            })
+        }
+    }
+
+    const isForeignContent = metadata.originalLanguage !== 'en'
+    const hasEnglishAudio = metadata.language.includes('en')
+
+    if (isForeignContent) {
+        if (!hasEnglishAudio && !metadata.hasEnglishSubs) {
+            violations.push({
+                rule: 'missing_english',
+                message: 'Foreign-language content must include at least English subtitles or an English audio dub.',
+            })
+        }
+
+        if (!metadata.language.includes(metadata.originalLanguage)) {
+            violations.push({
+                rule: 'missing_original_language_audio',
+                message: 'Foreign-language content should include the original language audio track.',
+            })
+        }
+    }
+
+    if (!hasEnglishAudio && !metadata.language.includes(metadata.originalLanguage)) {
+        violations.push({
+            rule: 'missing_required_audio',
+            message: 'Audio tracks must include at least the original language or an English dub.',
+        })
     }
 
     return violations

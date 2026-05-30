@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createUlcxTrackerService } from '../../../../../server/services/tracker/trackers/ulcx'
-import { MEDIA_TYPES, RATIOS, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS } from '../../../../../server/model/metadata'
+import { AUDIO_CODECS, AUDIO_CHANNELS, MEDIA_TYPES, RATIOS, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS } from '../../../../../server/model/metadata'
 import type { TrackerUploadMetadata } from '../../../../../server/services/tracker/tracker'
 
 vi.mock('../../../../../server/utils/logger', () => ({
@@ -16,8 +16,8 @@ const baseMetadata: TrackerUploadMetadata = {
     releaseGroup: 'GROUP',
     mediaType: MEDIA_TYPES.MOVIE,
     year: 2024,
-    language: ['English'],
-    originalLanguage: 'English',
+    language: ['en'],
+    originalLanguage: 'en',
     sourceType: SOURCE_TYPES.ENCODE,
     source: SOURCES.BLURAY,
     repack: false,
@@ -27,8 +27,8 @@ const baseMetadata: TrackerUploadMetadata = {
     hi10p: false,
     resolution: RESOLUTIONS['1080p'],
     videoCodec: VIDEO_CODECS.X264,
-    audioCodec: 'DTS-HD MA',
-    audioChannels: '5.1',
+    audioCodec: AUDIO_CODECS.DTS_HD_MA,
+    audioChannels: AUDIO_CHANNELS['5.1'],
     tmdbId: 1,
     imdbId: 'tt1234567',
 }
@@ -589,6 +589,111 @@ describe('createUlcxTrackerService — checkRules', () => {
             expect(service.checkRules({ ...baseMetadata, source: SOURCES.NTSC_DVD, videoCodec: VIDEO_CODECS.X264 })).toHaveLength(0)
             expect(service.checkRules({ ...baseMetadata, source: SOURCES.PAL_DVD, videoCodec: VIDEO_CODECS.AVC })).toHaveLength(0)
             expect(service.checkRules({ ...baseMetadata, source: SOURCES.HD_DVD, videoCodec: VIDEO_CODECS.H264 })).toHaveLength(0)
+        })
+    })
+
+    describe('resolution rule (encodes only)', () => {
+        it('returns no violation for 720p encode', () => {
+            expect(service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.ENCODE, resolution: RESOLUTIONS['720p'] })).toHaveLength(0)
+        })
+
+        it('returns no violation for 1080p encode', () => {
+            expect(service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.ENCODE, resolution: RESOLUTIONS['1080p'] })).toHaveLength(0)
+        })
+
+        it('returns no violation for 2160p encode', () => {
+            expect(service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.ENCODE, resolution: RESOLUTIONS['2160p'] })).toHaveLength(0)
+        })
+
+        it('returns a violation for 480p encode', () => {
+            const violations = service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.ENCODE, resolution: RESOLUTIONS['480p'] })
+            expect(violations.some((v) => v.rule === 'resolution_too_low')).toBe(true)
+        })
+
+        it('returns a violation for 576p encode', () => {
+            const violations = service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.ENCODE, resolution: RESOLUTIONS['576p'] })
+            expect(violations.some((v) => v.rule === 'resolution_too_low')).toBe(true)
+        })
+
+        it('returns a violation for 480i encode', () => {
+            const violations = service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.ENCODE, resolution: RESOLUTIONS['480i'] })
+            expect(violations.some((v) => v.rule === 'resolution_too_low')).toBe(true)
+        })
+
+        it('does not apply the resolution rule to remux', () => {
+            const violations = service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX, videoCodec: VIDEO_CODECS.AVC, resolution: RESOLUTIONS['480p'] })
+            expect(violations.every((v) => v.rule !== 'resolution_too_low')).toBe(true)
+        })
+
+        it('does not apply the resolution rule to WEB-DL', () => {
+            const violations = service.checkRules({
+                ...baseMetadata,
+                sourceType: SOURCE_TYPES.WEB_DL,
+                source: SOURCES.WEB,
+                service: 'NF',
+                videoCodec: VIDEO_CODECS.H264,
+                resolution: RESOLUTIONS['480p'],
+            })
+            expect(violations.every((v) => v.rule !== 'resolution_too_low')).toBe(true)
+        })
+    })
+
+    describe('foreign content rules', () => {
+        const foreignBase: TrackerUploadMetadata = { ...baseMetadata, originalLanguage: 'fr', language: ['fr'] }
+
+        it('returns no violation for English content with English audio', () => {
+            expect(service.checkRules({ ...baseMetadata, originalLanguage: 'en', language: ['en'] })).toHaveLength(0)
+        })
+
+        it('returns a violation for foreign content with no English audio and no English subs', () => {
+            const violations = service.checkRules({ ...foreignBase, hasEnglishSubs: false })
+            expect(violations.some((v) => v.rule === 'missing_english')).toBe(true)
+        })
+
+        it('returns no missing_english violation for foreign content with English subs', () => {
+            const violations = service.checkRules({ ...foreignBase, hasEnglishSubs: true })
+            expect(violations.every((v) => v.rule !== 'missing_english')).toBe(true)
+        })
+
+        it('returns no missing_english violation for foreign content with English audio dub', () => {
+            const violations = service.checkRules({ ...foreignBase, language: ['fr', 'en'], hasEnglishSubs: false })
+            expect(violations.every((v) => v.rule !== 'missing_english')).toBe(true)
+        })
+
+        it('returns a missing_original_language_audio violation when foreign content lacks original language audio', () => {
+            const violations = service.checkRules({ ...foreignBase, language: ['en'], hasEnglishSubs: true })
+            expect(violations.some((v) => v.rule === 'missing_original_language_audio')).toBe(true)
+        })
+
+        it('returns no missing_original_language_audio violation when foreign content includes original language audio', () => {
+            const violations = service.checkRules({ ...foreignBase, language: ['fr', 'en'], hasEnglishSubs: false })
+            expect(violations.every((v) => v.rule !== 'missing_original_language_audio')).toBe(true)
+        })
+
+        it('does not flag missing_original_language_audio for English content', () => {
+            const violations = service.checkRules({ ...baseMetadata, originalLanguage: 'en', language: ['en'] })
+            expect(violations.every((v) => v.rule !== 'missing_original_language_audio')).toBe(true)
+        })
+    })
+
+    describe('required audio track rule', () => {
+        it('returns no violation when English audio is present', () => {
+            expect(service.checkRules({ ...baseMetadata, language: ['en'], originalLanguage: 'en' })).toHaveLength(0)
+        })
+
+        it('returns no violation when original language audio is present for foreign content', () => {
+            const violations = service.checkRules({ ...baseMetadata, language: ['fr'], originalLanguage: 'fr' })
+            expect(violations.every((v) => v.rule !== 'missing_required_audio')).toBe(true)
+        })
+
+        it('returns a violation when audio has neither English nor original language', () => {
+            const violations = service.checkRules({ ...baseMetadata, language: ['de'], originalLanguage: 'fr', hasEnglishSubs: true })
+            expect(violations.some((v) => v.rule === 'missing_required_audio')).toBe(true)
+        })
+
+        it('returns no violation when both English and original language audio are present', () => {
+            const violations = service.checkRules({ ...baseMetadata, language: ['fr', 'en'], originalLanguage: 'fr' })
+            expect(violations.every((v) => v.rule !== 'missing_required_audio')).toBe(true)
         })
     })
 })
