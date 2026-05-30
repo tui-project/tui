@@ -77,6 +77,7 @@ const metadata: Metadata = {
     ratio: '',
     hybrid: false,
     hi10p: false,
+    hasEnglishSubs: false,
     resolution: '1080p',
     hdr: [],
     videoCodec: 'H.264',

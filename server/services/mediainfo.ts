@@ -42,6 +42,7 @@ export interface ParsedMediainfoMetadata {
     audioCodec?: AudioCodec
     audioChannels?: AudioChannels
     audioMetadata: AudioMetadata
+    hasEnglishSubs: boolean
     tmdbId?: number
     imdbId?: string
     tvdbId?: number
@@ -88,6 +89,7 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
     const audioMetadata = parseAudioMetadata(audioFormatCommercial, audioTitle)
 
     const language = parseAudioLanguages(tracks)
+    const hasEnglishSubs = parseHasEnglishSubs(tracks)
 
     const extra = getTrackValue(general, 'extra')
     const extraTrack = extra && typeof extra === 'object' ? (extra as MediaInfoTrack) : undefined
@@ -105,6 +107,7 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
         audioCodec,
         audioChannels,
         audioMetadata,
+        hasEnglishSubs,
         language,
         tmdbId,
         imdbId,
@@ -126,6 +129,7 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
         hasTmdbId: parsedMetadata.tmdbId !== undefined,
         hasImdbId: Boolean(parsedMetadata.imdbId),
         hasTvdbId: parsedMetadata.tvdbId !== undefined,
+        hasEnglishSubs: parsedMetadata.hasEnglishSubs,
     })
 
     return parsedMetadata
@@ -335,6 +339,14 @@ function parseAudioLanguages(tracks: MediaInfoTrack[]): string[] {
     }
 
     return [...unique].sort((a, b) => a.localeCompare(b))
+}
+
+function parseHasEnglishSubs(tracks: MediaInfoTrack[]): boolean {
+    return tracks.some((track) => {
+        if (!isTrackType(track, 'Text')) return false
+        const language = toStringValue(track, 'Language').trim().toLowerCase()
+        return language === 'en' || language.startsWith('en-')
+    })
 }
 
 function normalizeAudioLanguage(value: string) {

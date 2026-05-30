@@ -31,6 +31,7 @@ describe('mediainfo service', () => {
             audioCodec: undefined,
             audioChannels: undefined,
             audioMetadata: undefined,
+            hasEnglishSubs: false,
             tmdbId: undefined,
             imdbId: '',
             tvdbId: undefined,
@@ -780,6 +781,57 @@ describe('mediainfo service', () => {
                 },
             },
             expected: { frameRate: undefined },
+        },
+        {
+            name: 'hasEnglishSubs true when Text track has language en',
+            sourceType: 'WEB-DL' as const,
+            result: {
+                media: {
+                    track: [
+                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
+                        { '@type': 'Text', Language: 'en' },
+                    ],
+                },
+            },
+            expected: { hasEnglishSubs: true },
+        },
+        {
+            name: 'hasEnglishSubs true when Text track has language en-US',
+            sourceType: 'WEB-DL' as const,
+            result: {
+                media: {
+                    track: [
+                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'ja', Title: 'Main' },
+                        { '@type': 'Text', Language: 'en-US' },
+                        { '@type': 'Text', Language: 'fr' },
+                    ],
+                },
+            },
+            expected: { hasEnglishSubs: true },
+        },
+        {
+            name: 'hasEnglishSubs false when no Text tracks exist',
+            sourceType: 'WEB-DL' as const,
+            result: {
+                media: {
+                    track: [{ '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' }],
+                },
+            },
+            expected: { hasEnglishSubs: false },
+        },
+        {
+            name: 'hasEnglishSubs false when Text tracks exist but none are English',
+            sourceType: 'WEB-DL' as const,
+            result: {
+                media: {
+                    track: [
+                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'ja', Title: 'Main' },
+                        { '@type': 'Text', Language: 'fr' },
+                        { '@type': 'Text', Language: 'de' },
+                    ],
+                },
+            },
+            expected: { hasEnglishSubs: false },
         },
     ])('parses mediainfo metadata across branches: $name', async ({ sourceType, result, expected }) => {
         const { parseMetadataFromMediainfo } = await loadService()

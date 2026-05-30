@@ -29,6 +29,7 @@ export interface Metadata {
     audioCodec?: AudioCodec
     audioChannels?: AudioChannels
     audioMetadata?: AudioMetadata
+    hasEnglishSubs?: boolean
     tmdbId?: number
     imdbId?: string
     tvdbId?: number
@@ -371,6 +372,7 @@ export const MetadataSchema = z
         audioCodec: z.enum(AUDIO_CODECS),
         audioChannels: z.enum(AUDIO_CHANNELS),
         audioMetadata: z.enum(AUDIO_METADATA_TYPES).optional(),
+        hasEnglishSubs: z.boolean().optional(),
         tmdbId: z.number().int(),
         imdbId: z.string().trim().min(1),
         tvdbId: z.number().int().optional(),

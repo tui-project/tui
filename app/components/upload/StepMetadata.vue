@@ -373,6 +373,7 @@ const schema = z
         ratio: z.string(),
         hybrid: z.boolean(),
         hi10p: z.boolean(),
+        hasEnglishSubs: z.boolean(),
         hdr: z.array(z.string()),
         locale: z.string(),
     })
@@ -417,6 +418,7 @@ const state = reactive<Metadata>({
     ratio: '',
     hybrid: false,
     hi10p: false,
+    hasEnglishSubs: false,
     resolution: '',
     hdr: [],
     videoCodec: '',
@@ -686,6 +688,14 @@ function onSubmit(event: FormSubmitEvent<Schema>) {
                                     label="Hi10P"
                                     color="neutral"
                                     aria-label="Hi10P"
+                                />
+                                <UCheckbox
+                                    v-if="state.originalLanguage !== 'en'"
+                                    v-model="state.hasEnglishSubs"
+                                    size="xl"
+                                    label="English Subs"
+                                    color="neutral"
+                                    aria-label="English Subs"
                                 />
                             </div>
                         </UFormField>
