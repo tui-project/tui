@@ -1,6 +1,7 @@
 import { MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS, type Resolution, type VideoCodec } from '../../../model/metadata'
+import { isDvd, isRemux, isHdtv, isEncode, isForeignContent, hasEnglishAudio } from '../util/metadata-util'
 import type { RuleViolation, TrackerService, TrackerUploadMetadata } from '../tracker'
-import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, isDvdSource, shouldIncludeTvYear } from '../title-builder'
+import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
 import { createUnit3dService } from '../unit3d-tracker'
 
 /**
@@ -68,8 +69,6 @@ const BANNED_GROUPS = new Set(
  * Encode, WEB-DL, WEBRip, HDTV Template: Name AKA Original LOCALE Year S##E## Cut Ratio Hybrid REPACK PROPER RERip Resolution Edition 3D SOURCE TYPE Dub Acodec Channels Object Hi10P HDR Vcodec-Tag
  */
 async function buildTitle(metadata: TrackerUploadMetadata) {
-    const isRemux = metadata.sourceType === SOURCE_TYPES.REMUX
-    const isDvd = isDvdSource(metadata.source)
     const parts: string[] = [metadata.title]
 
     if (metadata.originalTitle && metadata.originalTitle !== metadata.title) parts.push(`AKA ${metadata.originalTitle}`)
@@ -86,14 +85,14 @@ async function buildTitle(metadata: TrackerUploadMetadata) {
     if (metadata.repack) parts.push(metadata.repack === 1 ? 'REPACK' : `REPACK${metadata.repack}`)
     if (metadata.proper) parts.push(metadata.proper === 1 ? 'PROPER' : `PROPER${metadata.proper}`)
     if (metadata.rerip) parts.push(metadata.rerip === 1 ? 'RERIP' : `RERIP${metadata.rerip}`)
-    if (!isDvd) parts.push(metadata.resolution)
+    if (!isDvd(metadata)) parts.push(metadata.resolution)
     parts.push(buildSourceString(metadata))
     parts.push(buildTypeString(metadata.sourceType))
 
-    if (isRemux) {
+    if (isRemux(metadata)) {
         if (metadata.hi10p) parts.push('Hi10P')
         if (metadata.hdr?.length) parts.push(metadata.hdr.join(' '))
-        if (!isDvd) parts.push(metadata.videoCodec)
+        if (!isDvd(metadata)) parts.push(metadata.videoCodec)
         parts.push(buildDubString(metadata.language, metadata.originalLanguage))
         parts.push(metadata.audioCodec)
         parts.push(metadata.audioChannels)
@@ -105,7 +104,7 @@ async function buildTitle(metadata: TrackerUploadMetadata) {
         if (metadata.audioMetadata) parts.push(metadata.audioMetadata)
         if (metadata.hi10p) parts.push('Hi10P')
         if (metadata.hdr?.length) parts.push(metadata.hdr.join(' '))
-        if (!isDvd) parts.push(metadata.videoCodec)
+        if (!isDvd(metadata)) parts.push(metadata.videoCodec)
     }
 
     return `${parts.filter(Boolean).join(' ')}-${metadata.releaseGroup ?? 'NOGROUP'}`
@@ -128,9 +127,7 @@ function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
         })
     }
 
-    const isHdtvSource = metadata.source === SOURCES.HDTV || metadata.source === SOURCES.UHDTV
-
-    if (!isDvdSource(metadata.source) && metadata.sourceType === SOURCE_TYPES.REMUX) {
+    if (!isDvd(metadata) && isRemux(metadata)) {
         const allowed: VideoCodec[] = [VIDEO_CODECS.MPEG_2, VIDEO_CODECS.VC_1, VIDEO_CODECS.AVC, VIDEO_CODECS.HEVC]
         if (!allowed.includes(metadata.videoCodec)) {
             violations.push({
@@ -140,7 +137,8 @@ function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
         }
     }
 
-    if (metadata.sourceType === SOURCE_TYPES.WEB_DL || (isHdtvSource && metadata.sourceType === SOURCE_TYPES.HDTV)) {
+    const hdtvSource = metadata.source === SOURCES.HDTV || metadata.source === SOURCES.UHDTV
+    if (metadata.sourceType === SOURCE_TYPES.WEB_DL || (hdtvSource && isHdtv(metadata))) {
         const allowed: VideoCodec[] = [VIDEO_CODECS.H264, VIDEO_CODECS.H265, VIDEO_CODECS.VP9, VIDEO_CODECS.MPEG_2]
         if (!allowed.includes(metadata.videoCodec)) {
             violations.push({
@@ -150,7 +148,7 @@ function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
         }
     }
 
-    if (!isDvdSource(metadata.source) && (metadata.sourceType === SOURCE_TYPES.ENCODE || metadata.sourceType === SOURCE_TYPES.WEBRIP)) {
+    if (!isDvd(metadata) && (isEncode(metadata) || metadata.sourceType === SOURCE_TYPES.WEBRIP)) {
         const allowed: VideoCodec[] = [VIDEO_CODECS.X264, VIDEO_CODECS.X265]
         if (!allowed.includes(metadata.videoCodec)) {
             violations.push({
@@ -160,7 +158,7 @@ function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
         }
     }
 
-    if (metadata.sourceType === SOURCE_TYPES.ENCODE) {
+    if (isEncode(metadata)) {
         const minimumResolutions: Resolution[] = [RESOLUTIONS['720p'], RESOLUTIONS['1080i'], RESOLUTIONS['1080p'], RESOLUTIONS['2160p'], RESOLUTIONS['4320p']]
         if (!minimumResolutions.includes(metadata.resolution)) {
             violations.push({
@@ -170,11 +168,8 @@ function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
         }
     }
 
-    const isForeignContent = metadata.originalLanguage !== 'en'
-    const hasEnglishAudio = metadata.language.includes('en')
-
-    if (isForeignContent) {
-        if (!hasEnglishAudio && !metadata.hasEnglishSubs) {
+    if (isForeignContent(metadata)) {
+        if (!hasEnglishAudio(metadata) && !metadata.hasEnglishSubs) {
             violations.push({
                 rule: 'missing_english',
                 message: 'Foreign-language content must include at least English subtitles or an English audio dub.',
@@ -189,7 +184,7 @@ function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
         }
     }
 
-    if (!hasEnglishAudio && !metadata.language.includes(metadata.originalLanguage)) {
+    if (!hasEnglishAudio(metadata) && !metadata.language.includes(metadata.originalLanguage)) {
         violations.push({
             rule: 'missing_required_audio',
             message: 'Audio tracks must include at least the original language or an English dub.',

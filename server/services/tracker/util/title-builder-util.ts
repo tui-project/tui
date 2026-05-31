@@ -1,6 +1,6 @@
-import { SOURCES, SOURCE_TYPES, type Source, type SourceType } from '../../model/metadata'
-import { getTvdbSeries } from '../tvdb'
-import type { TrackerUploadMetadata } from './tracker'
+import { SOURCES, SOURCE_TYPES, type SourceType } from '../../../model/metadata'
+import { getTvdbSeries } from '../../tvdb'
+import type { TrackerUploadMetadata } from '../tracker'
 
 export function hasYearQualifier(title: string): boolean {
     return /\(\d{4}\)$/.test(title.trim())
@@ -19,10 +19,6 @@ export function buildSeasonEpisodeString(season?: number, episode?: number, epis
     const se = episodeEnd !== undefined ? `${s}E${String(episode).padStart(2, '0')}-${String(episodeEnd).padStart(2, '0')}` : `${s}E${String(episode).padStart(2, '0')}`
     if (specialName && (season === 0 || episode === 0)) return `${se} ${specialName}`
     return se
-}
-
-export function isDvdSource(source: Source): boolean {
-    return source === SOURCES.DVD || source === SOURCES.NTSC_DVD || source === SOURCES.PAL_DVD || source === SOURCES.HD_DVD
 }
 
 export function buildSourceString(metadata: TrackerUploadMetadata): string {

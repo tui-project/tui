@@ -1,7 +1,8 @@
 import { HDR_TYPES, MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, type SourceType } from '../../../model/metadata'
+import { isRemux } from '../util/metadata-util'
 import { getLanguageDisplayName } from '../../../repositories/language-repository'
 import type { RuleViolation, TrackerService, TrackerUploadMetadata } from '../tracker'
-import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../title-builder'
+import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
 import { createUnit3dService } from '../unit3d-tracker'
 
 /**
@@ -122,7 +123,6 @@ const SD_RESOLUTIONS: string[] = [RESOLUTIONS['480i'], RESOLUTIONS['480p'], RESO
  * Remux                   : Title [AKA Original] LOCALE Year S##E## [Cut] [Ratio] [Hybrid] [REPACK] [PROPER] [RERIP] [Language] Resolution Source REMUX [HDR] VideoCodec [Dub] AudioCodec Channels [Metadata]-Tag
  */
 async function buildTitle(metadata: TrackerUploadMetadata): Promise<string> {
-    const isRemux = metadata.sourceType === SOURCE_TYPES.REMUX
     const parts: string[] = [metadata.title]
 
     if (metadata.originalTitle && metadata.originalTitle !== metadata.title) parts.push(`AKA ${metadata.originalTitle}`)
@@ -144,7 +144,7 @@ async function buildTitle(metadata: TrackerUploadMetadata): Promise<string> {
     parts.push(buildSourceString(metadata))
     parts.push(buildTypeString(metadata.sourceType))
 
-    if (isRemux) {
+    if (isRemux(metadata)) {
         if (metadata.hdr?.length) parts.push(metadata.hdr.join(' '))
         parts.push(metadata.videoCodec)
         parts.push(buildDubString(metadata.language, metadata.originalLanguage))
