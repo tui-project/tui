@@ -16,8 +16,8 @@ export async function listChildren(parent: string) {
     }
 
     logger.trace('Directory browse cache miss.', { parent: parentRealPath })
-    const signature = await getDirectorySignature(parentRealPath)
 
+    const signature = await getDirectorySignature(parentRealPath)
     const items = await loadChildren(parentRealPath)
     await saveChildrenCache(parentRealPath, items, signature)
 
@@ -39,6 +39,11 @@ async function refreshDirectoryCache(parentRealPath: string, cachedSignature: st
     } catch (error: unknown) {
         logger.error('Failed to refresh directory cache.', error)
     }
+}
+
+async function getDirectorySignature(directoryPath: string) {
+    const names = await readdir(directoryPath)
+    return `${names.length}:${names.sort().join('|')}`
 }
 
 async function loadChildren(parentRealPath: string) {
@@ -66,9 +71,4 @@ async function saveChildrenCache(parentRealPath: string, items: MediaPathItem[],
     })
 
     logger.debug('Directory browse cache updated.', { parent: parentRealPath, itemCount: items.length })
-}
-
-async function getDirectorySignature(directoryPath: string) {
-    const directoryStats = await stat(directoryPath)
-    return `${directoryStats.mtimeMs}:${directoryStats.size}`
 }
