@@ -1,4 +1,3 @@
-import type { Language, LanguageCacheMeta } from '../model/language'
 import { getLanguages } from '../services/tmdb'
 import { languageCollection } from '../utils/db'
 import { logger } from '../utils/logger'
@@ -12,20 +11,18 @@ export async function refreshLanguages(): Promise<void> {
         return
     }
 
-    await languageCollection.removeAsync({ _id: { $ne: 'meta' } }, { multi: true })
+    await languageCollection.removeAsync({}, { multi: true })
     await languageCollection.insertAsync(languages)
-    await languageCollection.updateAsync({ _id: 'meta' }, { $set: { refreshedAt: new Date() } }, { upsert: true })
 
     logger.info('Language cache refreshed.', { count: languages.length })
 }
 
 export async function getLanguageDisplayName(code: string): Promise<string | null> {
-    const meta = (await languageCollection.findOneAsync({ _id: 'meta' })) as LanguageCacheMeta | null
-    const isStale = !meta || Date.now() - new Date(meta.refreshedAt).getTime() > REFRESH_INTERVAL_MS
+    const entry = await languageCollection.findOneAsync({ iso_639_1: code })
+    const isStale = !entry || !entry.updatedAt || Date.now() - new Date(entry.updatedAt).getTime() > REFRESH_INTERVAL_MS
     if (isStale) {
         void refreshLanguages()
     }
 
-    const entry = (await languageCollection.findOneAsync({ iso_639_1: code })) as Language | null
     return entry?.english_name ?? null
 }

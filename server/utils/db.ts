@@ -5,7 +5,7 @@ import type { Session } from '../model/session'
 import type { DirectoryCache } from '../model/directory-cache'
 import type { GenericTorrentCache } from '../model/generic-torrent-cache'
 import type { Settings } from '../model/settings'
-import type { Language, LanguageCacheMeta } from '../model/language'
+import type { Language } from '../model/language'
 import type { TrackerUploadRequest } from '../model/tracker-upload-request'
 import type { User } from '../model/user'
 import { logger } from './logger'
@@ -16,7 +16,7 @@ export type SettingsDocument = Document<Settings>
 export type DirectoryCacheDocument = Document<DirectoryCache>
 export type GenericTorrentCacheDocument = Document<GenericTorrentCache>
 export type TrackerUploadRequestDocument = Document<TrackerUploadRequest>
-export type LanguageDocument = Document<Language | LanguageCacheMeta>
+export type LanguageDocument = Document<Language>
 
 const AUTO_COMPACTION_INTERVAL_MS = 60_000
 const dataDir = process.env.DATABASE_DIR ?? join(process.cwd(), 'config', 'database')
@@ -67,7 +67,7 @@ export const trackerUploadRequestCollection = new Datastore<TrackerUploadRequest
 })
 
 const languageCollectionDataDir = join(dataDir, 'languages.db')
-export const languageCollection = new Datastore<Language | LanguageCacheMeta>({
+export const languageCollection = new Datastore<Language>({
     filename: languageCollectionDataDir,
     autoload: true,
     timestampData: true,
