@@ -11,5 +11,8 @@ export default defineNuxtConfig({
         optimizeDeps: {
             include: ['zod'],
         },
+        css: {
+            devSourcemap: false,
+        },
     },
 })
