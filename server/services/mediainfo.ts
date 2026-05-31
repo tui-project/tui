@@ -184,6 +184,7 @@ function parseResolution(height: string, scanType: string): Resolution | undefin
         case '1080':
         case '1072':
         case '1036':
+        case '1040':
             return suffix === 'i' ? RESOLUTIONS['1080i'] : RESOLUTIONS['1080p']
         case '720':
             return RESOLUTIONS['720p']

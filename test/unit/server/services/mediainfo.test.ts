@@ -482,6 +482,50 @@ describe('mediainfo service', () => {
             expected: { resolution: '1080i', videoCodec: 'AVC', audioChannels: '2.0', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
         },
         {
+            name: '1040 progressive resolution branch',
+            sourceType: 'REMUX' as const,
+            result: {
+                media: {
+                    track: [
+                        { '@type': 'Video', Height: '1040', ScanType: 'Progressive', Format: 'AVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
+                        {
+                            '@type': 'Audio',
+                            Default: 'Yes',
+                            Format: 'AAC',
+                            Channels: '2',
+                            ChannelLayout: 'L R',
+                            Format_Commercial_IfAny: 'Atmos',
+                            Language: 'pt-BR',
+                            Title: 'Main',
+                        },
+                    ],
+                },
+            },
+            expected: { resolution: '1080p', videoCodec: 'AVC', audioChannels: '2.0', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
+        },
+        {
+            name: '1040 interlaced resolution branch',
+            sourceType: 'REMUX' as const,
+            result: {
+                media: {
+                    track: [
+                        { '@type': 'Video', Height: '1040', ScanType: 'Interlaced', Format: 'AVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
+                        {
+                            '@type': 'Audio',
+                            Default: 'Yes',
+                            Format: 'AAC',
+                            Channels: '2',
+                            ChannelLayout: 'L R',
+                            Format_Commercial_IfAny: 'Atmos',
+                            Language: 'pt-BR',
+                            Title: 'Main',
+                        },
+                    ],
+                },
+            },
+            expected: { resolution: '1080i', videoCodec: 'AVC', audioChannels: '2.0', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
+        },
+        {
             name: 'final codec and hdr edge branches',
             sourceType: 'WEBRIP' as const,
             result: {
