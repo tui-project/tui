@@ -296,3 +296,24 @@ export async function getLanguages(): Promise<{ iso_639_1: string; english_name:
         return null
     }
 }
+
+export async function getAlternativeTitles(tmdbId: number, mediaType: MediaType): Promise<string | null> {
+    const apiKey = await getApiKey()
+    const path = `${TMDB_BASE_URL}/${mediaType}/${tmdbId}/alternative_titles`
+
+    logger.debug('TMDB alternative titles request prepared.', { mediaType, endpoint: path, tmdbId })
+
+    try {
+        const response = await $fetch<{ results?: { iso_3166_1: string; title: string; type: string }[]; titles?: { iso_3166_1: string; title: string; type: string }[] }>(path, {
+            query: { api_key: apiKey },
+        })
+
+        const entries = response.results ?? response.titles ?? []
+        const match = entries.find((entry) => entry.type === 'transliteration')
+
+        return match?.title ?? null
+    } catch (error: unknown) {
+        logger.warn('TMDB request failed.', { path, error })
+        return null
+    }
+}

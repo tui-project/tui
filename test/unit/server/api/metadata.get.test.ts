@@ -15,6 +15,7 @@ const findByExternalID = vi.fn()
 const findByTitle = vi.fn()
 const findLocale = vi.fn()
 const getExternalIDs = vi.fn()
+const getAlternativeTitles = vi.fn()
 const findTvdbSpecial = vi.fn()
 const findTvdbSpecialRange = vi.fn()
 const parseMetadataFromName = vi.fn()
@@ -33,6 +34,7 @@ beforeEach(() => {
     findByTitle.mockResolvedValue({})
     findLocale.mockResolvedValue(undefined)
     getExternalIDs.mockResolvedValue({})
+    getAlternativeTitles.mockResolvedValue(null)
     findTvdbSpecial.mockResolvedValue(null)
     findTvdbSpecialRange.mockResolvedValue(null)
     parseMetadataFromName.mockReturnValue({
@@ -75,6 +77,7 @@ async function loadHandler() {
         findByTitle,
         findLocale,
         getExternalIDs,
+        getAlternativeTitles,
     }))
     vi.doMock('../../../../server/services/tvdb', () => ({
         findTvdbSpecial,
@@ -565,6 +568,60 @@ describe('GET /api/metadata route handler', () => {
         await handler({} as never)
         expect(findTvdbSpecial).not.toHaveBeenCalled()
         expect(findTvdbSpecialRange).not.toHaveBeenCalled()
+    })
+
+    it('fetches alternative titles and sets originalTitle when originalLanguage is non-english and originalTitle is missing', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 100 })
+        getDetails.mockResolvedValue({ title: 'Фильм', original_title: undefined, original_language: 'ru', year: 2020, external_ids: {} })
+        getAlternativeTitles.mockResolvedValue('Film')
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.originalTitle).toBe('Film')
+        expect(getAlternativeTitles).toHaveBeenCalledWith(100, 'movie')
+    })
+
+    it('skips alternative titles when originalLanguage is en', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 100 })
+        getDetails.mockResolvedValue({ title: 'Movie', original_title: undefined, original_language: 'en', year: 2020, external_ids: {} })
+
+        const handler = await loadHandler()
+        await handler({} as never)
+        expect(getAlternativeTitles).not.toHaveBeenCalled()
+    })
+
+    it('skips alternative titles when originalTitle is already set', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 100 })
+        getDetails.mockResolvedValue({ title: 'Movie', original_title: 'Фильм', original_language: 'ru', year: 2020, external_ids: {} })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.originalTitle).toBe('Фильм')
+        expect(getAlternativeTitles).not.toHaveBeenCalled()
+    })
+
+    it('skips alternative titles when tmdbId is absent', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [] })
+        findByTitle.mockResolvedValue(null)
+
+        const handler = await loadHandler()
+        await handler({} as never)
+        expect(getAlternativeTitles).not.toHaveBeenCalled()
+    })
+
+    it('leaves originalTitle empty when alternative titles returns null', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 100 })
+        getDetails.mockResolvedValue({ title: 'Фильм', original_title: undefined, original_language: 'ru', year: 2020, external_ids: {} })
+        getAlternativeTitles.mockResolvedValue(null)
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.originalTitle).toBeUndefined()
     })
 
     it('upgrades BluRay source to UHD BluRay when resolution is 2160p', async () => {

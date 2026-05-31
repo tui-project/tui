@@ -5,7 +5,7 @@ import { getSettings } from '../repositories/settings-repository'
 import { logger } from '../utils/logger'
 import { parseMetadataFromName, type ParsedNameMetadata } from '../services/media-name-parser'
 import { parseMetadataFromMediainfo, type ParsedMediainfoMetadata } from '../services/mediainfo'
-import { findByExternalID, findByTitle, findLocale, getDetails, getExternalIDs, ID_TYPES } from '../services/tmdb'
+import { findByExternalID, findByTitle, findLocale, getAlternativeTitles, getDetails, getExternalIDs, ID_TYPES } from '../services/tmdb'
 import { isWithinAnyRoot, resolveMediaFilePath } from '../utils/file-system'
 import { MEDIA_TYPES, RESOLUTIONS, SOURCES, VIDEO_STANDARDS, type Metadata } from '../model/metadata'
 import { parseValidatedQuery } from '../utils/request-validator'
@@ -121,6 +121,13 @@ async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameM
         }
     }
 
+    if (isForeignMediaWithoutOriginalTitle(metadata) && metadata.tmdbId) {
+        logger.debug('Fetching TMDB alternative titles for transliteration.', { tmdbId: metadata.tmdbId, originalLanguage: metadata.originalLanguage })
+
+        const transliteration = await getAlternativeTitles(metadata.tmdbId, metadata.mediaType)
+        if (transliteration) metadata.originalTitle = transliteration
+    }
+
     if (isSpecialEpisode(metadata) && metadata.tvdbId) {
         if (metadata.episode != null && metadata.episodeEnd != null) {
             logger.debug('Attempting TVDb special range lookup.', { tvdbId: metadata.tvdbId, episodeStart: metadata.episode, episodeEnd: metadata.episodeEnd })
@@ -157,6 +164,10 @@ async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameM
     }
 
     return metadata
+}
+
+function isForeignMediaWithoutOriginalTitle(metadata: Metadata): boolean {
+    return !!metadata.originalLanguage && metadata.originalLanguage !== 'en' && !metadata.originalTitle
 }
 
 function isSpecialEpisode(metadata: Metadata): boolean {

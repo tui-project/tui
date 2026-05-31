@@ -538,6 +538,72 @@ describe('tmdb service', () => {
     })
 })
 
+describe('tmdb service — getAlternativeTitles', () => {
+    it('returns transliteration title from tv results array', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { getAlternativeTitles } = await loadTMDbService()
+        vi.stubGlobal(
+            '$fetch',
+            vi.fn().mockResolvedValue({
+                results: [
+                    { iso_3166_1: 'ES', title: 'Por cuatro perras', type: '' },
+                    { iso_3166_1: 'US', title: 'My Two Cents', type: 'transliteration' },
+                ],
+            })
+        )
+
+        await expect(getAlternativeTitles(304597, 'tv')).resolves.toBe('My Two Cents')
+    })
+
+    it('returns transliteration title from movie titles array', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { getAlternativeTitles } = await loadTMDbService()
+        vi.stubGlobal(
+            '$fetch',
+            vi.fn().mockResolvedValue({
+                titles: [
+                    { iso_3166_1: 'RU', title: 'Neposlushnaya', type: 'transliteration' },
+                    { iso_3166_1: 'US', title: 'Naughty', type: 'imdb title' },
+                ],
+            })
+        )
+
+        await expect(getAlternativeTitles(1057491, 'movie')).resolves.toBe('Neposlushnaya')
+    })
+
+    it('returns null when no transliteration entry exists', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { getAlternativeTitles } = await loadTMDbService()
+        vi.stubGlobal(
+            '$fetch',
+            vi.fn().mockResolvedValue({
+                results: [
+                    { iso_3166_1: 'ES', title: 'Other Title', type: '' },
+                    { iso_3166_1: 'US', title: 'Another Title', type: 'imdb title' },
+                ],
+            })
+        )
+
+        await expect(getAlternativeTitles(1, 'tv')).resolves.toBeNull()
+    })
+
+    it('returns null when results and titles arrays are both absent', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { getAlternativeTitles } = await loadTMDbService()
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ id: 1 }))
+
+        await expect(getAlternativeTitles(1, 'movie')).resolves.toBeNull()
+    })
+
+    it('returns null when fetch fails', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { getAlternativeTitles } = await loadTMDbService()
+        vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('network error')))
+
+        await expect(getAlternativeTitles(1, 'movie')).resolves.toBeNull()
+    })
+})
+
 describe('tmdb service — getLanguages', () => {
     it('returns language list on success', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
