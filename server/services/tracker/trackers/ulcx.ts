@@ -1,11 +1,18 @@
-import { MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS, type Resolution, type Source, type SourceType, type VideoCodec } from '../../../model/metadata'
-import { getTvdbSeries } from '../../tvdb'
+import { MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS, type Resolution, type VideoCodec } from '../../../model/metadata'
 import type { RuleViolation, TrackerService, TrackerUploadMetadata } from '../tracker'
+import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, isDvdSource, shouldIncludeTvYear } from '../title-builder'
 import { createUnit3dService } from '../unit3d-tracker'
 
 /**
- * Refer to: https://upload.cx/wikis/6
+ * Refer to:
+ *  - naming guide: https://upload.cx/wikis/7
+ *  - bannd groups: https://upload.cx/wikis/6
+ *  - API spec.   : https://upload.cx/wikis/38
  */
+export function createUlcxTrackerService(url: string, apiKey: string): TrackerService {
+    return createUnit3dService(url, apiKey, buildTitle, checkRules)
+}
+
 const BANNED_GROUPS = new Set(
     [
         '4K4U',
@@ -56,28 +63,21 @@ const BANNED_GROUPS = new Set(
     ].map((g) => g.toLowerCase())
 )
 
-export function createUlcxTrackerService(url: string, apiKey: string): TrackerService {
-    return createUnit3dService(url, apiKey, buildTitle, checkRules)
-}
-
 /**
  * Full Disc, Remux Template            : Name AKA Original LOCALE Year S##E## Cut Ratio Hybrid REPACK PROPER RERip Resolution Edition Region 3D SOURCE TYPE Hi10P HDR Vcodec Dub Acodec Channels Object-Tag
  * Encode, WEB-DL, WEBRip, HDTV Template: Name AKA Original LOCALE Year S##E## Cut Ratio Hybrid REPACK PROPER RERip Resolution Edition 3D SOURCE TYPE Dub Acodec Channels Object Hi10P HDR Vcodec-Tag
- *
- * Refer to: https://upload.cx/wikis/7
  */
 async function buildTitle(metadata: TrackerUploadMetadata) {
     const isRemux = metadata.sourceType === SOURCE_TYPES.REMUX
     const isDvd = isDvdSource(metadata.source)
     const parts: string[] = [metadata.title]
 
-    if (metadata?.originalTitle !== metadata.title) parts.push(`AKA ${metadata.originalTitle}`)
+    if (metadata.originalTitle && metadata.originalTitle !== metadata.title) parts.push(`AKA ${metadata.originalTitle}`)
     if (metadata.locale) parts.push(metadata.locale)
     if (metadata.mediaType === MEDIA_TYPES.MOVIE) {
         parts.push(String(metadata.year))
-    } else if (metadata.mediaType === MEDIA_TYPES.TV && metadata.tvdbId) {
-        const series = await getTvdbSeries(metadata.tvdbId)
-        if (series && hasYearQualifier(series.title)) parts.push(String(metadata.year))
+    } else if (metadata.mediaType === MEDIA_TYPES.TV && (await shouldIncludeTvYear(metadata))) {
+        parts.push(String(metadata.year))
     }
     parts.push(buildSeasonEpisodeString(metadata.season, metadata.episode, metadata.episodeEnd, metadata.specialName))
     if (metadata.cut) parts.push(metadata.cut)
@@ -92,7 +92,7 @@ async function buildTitle(metadata: TrackerUploadMetadata) {
 
     if (isRemux) {
         if (metadata.hi10p) parts.push('Hi10P')
-        if (metadata.hdr && metadata.hdr.length > 0) parts.push(metadata.hdr.join(' '))
+        if (metadata.hdr?.length) parts.push(metadata.hdr.join(' '))
         if (!isDvd) parts.push(metadata.videoCodec)
         parts.push(buildDubString(metadata.language, metadata.originalLanguage))
         parts.push(metadata.audioCodec)
@@ -104,76 +104,11 @@ async function buildTitle(metadata: TrackerUploadMetadata) {
         parts.push(metadata.audioChannels)
         if (metadata.audioMetadata) parts.push(metadata.audioMetadata)
         if (metadata.hi10p) parts.push('Hi10P')
-        if (metadata.hdr && metadata.hdr.length > 0) parts.push(metadata.hdr.join(' '))
+        if (metadata.hdr?.length) parts.push(metadata.hdr.join(' '))
         if (!isDvd) parts.push(metadata.videoCodec)
     }
 
     return `${parts.filter(Boolean).join(' ')}-${metadata.releaseGroup ?? 'NOGROUP'}`
-}
-
-function hasYearQualifier(title: string): boolean {
-    const YEAR_QUALIFIER_PATTERN = /\(\d{4}\)$/
-    return YEAR_QUALIFIER_PATTERN.test(title.trim())
-}
-
-function buildSeasonEpisodeString(season?: number, episode?: number, episodeEnd?: number, specialName?: string): string {
-    if (season === undefined) return ''
-    const s = `S${String(season).padStart(2, '0')}`
-    if (episode === undefined) return s
-    const se = episodeEnd !== undefined ? `${s}E${String(episode).padStart(2, '0')}-${String(episodeEnd).padStart(2, '0')}` : `${s}E${String(episode).padStart(2, '0')}`
-    if (specialName && (season === 0 || episode === 0)) return `${se} ${specialName}`
-    return se
-}
-
-function isDvdSource(source: Source): boolean {
-    return source === SOURCES.DVD || source === SOURCES.NTSC_DVD || source === SOURCES.PAL_DVD || source === SOURCES.HD_DVD
-}
-
-function buildSourceString(metadata: TrackerUploadMetadata): string {
-    switch (metadata.source) {
-        case SOURCES.WEB:
-            return metadata.service ?? ''
-        case SOURCES.NTSC_DVD:
-            return 'NTSC DVD'
-        case SOURCES.PAL_DVD:
-            return 'PAL DVD'
-        case SOURCES.HD_DVD:
-            return 'HDDVD'
-        case SOURCES.DVD:
-            return 'DVD'
-        case SOURCES.BLURAY_3D:
-            return '3D BluRay'
-        case SOURCES.BLURAY:
-            return 'BluRay'
-        case SOURCES.UHD_BLURAY:
-            return 'UHD BluRay'
-        case SOURCES.HDTV:
-            return 'HDTV'
-        case SOURCES.UHDTV:
-            return 'UHDTV'
-        default:
-            return ''
-    }
-}
-
-function buildTypeString(sourceType: SourceType): string {
-    switch (sourceType) {
-        case SOURCE_TYPES.REMUX:
-            return 'REMUX'
-        case SOURCE_TYPES.WEB_DL:
-            return 'WEB-DL'
-        case SOURCE_TYPES.WEBRIP:
-            return 'WEBRip'
-        default:
-            return ''
-    }
-}
-
-function buildDubString(languages: string[], originalLanguage: string) {
-    if (!languages?.length) return ''
-    if (languages.length === 2 && languages.includes(originalLanguage)) return 'Dual-Audio'
-    if (languages.length === 1 && languages.includes('en') && !languages.includes(originalLanguage)) return 'Dubbed'
-    return ''
 }
 
 function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {

@@ -33,7 +33,8 @@ export function createUnit3dService(
     url: string,
     apiKey: string,
     buildTitle?: (metadata: TrackerUploadMetadata) => Promise<string>,
-    checkRules?: (metadata: TrackerUploadMetadata) => RuleViolation[]
+    checkRules?: (metadata: TrackerUploadMetadata) => RuleViolation[],
+    appendExtraFields?: (formData: FormData, metadata: TrackerUploadMetadata) => void
 ): TrackerService {
     /*
      * refer to: https://hdinnovations.github.io/UNIT3D/torrent_api.html
@@ -50,13 +51,14 @@ export function createUnit3dService(
         formData.append('category_id', String(CATEGORY_IDS[metadata.mediaType as MediaType]))
         formData.append('type_id', String(TYPE_IDS[metadata.sourceType as SourceType]))
         formData.append('resolution_id', String(RESOLUTION_IDS[metadata.resolution as Resolution]))
+        if (metadata.season != null) formData.append('season_number', String(metadata.season))
+        if (metadata.season != null) formData.append('episode_number', String(metadata.episode ?? 0))
         formData.append('tmdb', String(metadata.tmdbId))
         formData.append('imdb', metadata.imdbId.replace(/^tt/, ''))
         if (metadata.tvdbId != null) formData.append('tvdb', String(metadata.tvdbId))
-        if (metadata.season != null) formData.append('season_number', String(metadata.season))
-        if (metadata.season != null) formData.append('episode_number', String(metadata.episode ?? 0))
         formData.append('anonymous', anonymous ? '1' : '0')
         formData.append('mod_queue_opt_in', modQueueOptIn ? '1' : '0')
+        appendExtraFields?.(formData, metadata)
 
         logger.info('Uploading torrent to UNIT3D tracker.', { trackerUrl: url, title, torrentPath })
         logger.debug('request', { formData: Object.fromEntries(formData.entries()) })

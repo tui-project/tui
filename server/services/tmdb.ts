@@ -280,3 +280,19 @@ export async function getExternalIDs(tmdbID: string, mediaType: MediaType): Prom
         return null
     }
 }
+
+export async function getLanguages(): Promise<{ iso_639_1: string; english_name: string }[] | null> {
+    const apiKey = await getApiKey()
+    const path = `${TMDB_BASE_URL}/configuration/languages`
+
+    logger.debug('TMDB languages request prepared.')
+
+    try {
+        return await $fetch<{ iso_639_1: string; english_name: string }[]>(path, {
+            query: { api_key: apiKey },
+        })
+    } catch (error: unknown) {
+        logger.warn('TMDB request failed.', { path, error })
+        return null
+    }
+}

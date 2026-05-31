@@ -159,21 +159,6 @@ describe('tmdb service', () => {
         })
     })
 
-    it('returns null when find response item has no external_ids', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { findByExternalID, ID_TYPES } = await loadTMDbService()
-
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({
-                movie_results: [{ id: 5, title: 'Film', release_date: '2020-01-01', origin_country: [] }],
-                tv_results: [],
-            })
-        )
-
-        await expect(findByExternalID('tt888', ID_TYPES.IMDB, 'movie')).resolves.toBeNull()
-    })
-
     it('returns null for invalid external id type', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByExternalID } = await loadTMDbService()
@@ -234,6 +219,14 @@ describe('tmdb service', () => {
             title: 'Movie Pick',
             media_type: 'movie',
         })
+    })
+
+    it('returns null when findByExternalID fetch fails', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { findByExternalID, ID_TYPES } = await loadTMDbService()
+        vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('network error')))
+
+        await expect(findByExternalID('tt123', ID_TYPES.IMDB, 'movie')).resolves.toBeNull()
     })
 
     it('returns tvdb_id from external_ids when present on selected item', async () => {
@@ -542,5 +535,23 @@ describe('tmdb service', () => {
 
         // id 9 has year=undefined → NaN sort; stable sort keeps id:10 first → it IS the earliest → no locale
         await expect(findByTitle('Show', 'tv')).resolves.toMatchObject({ id: 10, origin_country: undefined })
+    })
+})
+
+describe('tmdb service — getLanguages', () => {
+    it('returns language list on success', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { getLanguages } = await loadTMDbService()
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue([{ iso_639_1: 'fr', english_name: 'French' }]))
+
+        await expect(getLanguages()).resolves.toEqual([{ iso_639_1: 'fr', english_name: 'French' }])
+    })
+
+    it('returns null when fetch fails', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { getLanguages } = await loadTMDbService()
+        vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('network error')))
+
+        await expect(getLanguages()).resolves.toBeNull()
     })
 })

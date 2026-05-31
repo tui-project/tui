@@ -5,6 +5,7 @@ describe('db init plugin', () => {
         vi.resetModules()
 
         const initDatastores = vi.fn()
+        const refreshLanguages = vi.fn().mockResolvedValue(undefined)
         const logger = {
             info: vi.fn(),
         }
@@ -23,6 +24,10 @@ describe('db init plugin', () => {
 
         vi.doMock('../../../../server/utils/db', () => ({
             initDatastores,
+        }))
+
+        vi.doMock('../../../../server/repositories/language-repository', () => ({
+            refreshLanguages,
         }))
 
         vi.doMock('../../../../server/utils/logger', () => ({

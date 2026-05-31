@@ -88,7 +88,8 @@ For browser assertions in e2e page tests:
 
 - Prefer selector-based checks such as `waitForSelector`, `getByRole`, `getByPlaceholder`, and `locator`.
 - Avoid broad assertions against `page.textContent('body')`; assert targeted UI content via selectors instead.
-- For repeated input scenarios, prefer parameterized tests with `it.each(...)` over manual `for` loops inside a single test.
+
+When multiple test cases share the same logic and differ only in input/output values, use `it.each(...)` instead of repeating the test body. This applies across all test types — unit, nuxt, and e2e. Examples where `it.each` is appropriate: validating every enum value produces the correct output, checking a flag is set correctly for each member of a set, or asserting a rule fires for each banned item in a list.
 
 Unit tests should cover non-route modules (for example repositories and utilities) under `test/unit/server`.
 
@@ -146,3 +147,4 @@ another special scores strictly higher on title matching.
 - Keep persisted filenames stable unless a migration is intended. For example, `userCollection` still writes to `users.db`.
 - Use ASCII text unless the surrounding file already uses non-ASCII.
 - Do not add defensive checks for conditions that cannot realistically occur given the inputs the code receives. Only validate at genuine system boundaries (user input, external APIs). Unreachable branches hurt coverage and signal false uncertainty about invariants.
+- Define helper/dependent functions after the function that uses them, in order of first usage. The public or top-level entry point comes first; its helpers follow.
