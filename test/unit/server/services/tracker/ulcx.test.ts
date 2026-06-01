@@ -696,4 +696,22 @@ describe('createUlcxTrackerService — checkRules', () => {
             expect(violations.every((v) => v.rule !== 'missing_required_audio')).toBe(true)
         })
     })
+
+    describe('TrueHD compatibility track rule', () => {
+        it('flags TrueHD without a compatibility track', () => {
+            const violations = service.checkRules({ ...baseMetadata, audioCodec: AUDIO_CODECS.TRUEHD, hasTrueHDCompatibilityTrack: false })
+            expect(violations).toHaveLength(1)
+            expect(violations[0].rule).toBe('truehd_missing_compatibility_track')
+        })
+
+        it('allows TrueHD when a compatibility track is present', () => {
+            const violations = service.checkRules({ ...baseMetadata, audioCodec: AUDIO_CODECS.TRUEHD, hasTrueHDCompatibilityTrack: true })
+            expect(violations).toEqual([])
+        })
+
+        it('does not flag non-TrueHD codecs for missing compatibility track', () => {
+            const violations = service.checkRules({ ...baseMetadata, audioCodec: AUDIO_CODECS.DTS_HD_MA, hasTrueHDCompatibilityTrack: undefined })
+            expect(violations).toEqual([])
+        })
+    })
 })

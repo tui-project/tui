@@ -1,4 +1,4 @@
-import { MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS, type Resolution, type VideoCodec } from '../../../model/metadata'
+import { AUDIO_CODECS, MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS, type Resolution, type VideoCodec } from '../../../model/metadata'
 import { isDvd, isRemux, isHdtv, isEncode, isForeignContent, hasEnglishAudio } from '../util/metadata-util'
 import type { RuleViolation, TrackerService, TrackerUploadMetadata } from '../tracker'
 import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
@@ -188,6 +188,13 @@ function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
         violations.push({
             rule: 'missing_required_audio',
             message: 'Audio tracks must include at least the original language or an English dub.',
+        })
+    }
+
+    if (metadata.audioCodec === AUDIO_CODECS.TRUEHD && !metadata.hasTrueHDCompatibilityTrack) {
+        violations.push({
+            rule: 'truehd_missing_compatibility_track',
+            message: 'TrueHD audio requires a standalone DD or DD+ compatibility track.',
         })
     }
 
