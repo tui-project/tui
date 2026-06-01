@@ -168,6 +168,13 @@ function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
         }
     }
 
+    if (metadata.audioCodec === AUDIO_CODECS.TRUEHD && !metadata.hasTrueHDCompatibilityTrack) {
+        violations.push({
+            rule: 'truehd_missing_compatibility_track',
+            message: 'TrueHD audio requires a standalone DD or DD+ compatibility track.',
+        })
+    }
+
     if (isForeignContent(metadata)) {
         if (!hasEnglishAudio(metadata) && !metadata.hasEnglishSubs) {
             violations.push({
@@ -188,13 +195,6 @@ function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
         violations.push({
             rule: 'missing_required_audio',
             message: 'Audio tracks must include at least the original language or an English dub.',
-        })
-    }
-
-    if (metadata.audioCodec === AUDIO_CODECS.TRUEHD && !metadata.hasTrueHDCompatibilityTrack) {
-        violations.push({
-            rule: 'truehd_missing_compatibility_track',
-            message: 'TrueHD audio requires a standalone DD or DD+ compatibility track.',
         })
     }
 

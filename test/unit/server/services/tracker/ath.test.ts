@@ -106,6 +106,85 @@ describe('createAthTrackerService — checkRules', () => {
         expect(violations).toEqual([])
     })
 
+    it('allows English-only audio for an English original', () => {
+        expect(service.checkRules({ ...baseMetadata, language: ['en'], originalLanguage: 'en' })).toEqual([])
+    })
+
+    it('allows original-language-only audio for a non-English original', () => {
+        expect(service.checkRules({ ...baseMetadata, language: ['ja'], originalLanguage: 'ja', hasEnglishSubs: true })).toEqual([])
+    })
+
+    it('allows original + English audio for a non-English original', () => {
+        expect(service.checkRules({ ...baseMetadata, language: ['ja', 'en'], originalLanguage: 'ja' })).toEqual([])
+    })
+
+    it('allows English-only audio when original language is non-English (dubbed release)', () => {
+        const violations = service.checkRules({ ...baseMetadata, language: ['en'], originalLanguage: 'ja' })
+        expect(violations.some((v) => v.rule === 'missing_english')).toBe(false)
+    })
+
+    it('flags when no audio track matches original language or English', () => {
+        const violations = service.checkRules({ ...baseMetadata, language: ['fr'], originalLanguage: 'ja', hasEnglishSubs: true })
+        expect(violations.some((v) => v.rule === 'missing_required_audio')).toBe(true)
+    })
+
+    it('does not flag missing_required_audio when original language track is present', () => {
+        const violations = service.checkRules({ ...baseMetadata, language: ['ja'], originalLanguage: 'ja', hasEnglishSubs: true })
+        expect(violations.some((v) => v.rule === 'missing_required_audio')).toBe(false)
+    })
+
+    it('does not flag missing_required_audio when English dub is present', () => {
+        const violations = service.checkRules({ ...baseMetadata, language: ['en'], originalLanguage: 'ja' })
+        expect(violations.some((v) => v.rule === 'missing_required_audio')).toBe(false)
+    })
+
+    it('flags non-English release with no English dub and no English subs', () => {
+        const violations = service.checkRules({ ...baseMetadata, language: ['ja'], originalLanguage: 'ja', hasEnglishSubs: false })
+        expect(violations).toHaveLength(1)
+        expect(violations[0].rule).toBe('missing_english')
+    })
+
+    it('does not flag non-English release when English dub is included', () => {
+        const violations = service.checkRules({ ...baseMetadata, language: ['ja', 'en'], originalLanguage: 'ja', hasEnglishSubs: false })
+        expect(violations).toEqual([])
+    })
+
+    it('does not flag non-English release when English subs are present', () => {
+        const violations = service.checkRules({ ...baseMetadata, language: ['ja'], originalLanguage: 'ja', hasEnglishSubs: true })
+        expect(violations).toEqual([])
+    })
+
+    it('does not flag missing_english when English audio is present', () => {
+        const violations = service.checkRules({ ...baseMetadata, language: ['en'], originalLanguage: 'fr' })
+        expect(violations.some((v) => v.rule === 'missing_english')).toBe(false)
+    })
+
+    it('flags non-English release when hasEnglishSubs is undefined (no subs assumed)', () => {
+        const violations = service.checkRules({ ...baseMetadata, language: ['fr'], originalLanguage: 'fr', hasEnglishSubs: undefined })
+        expect(violations).toHaveLength(1)
+        expect(violations[0].rule).toBe('missing_english')
+    })
+
+    it('does not flag English-original releases', () => {
+        const violations = service.checkRules({ ...baseMetadata, language: ['en'], originalLanguage: 'en', hasEnglishSubs: false })
+        expect(violations).toEqual([])
+    })
+
+    it('flags foreign content missing the original language audio track', () => {
+        const violations = service.checkRules({ ...baseMetadata, language: ['en'], originalLanguage: 'ja' })
+        expect(violations.some((v) => v.rule === 'missing_original_language_audio')).toBe(true)
+    })
+
+    it('does not flag missing_original_language_audio when original language track is present', () => {
+        const violations = service.checkRules({ ...baseMetadata, language: ['ja', 'en'], originalLanguage: 'ja' })
+        expect(violations.some((v) => v.rule === 'missing_original_language_audio')).toBe(false)
+    })
+
+    it('does not flag missing_original_language_audio for English-original content', () => {
+        const violations = service.checkRules({ ...baseMetadata, language: ['en'], originalLanguage: 'en' })
+        expect(violations.some((v) => v.rule === 'missing_original_language_audio')).toBe(false)
+    })
+
     it('bans Weasley[HONE] for WEB-DL', () => {
         const violations = service.checkRules({ ...baseMetadata, releaseGroup: 'Weasley[HONE]', sourceType: SOURCE_TYPES.WEB_DL })
         expect(violations).toHaveLength(1)

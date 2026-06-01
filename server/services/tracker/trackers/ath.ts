@@ -1,5 +1,5 @@
 import { AUDIO_CODECS, HDR_TYPES, MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, type SourceType } from '../../../model/metadata'
-import { isRemux } from '../util/metadata-util'
+import { hasEnglishAudio, isForeignContent, isRemux } from '../util/metadata-util'
 import { getLanguageDisplayName } from '../../../repositories/language-repository'
 import type { RuleViolation, TrackerService, TrackerUploadMetadata } from '../tracker'
 import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
@@ -194,6 +194,29 @@ function checkAthRules(metadata: TrackerUploadMetadata): RuleViolation[] {
         violations.push({
             rule: 'truehd_missing_compatibility_track',
             message: 'TrueHD audio requires a standalone DD or DD+ compatibility track.',
+        })
+    }
+
+    if (isForeignContent(metadata)) {
+        if (!hasEnglishAudio(metadata) && !metadata.hasEnglishSubs) {
+            violations.push({
+                rule: 'missing_english',
+                message: 'Non-English releases without an English dub must include English subtitles.',
+            })
+        }
+
+        if (!metadata.language.includes(metadata.originalLanguage)) {
+            violations.push({
+                rule: 'missing_original_language_audio',
+                message: 'Foreign-language content should include the original language audio track.',
+            })
+        }
+    }
+
+    if (!hasEnglishAudio(metadata) && !metadata.language.includes(metadata.originalLanguage)) {
+        violations.push({
+            rule: 'missing_required_audio',
+            message: 'Audio tracks must include at least the original language or an English dub.',
         })
     }
 
