@@ -29,6 +29,7 @@ export type Metadata = {
     audioCodec: string
     audioChannels: string
     audioMetadata: string
+    hasTrueHDCompatibilityTrack?: boolean | null
     hasEnglishSubs: boolean
     tmdbId: number | null
     imdbId: string

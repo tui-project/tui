@@ -1,4 +1,4 @@
-import { HDR_TYPES, MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, type SourceType } from '../../../model/metadata'
+import { AUDIO_CODECS, HDR_TYPES, MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, type SourceType } from '../../../model/metadata'
 import { isRemux } from '../util/metadata-util'
 import { getLanguageDisplayName } from '../../../repositories/language-repository'
 import type { RuleViolation, TrackerService, TrackerUploadMetadata } from '../tracker'
@@ -188,6 +188,13 @@ function checkAthRules(metadata: TrackerUploadMetadata): RuleViolation[] {
                 })
             }
         }
+    }
+
+    if (metadata.audioCodec === AUDIO_CODECS.TRUEHD && !metadata.hasTrueHDCompatibilityTrack) {
+        violations.push({
+            rule: 'truehd_missing_compatibility_track',
+            message: 'TrueHD audio requires a standalone DD or DD+ compatibility track.',
+        })
     }
 
     return violations

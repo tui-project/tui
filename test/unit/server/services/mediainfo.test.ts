@@ -31,6 +31,7 @@ describe('mediainfo service', () => {
             audioCodec: undefined,
             audioChannels: undefined,
             audioMetadata: undefined,
+            hasTrueHDCompatibilityTrack: undefined,
             hasEnglishSubs: false,
             tmdbId: undefined,
             imdbId: '',
@@ -883,5 +884,89 @@ describe('mediainfo service', () => {
 
         const parsed = await parseMetadataFromMediainfo('/tmp/movie.mkv', sourceType)
         expect(parsed).toMatchObject(expected)
+    })
+
+    it('sets hasTrueHDCompatibilityTrack to true when TrueHD has an AC-3 track', async () => {
+        const { parseMetadataFromMediainfo } = await loadService()
+        runCommandMock.mockResolvedValueOnce({
+            stdout: JSON.stringify({
+                media: {
+                    track: [
+                        { '@type': 'Audio', Default: 'Yes', Format: 'MLP FBA', Channels: '8', ChannelLayout: 'L R C LFE Ls Rs Lb Rb', Language: 'en' },
+                        { '@type': 'Audio', Default: 'No', Format: 'AC-3', Channels: '6', ChannelLayout: 'L R C LFE Ls Rs', Language: 'en' },
+                    ],
+                },
+            }),
+        })
+        const parsed = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+        expect(parsed.hasTrueHDCompatibilityTrack).toBe(true)
+    })
+
+    it('sets hasTrueHDCompatibilityTrack to true when TrueHD has an E-AC-3 track', async () => {
+        const { parseMetadataFromMediainfo } = await loadService()
+        runCommandMock.mockResolvedValueOnce({
+            stdout: JSON.stringify({
+                media: {
+                    track: [
+                        { '@type': 'Audio', Default: 'Yes', Format: 'MLP FBA', Channels: '8', ChannelLayout: 'L R C LFE Ls Rs Lb Rb', Language: 'en' },
+                        { '@type': 'Audio', Default: 'No', Format: 'E-AC-3', Channels: '6', ChannelLayout: 'L R C LFE Ls Rs', Language: 'en' },
+                    ],
+                },
+            }),
+        })
+        const parsed = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+        expect(parsed.hasTrueHDCompatibilityTrack).toBe(true)
+    })
+
+    it('sets hasTrueHDCompatibilityTrack to false when TrueHD has no compatibility track', async () => {
+        const { parseMetadataFromMediainfo } = await loadService()
+        runCommandMock.mockResolvedValueOnce({
+            stdout: JSON.stringify({
+                media: {
+                    track: [{ '@type': 'Audio', Default: 'Yes', Format: 'MLP FBA', Channels: '8', ChannelLayout: 'L R C LFE Ls Rs Lb Rb', Language: 'en' }],
+                },
+            }),
+        })
+        const parsed = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+        expect(parsed.hasTrueHDCompatibilityTrack).toBe(false)
+    })
+
+    it('sets hasTrueHDCompatibilityTrack to false when only AC-3 track is a commentary', async () => {
+        const { parseMetadataFromMediainfo } = await loadService()
+        runCommandMock.mockResolvedValueOnce({
+            stdout: JSON.stringify({
+                media: {
+                    track: [
+                        { '@type': 'Audio', Default: 'Yes', Format: 'MLP FBA', Channels: '8', ChannelLayout: 'L R C LFE Ls Rs Lb Rb', Language: 'en' },
+                        { '@type': 'Audio', Default: 'No', Format: 'AC-3', Channels: '2', ChannelLayout: 'L R', Language: 'en', Title: 'Commentary Track' },
+                    ],
+                },
+            }),
+        })
+        const parsed = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+        expect(parsed.hasTrueHDCompatibilityTrack).toBe(false)
+    })
+
+    it('leaves hasTrueHDCompatibilityTrack undefined when primary codec is not TrueHD', async () => {
+        const { parseMetadataFromMediainfo } = await loadService()
+        runCommandMock.mockResolvedValueOnce({
+            stdout: JSON.stringify({
+                media: {
+                    track: [
+                        {
+                            '@type': 'Audio',
+                            Default: 'Yes',
+                            Format: 'DTS',
+                            Format_Commercial_IfAny: 'DTS-HD Master Audio',
+                            Channels: '6',
+                            ChannelLayout: 'L R C LFE Ls Rs',
+                            Language: 'en',
+                        },
+                    ],
+                },
+            }),
+        })
+        const parsed = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+        expect(parsed.hasTrueHDCompatibilityTrack).toBeUndefined()
     })
 })

@@ -357,6 +357,7 @@ const schema = z
         audioCodec: requiredString('Audio codec is required'),
         audioChannels: requiredString('Audio channels are required'),
         audioMetadata: z.string(),
+        hasTrueHDCompatibilityTrack: z.boolean().nullable().optional(),
         tmdbId: requiredNumber('TMDb ID is required'),
         imdbId: requiredString('IMDb ID is required'),
         season: z.number().nullable(),
@@ -425,6 +426,7 @@ const state = reactive<Metadata>({
     audioCodec: '',
     audioChannels: '',
     audioMetadata: '',
+    hasTrueHDCompatibilityTrack: null,
     tmdbId: null,
     imdbId: '',
     tvdbId: null,
@@ -689,14 +691,6 @@ function onSubmit(event: FormSubmitEvent<Schema>) {
                                     color="neutral"
                                     aria-label="Hi10P"
                                 />
-                                <UCheckbox
-                                    v-if="state.originalLanguage !== 'en'"
-                                    v-model="state.hasEnglishSubs"
-                                    size="xl"
-                                    label="English Subs"
-                                    color="neutral"
-                                    aria-label="English Subs"
-                                />
                             </div>
                         </UFormField>
                     </div>
@@ -719,6 +713,28 @@ function onSubmit(event: FormSubmitEvent<Schema>) {
 
                         <UFormField label="Audio Metadata">
                             <USelect v-model="state.audioMetadata" size="xl" class="w-full" placeholder="Select audio metadata" :items="audioMetadataOptions" />
+                        </UFormField>
+
+                        <UFormField label="Flags" class="md:col-span-2 lg:col-span-3">
+                            <div class="flex flex-wrap items-center gap-4 py-2">
+                                <UCheckbox
+                                    v-if="state.originalLanguage !== 'en'"
+                                    v-model="state.hasEnglishSubs"
+                                    size="xl"
+                                    label="English Subs"
+                                    color="neutral"
+                                    aria-label="English Subs"
+                                />
+                                <UCheckbox
+                                    v-if="state.audioCodec === 'TrueHD'"
+                                    :model-value="state.hasTrueHDCompatibilityTrack === true"
+                                    size="xl"
+                                    label="TrueHD Compatibility Track"
+                                    color="neutral"
+                                    aria-label="TrueHD Compatibility Track"
+                                    @update:model-value="(v) => (state.hasTrueHDCompatibilityTrack = v === true || v === false ? v : null)"
+                                />
+                            </div>
                         </UFormField>
                     </div>
                 </section>

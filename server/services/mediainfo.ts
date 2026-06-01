@@ -20,6 +20,8 @@ import {
     VIDEO_STANDARDS,
 } from '../model/metadata'
 
+type MediaInfoTrackType = 'General' | 'Video' | 'Audio' | 'Text'
+
 interface MediaInfoTrack {
     '@type': string
     [key: string]: unknown
@@ -42,6 +44,7 @@ export interface ParsedMediainfoMetadata {
     audioCodec?: AudioCodec
     audioChannels?: AudioChannels
     audioMetadata: AudioMetadata
+    hasTrueHDCompatibilityTrack?: boolean
     hasEnglishSubs: boolean
     tmdbId?: number
     imdbId?: string
@@ -89,6 +92,7 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
     const audioMetadata = parseAudioMetadata(audioFormatCommercial, audioTitle)
 
     const language = parseAudioLanguages(tracks)
+    const hasTrueHDCompatibilityTrack = audioCodec === AUDIO_CODECS.TRUEHD ? parseTrueHDCompatibilityTrack(tracks) : undefined
     const hasEnglishSubs = parseHasEnglishSubs(tracks)
 
     const extra = getTrackValue(general, 'extra')
@@ -107,6 +111,7 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
         audioCodec,
         audioChannels,
         audioMetadata,
+        hasTrueHDCompatibilityTrack,
         hasEnglishSubs,
         language,
         tmdbId,
@@ -135,17 +140,45 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
     return parsedMetadata
 }
 
+export async function analyzeMediaFileAsText(filePath: string): Promise<string> {
+    const settings = await getSettings()
+    const mediainfoPath = settings.mediainfoPath
+
+    logger.debug('Starting mediainfo CLI analysis.', { filePath, mediainfoPath })
+
+    try {
+        const { stdout } = await runCommand(mediainfoPath, [filePath])
+        logger.info('Completed mediainfo CLI analysis.', { filePath, mediainfoPath })
+        return stdout
+    } catch (error: unknown) {
+        logger.error('Mediainfo CLI analysis failed.', error, { filePath, mediainfoPath })
+        return ''
+    }
+}
+
+async function analyzeMediaFile(filePath: string): Promise<MediaInfoResult> {
+    const settings = await getSettings()
+    const mediainfoPath = settings.mediainfoPath
+
+    logger.debug('Starting mediainfo analysis.', { filePath, mediainfoPath })
+
+    try {
+        const { stdout } = await runCommand(mediainfoPath, ['--Output=JSON', filePath])
+        const result = JSON.parse(stdout) as MediaInfoResult
+        logger.info('Completed mediainfo analysis.', { filePath, mediainfoPath })
+        return result
+    } catch (error: unknown) {
+        logger.error('Mediainfo analysis failed.', error, { filePath, mediainfoPath })
+        return {}
+    }
+}
+
 function getTracks(result: MediaInfoResult): MediaInfoTrack[] {
     return result.media!.track as MediaInfoTrack[]
 }
 
-function findTrack(tracks: MediaInfoTrack[], type: string) {
+function findTrack(tracks: MediaInfoTrack[], type: MediaInfoTrackType) {
     return tracks.find((track) => String(getTrackValue(track, '@type')).toLowerCase() === type.toLowerCase())
-}
-
-function getTrackValue(track: MediaInfoTrack | undefined, key: string): unknown {
-    if (!track) return ''
-    return (track as unknown as Record<string, unknown>)[key] ?? ''
 }
 
 function findDefaultAudioTrack(tracks: MediaInfoTrack[]) {
@@ -160,7 +193,12 @@ function findDefaultAudioTrack(tracks: MediaInfoTrack[]) {
     return firstAudio
 }
 
-function isTrackType(track: MediaInfoTrack, expectedType: string) {
+function getTrackValue(track: MediaInfoTrack | undefined, key: string): unknown {
+    if (!track) return ''
+    return (track as unknown as Record<string, unknown>)[key] ?? ''
+}
+
+function isTrackType(track: MediaInfoTrack, expectedType: MediaInfoTrackType) {
     return toStringValue(track, '@type').toLowerCase() === expectedType.toLowerCase()
 }
 
@@ -233,6 +271,16 @@ function parseVideoStandard(standard: string): VideoStandard | undefined {
     if (standard === 'PAL') return VIDEO_STANDARDS.PAL
 
     return undefined
+}
+
+function parseNumberValue(track: MediaInfoTrack | undefined, key: string): number | undefined {
+    const stringValue = toStringValue(track, key)
+    if (!stringValue) return undefined
+
+    const match = stringValue.match(/\d+(\.\d+)?/)
+    if (!match) return undefined
+
+    return Number(match[0])
 }
 
 function parseHi10p(format: string, formatProfile: string): boolean {
@@ -329,9 +377,7 @@ function parseAudioLanguages(tracks: MediaInfoTrack[]): string[] {
 
     for (const track of tracks) {
         if (!isTrackType(track, 'Audio')) continue
-
-        const title = toStringValue(track, 'Title').trim().toLowerCase()
-        if (title.startsWith('commentary')) continue
+        if (isCommentaryAudioTrack(track)) continue
 
         const language = normalizeAudioLanguage(toStringValue(track, 'Language'))
         if (!language) continue
@@ -342,12 +388,8 @@ function parseAudioLanguages(tracks: MediaInfoTrack[]): string[] {
     return [...unique].sort((a, b) => a.localeCompare(b))
 }
 
-function parseHasEnglishSubs(tracks: MediaInfoTrack[]): boolean {
-    return tracks.some((track) => {
-        if (!isTrackType(track, 'Text')) return false
-        const language = toStringValue(track, 'Language').trim().toLowerCase()
-        return language === 'en' || language.startsWith('en-')
-    })
+function isCommentaryAudioTrack(track: MediaInfoTrack): boolean {
+    return toStringValue(track, 'Title').trim().toLowerCase().startsWith('commentary')
 }
 
 function normalizeAudioLanguage(value: string) {
@@ -357,14 +399,22 @@ function normalizeAudioLanguage(value: string) {
     return (dashIndex > 0 ? trimmed.slice(0, dashIndex) : trimmed).trim().toLowerCase()
 }
 
-function parseNumberValue(track: MediaInfoTrack | undefined, key: string): number | undefined {
-    const stringValue = toStringValue(track, key)
-    if (!stringValue) return undefined
+function parseTrueHDCompatibilityTrack(tracks: MediaInfoTrack[]): boolean {
+    return tracks.some((track) => {
+        if (!isTrackType(track, 'Audio')) return false
+        if (isCommentaryAudioTrack(track)) return false
+        const codec = parseAudioCodec(toStringValue(track, 'Format'), toStringValue(track, 'Format_Commercial_IfAny'))
 
-    const match = stringValue.match(/\d+(\.\d+)?/)
-    if (!match) return undefined
+        return codec === AUDIO_CODECS.DD || codec === AUDIO_CODECS.DD_PLUS
+    })
+}
 
-    return Number(match[0])
+function parseHasEnglishSubs(tracks: MediaInfoTrack[]): boolean {
+    return tracks.some((track) => {
+        if (!isTrackType(track, 'Text')) return false
+        const language = toStringValue(track, 'Language').trim().toLowerCase()
+        return language === 'en' || language.startsWith('en-')
+    })
 }
 
 function parseIntegerValue(track: MediaInfoTrack | undefined, key: string): number | undefined {
@@ -375,37 +425,4 @@ function parseIntegerValue(track: MediaInfoTrack | undefined, key: string): numb
     if (!match) return undefined
 
     return Number(match[0])
-}
-
-export async function analyzeMediaFileAsText(filePath: string): Promise<string> {
-    const settings = await getSettings()
-    const mediainfoPath = settings.mediainfoPath
-
-    logger.debug('Starting mediainfo CLI analysis.', { filePath, mediainfoPath })
-
-    try {
-        const { stdout } = await runCommand(mediainfoPath, [filePath])
-        logger.info('Completed mediainfo CLI analysis.', { filePath, mediainfoPath })
-        return stdout
-    } catch (error: unknown) {
-        logger.error('Mediainfo CLI analysis failed.', error, { filePath, mediainfoPath })
-        return ''
-    }
-}
-
-async function analyzeMediaFile(filePath: string): Promise<MediaInfoResult> {
-    const settings = await getSettings()
-    const mediainfoPath = settings.mediainfoPath
-
-    logger.debug('Starting mediainfo analysis.', { filePath, mediainfoPath })
-
-    try {
-        const { stdout } = await runCommand(mediainfoPath, ['--Output=JSON', filePath])
-        const result = JSON.parse(stdout) as MediaInfoResult
-        logger.info('Completed mediainfo analysis.', { filePath, mediainfoPath })
-        return result
-    } catch (error: unknown) {
-        logger.error('Mediainfo analysis failed.', error, { filePath, mediainfoPath })
-        return {}
-    }
 }
