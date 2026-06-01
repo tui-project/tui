@@ -527,6 +527,28 @@ describe('mediainfo service', () => {
             expected: { resolution: '1080i', videoCodec: 'AVC', audioChannels: '2.0', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
         },
         {
+            name: '1080 MBAFF scan type treated as interlaced',
+            sourceType: 'REMUX' as const,
+            result: {
+                media: {
+                    track: [
+                        { '@type': 'Video', Height: '1080', ScanType: 'MBAFF', Format: 'AVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
+                        {
+                            '@type': 'Audio',
+                            Default: 'Yes',
+                            Format: 'AAC',
+                            Channels: '2',
+                            ChannelLayout: 'L R',
+                            Format_Commercial_IfAny: 'Atmos',
+                            Language: 'pt-BR',
+                            Title: 'Main',
+                        },
+                    ],
+                },
+            },
+            expected: { resolution: '1080i', videoCodec: 'AVC', audioChannels: '2.0', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
+        },
+        {
             name: 'final codec and hdr edge branches',
             sourceType: 'WEBRIP' as const,
             result: {

@@ -210,7 +210,8 @@ function toStringValue(track: MediaInfoTrack | undefined, key: string): string {
 }
 
 function parseResolution(height: string, scanType: string): Resolution | undefined {
-    const suffix = scanType.trim().toLowerCase() === 'interlaced' ? 'i' : 'p'
+    const normalizedScanType = scanType.trim().toLowerCase()
+    const suffix = normalizedScanType === 'interlaced' || normalizedScanType === 'mbaff' ? 'i' : 'p'
 
     switch (height.trim()) {
         case '4320':
