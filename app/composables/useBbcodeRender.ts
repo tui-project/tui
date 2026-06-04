@@ -1,7 +1,43 @@
-import { TagNode, getUniqAttr } from '@bbob/plugin-helper'
+import { TagNode, getUniqAttr, isTagNode } from '@bbob/plugin-helper'
 import presetHTML5 from '@bbob/preset-html5'
-import type { ParseError, PresetTagsDefinition } from '@bbob/types'
+import type { NodeContent, ParseError, PresetTagsDefinition, TagNodeTree } from '@bbob/types'
 import bbobHTML from '@bbob/html'
+
+export function useBbcodeRender() {
+    const parseError = ref<string | undefined>(undefined)
+
+    function toHtml(content: string) {
+        parseError.value = undefined
+
+        const processed = bbobHTML(normalizeListItems(content), extendedPresetHTML5(), {
+            caseFreeTags: true,
+            onError: (err) => onError(err),
+        })
+
+        function onError(error: ParseError) {
+            parseError.value = `parsing error: tag: ${error.tagName}, line number: ${error.lineNumber}, colum number: ${error.columnNumber}.`
+        }
+
+        return processed
+    }
+
+    return {
+        toHtml,
+        error: parseError,
+    }
+}
+
+// Wraps runs of bare [*] lines (outside an existing [list]) with [list]...[/list]
+// so the base preset's list handler processes them correctly.
+function normalizeListItems(content: string): string {
+    return content
+        .split(/(\[list[^\]]*\][\s\S]*?\[\/list\])/gi)
+        .map((segment, i) => {
+            if (i % 2 === 1) return segment
+            return segment.replace(/(\[\*\][^\n]*(?:\n|(?=\[\/)))+/g, (match) => `[list]\n${match}[/list]\n`)
+        })
+        .join('')
+}
 
 const extendedPresetHTML5 = presetHTML5.extend((tags: PresetTagsDefinition<string>) => ({
     ...tags,
@@ -112,28 +148,31 @@ const extendedPresetHTML5 = presetHTML5.extend((tags: PresetTagsDefinition<strin
             node.content
         )
     },
+    list: (node) => {
+        const type = getUniqAttr(node.attrs)
+        const attrs: Record<string, string> = { class: type ? 'list-decimal ml-5' : 'list-disc ml-5' }
+        if (type) attrs.type = String(type)
+
+        return TagNode.create(type ? 'ol' : 'ul', attrs, toListNodes(node.content))
+    },
 }))
 
-export function useBbcodeRender() {
-    const parseError = ref<string | undefined>(undefined)
+// Inlined from @bbob/preset-html5 defaultTags (not exported by the package).
+function toListNodes(content: TagNodeTree | undefined): NodeContent[] {
+    return (content as NodeContent[]).reduce<NodeContent[]>((acc, node) => {
+        const listItem = acc[acc.length - 1]
 
-    function toHtml(content: string) {
-        parseError.value = undefined
-
-        const processed = bbobHTML(content, extendedPresetHTML5(), {
-            caseFreeTags: true,
-            onError: (err) => onError(err),
-        })
-
-        function onError(error: ParseError) {
-            parseError.value = `parsing error: tag: ${error.tagName}, line number: ${error.lineNumber}, colum number: ${error.columnNumber}.`
+        if (isTagNode(node) && TagNode.isOf(node, '*')) {
+            acc.push(TagNode.create('li', {}, []))
+            return acc
         }
 
-        return processed
-    }
+        if (isTagNode(listItem) && Array.isArray(listItem.content)) {
+            listItem.content = listItem.content.concat(node)
+            return acc
+        }
 
-    return {
-        toHtml,
-        error: parseError,
-    }
+        acc.push(node)
+        return acc
+    }, [])
 }

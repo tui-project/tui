@@ -56,6 +56,27 @@ describe('useBbcodeRender composable', () => {
         expect(html).not.toContain('font-family:')
     })
 
+    it('renders [*] list items as li elements in any container', async () => {
+        const { useBbcodeRender } = await import('../../../../app/composables/useBbcodeRender')
+        const { toHtml } = useBbcodeRender()
+
+        const inQuote = toHtml('[quote][*][b]Source #1.[/b] Link\n[*][b]Source #2.[/b] Other[/quote]')
+        expect(inQuote).toContain('<li')
+        expect(inQuote).toContain('Source #1.')
+        expect(inQuote).toContain('Source #2.')
+
+        const inList = toHtml('[list][*]item one\n[*]item two\n[/list]')
+        expect(inList).toContain('<li')
+        expect(inList).toContain('list-disc')
+        expect(inList).toContain('item one')
+        expect(inList).toContain('item two')
+
+        const ordered = toHtml('[list=1][*]first\n[*]second\n[/list]')
+        expect(ordered).toContain('<ol')
+        expect(ordered).toContain('list-decimal')
+        expect(ordered).toContain('first')
+    })
+
     it('stores parse errors from invalid BBCode', async () => {
         vi.resetModules()
         vi.doMock('@bbob/html', () => ({
