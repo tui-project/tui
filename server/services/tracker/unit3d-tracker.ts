@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { basename } from 'node:path'
 import { MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, type MediaType, type Resolution, type SourceType } from '../../model/metadata'
 import { logger } from '../../utils/logger'
-import type { RuleViolation, TrackerService, TrackerUploadMetadata, TrackerUploadOptions } from './tracker'
+import { TrackerError, type RuleViolation, type TrackerService, type TrackerUploadMetadata, type TrackerUploadOptions } from './tracker'
 
 const CATEGORY_IDS: Record<MediaType, number> = {
     [MEDIA_TYPES.MOVIE]: 1,
@@ -77,8 +77,7 @@ export function createUnit3dService(
             torrentDownloadUrl = response.data
         } catch (error: unknown) {
             const err = error as { statusCode?: number; data?: unknown }
-            const uploadError = new Error(`Upload failed: HTTP ${err.statusCode ?? 'unknown'} — ${JSON.stringify(err.data)}`)
-            throw uploadError
+            throw new TrackerError(parseUnit3dErrorMessage(err.data), err.statusCode, err.data)
         }
 
         logger.info('Torrent uploaded successfully to UNIT3D tracker.', { trackerUrl: url, title, torrentDownloadUrl })
@@ -90,4 +89,16 @@ export function createUnit3dService(
         checkRules: checkRules ?? (() => []),
         upload,
     }
+}
+
+function parseUnit3dErrorMessage(data: unknown): string {
+    if (!data || typeof data !== 'object') return JSON.stringify(data)
+
+    const d = data as Record<string, unknown>
+    const fields = (d.errors ?? d.data) as Record<string, string[]> | undefined
+    if (fields && typeof fields === 'object') return Object.values(fields).flat().join(' ')
+
+    if (typeof d.message === 'string') return d.message
+
+    return JSON.stringify(data)
 }

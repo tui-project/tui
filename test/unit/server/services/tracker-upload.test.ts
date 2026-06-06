@@ -88,7 +88,9 @@ async function loadService() {
     vi.doMock('../../../../server/services/torrent-client', () => ({ injectTorrent }))
     vi.doMock('../../../../server/utils/logger', () => ({ logger }))
 
-    return import('../../../../server/services/tracker-upload')
+    const service = await import('../../../../server/services/tracker-upload')
+    const { TrackerError } = await import('../../../../server/services/tracker/tracker')
+    return { ...service, TrackerError }
 }
 
 describe('tracker upload service', () => {
@@ -226,6 +228,30 @@ describe('tracker upload service', () => {
             await upload('req-1', '/media/Movie.mkv', defaultTrackers, defaultMetadata, 'desc')
 
             expect(updateTrackerUploadRequestStatus).toHaveBeenCalledWith('req-1', 'partial_success', ['TRK2'])
+        })
+
+        it('stores the parsed reason as uploadError and logs full response for TrackerError', async () => {
+            const { upload, TrackerError } = await loadService()
+            const responseData = { message: 'Validation Error.', errors: { name: ['The name has already been taken.'] } }
+            trackerServiceUpload.mockRejectedValue(new TrackerError('The name has already been taken.', 422, responseData))
+
+            await upload('req-1', '/media/Movie.mkv', defaultTrackers, defaultMetadata, 'desc')
+
+            expect(updateTrackerItem).toHaveBeenCalledWith('req-1', 'TRK1', {
+                uploadStatus: 'failed',
+                uploadError: 'The name has already been taken.',
+            })
+            expect(logger.error).toHaveBeenCalledWith('Failed to upload to tracker.', expect.any(Object), { trackerCode: 'TRK1', statusCode: 422, responseData })
+        })
+
+        it('omits uploadError and logs only trackerCode for non-tracker errors', async () => {
+            trackerServiceUpload.mockRejectedValue(new Error('network timeout'))
+            const { upload } = await loadService()
+
+            await upload('req-1', '/media/Movie.mkv', [defaultTrackers[0]!], defaultMetadata, 'desc')
+
+            expect(updateTrackerItem).toHaveBeenCalledWith('req-1', 'TRK1', { uploadStatus: 'failed' })
+            expect(logger.error).toHaveBeenCalledWith('Failed to upload to tracker.', expect.any(Error), { trackerCode: 'TRK1' })
         })
 
         it('sets fail when all trackers fail', async () => {

@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createUnit3dService } from '../../../../../server/services/tracker/unit3d-tracker'
 import { MEDIA_TYPES, SOURCE_TYPES, SOURCES, RESOLUTIONS } from '../../../../../server/model/metadata'
-import type { TrackerUploadMetadata } from '../../../../../server/services/tracker/tracker'
+import { TrackerError, type TrackerUploadMetadata } from '../../../../../server/services/tracker/tracker'
 
 vi.mock('node:fs/promises', () => ({ readFile: vi.fn() }))
 vi.mock('../../../../../server/utils/logger', () => ({
@@ -181,20 +181,69 @@ describe('createUnit3dService — upload', () => {
         expect(appendSpy).toHaveBeenCalledWith('tmdb', '42')
     })
 
-    it('throws with status code and response data when $fetch rejects with a structured error', async () => {
-        const fetchError = Object.assign(new Error(), { statusCode: 422, data: { message: 'Unprocessable Entity' } })
+    async function catchUploadError(service: ReturnType<typeof createUnit3dService>, data: unknown, statusCode: number): Promise<TrackerError> {
+        const fetchError = Object.assign(new Error(), { statusCode, data })
         vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(fetchError))
-        const service = createUnit3dService('https://tracker.example.com', 'apikey')
-        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false, modQueueOptIn: false })).rejects.toThrow(
-            'Upload failed: HTTP 422 — {"message":"Unprocessable Entity"}'
+        return service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false, modQueueOptIn: false }).then(
+            () => {
+                throw new Error('expected upload to fail')
+            },
+            (e) => e as TrackerError
         )
+    }
+
+    it('extracts field messages from errors shape (e.g. duplicate name)', async () => {
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        const data = { message: 'The name has already been taken.', errors: { name: ['The name has already been taken.'] } }
+        const error = await catchUploadError(service, data, 422)
+        expect(error).toBeInstanceOf(TrackerError)
+        expect(error.reason).toBe('The name has already been taken.')
+        expect(error.statusCode).toBe(422)
+        expect(error.responseData).toEqual(data)
+        expect(error.message).toBe('Tracker upload failed')
+    })
+
+    it('extracts field messages from data shape (e.g. invalid category)', async () => {
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        const data = { success: false, message: 'Validation Error.', data: { category_id: ['The selected category id is invalid.'] } }
+        const error = await catchUploadError(service, data, 422)
+        expect(error).toBeInstanceOf(TrackerError)
+        expect(error.reason).toBe('The selected category id is invalid.')
+    })
+
+    it('joins multiple field validation messages', async () => {
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        const data = { message: 'Validation Error.', errors: { name: ['The name has already been taken.'], info_hash: ['The info hash has already been taken.'] } }
+        const error = await catchUploadError(service, data, 422)
+        expect(error).toBeInstanceOf(TrackerError)
+        expect(error.reason).toBe('The name has already been taken. The info hash has already been taken.')
+    })
+
+    it('falls back to top-level message when no field errors are present', async () => {
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        const error = await catchUploadError(service, { message: 'Unprocessable Entity' }, 422)
+        expect(error).toBeInstanceOf(TrackerError)
+        expect(error.reason).toBe('Unprocessable Entity')
+    })
+
+    it('falls back to raw JSON when data has no recognisable shape', async () => {
+        const service = createUnit3dService('https://tracker.example.com', 'apikey')
+        const error = await catchUploadError(service, { unexpected: true }, 500)
+        expect(error).toBeInstanceOf(TrackerError)
+        expect(error.reason).toBe('{"unexpected":true}')
     })
 
     it('throws with unknown status when $fetch rejects with a non-Error value', async () => {
         vi.stubGlobal('$fetch', vi.fn().mockRejectedValue('Internal Server Error'))
         const service = createUnit3dService('https://tracker.example.com', 'apikey')
-        await expect(service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false, modQueueOptIn: false })).rejects.toThrow(
-            'Upload failed: HTTP unknown — undefined'
+        const error = await service.upload('/path/to/movie.torrent', baseMetadata, 'desc', 'mi', { title: 'T', anonymous: false, modQueueOptIn: false }).then(
+            () => {
+                throw new Error('expected upload to fail')
+            },
+            (e) => e as TrackerError
         )
+        expect(error).toBeInstanceOf(TrackerError)
+        expect(error.statusCode).toBeUndefined()
+        expect(error.responseData).toBeUndefined()
     })
 })

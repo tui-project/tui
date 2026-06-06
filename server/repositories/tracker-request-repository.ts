@@ -30,7 +30,11 @@ export async function updateTrackerUploadRequestTorrentCreationProgress(id: stri
     await trackerUploadRequestCollection.updateAsync({ id }, { $set: { torrentCreationProgress } }, {})
 }
 
-export async function updateTrackerItem(id: string, code: string, update: Partial<Pick<TrackerUploadRequest['trackers'][number], 'uploadStatus' | 'torrentClientInjected'>>) {
+export async function updateTrackerItem(
+    id: string,
+    code: string,
+    update: Partial<Pick<TrackerUploadRequest['trackers'][number], 'uploadStatus' | 'uploadError' | 'torrentClientInjected'>>
+) {
     const request = await trackerUploadRequestCollection.findOneAsync({ id })
     if (!request) return
 

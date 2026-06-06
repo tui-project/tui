@@ -1,5 +1,16 @@
 import type { Metadata } from '../../model/metadata'
 
+export class TrackerError extends Error {
+    constructor(
+        public readonly reason: string,
+        public readonly statusCode: number | undefined,
+        public readonly responseData: unknown
+    ) {
+        super('Tracker upload failed')
+        this.name = 'TrackerError'
+    }
+}
+
 export type TrackerUploadMetadata = Omit<Metadata, 'fileName'> &
     Required<
         Pick<
