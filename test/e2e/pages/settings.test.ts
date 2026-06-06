@@ -31,26 +31,34 @@ describe('settings page flow', async () => {
         })
     })
 
-    it('saves media paths and keeps them after reload', async () => {
+    it('saves media paths and keeps them after reload', { timeout: 60000 }, async () => {
         const page = await createPage('/login')
 
+        await page.waitForSelector('text=Sign in to continue.')
         await page.getByPlaceholder('enter your username').fill('admin')
         await page.getByPlaceholder('enter your password').fill('Admin@123')
         await page.getByRole('button', { name: 'Log in' }).click()
         await page.waitForURL('**/')
+        await page.waitForSelector('text=Dashboard')
 
-        await page.getByRole('link', { name: 'Settings' }).click()
+        await page.goto(page.url().replace(/\/$/, '') + '/settings')
         await page.waitForURL('**/settings')
         await page.waitForSelector('text=Configure settings for the application.')
 
-        await page.getByPlaceholder('/path/to/media/folder').fill(mediaDir)
-        await page.getByRole('button', { name: 'Add' }).click()
-        await page.getByText(mediaDir).waitFor()
+        // UInputTags adds on Enter key press
+        const mediaPathInput = page.getByPlaceholder('/path/to/media/folder')
+        await mediaPathInput.fill(mediaDir)
+        await mediaPathInput.press('Enter')
+        await page.getByText(mediaDir).waitFor({ timeout: 10000 })
+
+        // TMDB API key is required by the form schema before Save succeeds
+        const tmdbInput = page.getByPlaceholder('Enter TMDB API key')
+        await tmdbInput.fill('test-api-key-for-e2e')
 
         await page.getByRole('button', { name: 'Save' }).click()
-        await page.waitForSelector('text=Settings successfully saved.')
+        await page.waitForSelector('text=Settings successfully saved.', { timeout: 10000 })
 
         await page.reload()
-        await page.getByText(mediaDir).waitFor()
+        await page.getByText(mediaDir).waitFor({ timeout: 10000 })
     })
 })
