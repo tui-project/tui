@@ -321,8 +321,7 @@ describe('POST /api/tracker/requests route handler', () => {
         await handler(mockEvent())
         await flushPromises()
 
-        expect(uploadMock).toHaveBeenCalledWith('/config/tmp/torrents/ULCX/Movie.torrent', expect.any(Object), expect.any(String), expect.any(String), {
-            title: 'Custom Title',
+        expect(uploadMock).toHaveBeenCalledWith('/config/tmp/torrents/ULCX/Movie.torrent', expect.any(Object), expect.any(String), expect.any(String), 'Custom Title', {
             anonymous: true,
             modQueueOptIn: true,
         })
@@ -349,11 +348,14 @@ describe('POST /api/tracker/requests route handler', () => {
         await handler(mockEvent())
         await flushPromises()
 
-        expect(uploadMock).toHaveBeenCalledWith('/config/tmp/torrents/ULCX/Movie.torrent', expect.any(Object), expect.any(String), expect.any(String), {
-            title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP',
-            anonymous: false,
-            modQueueOptIn: false,
-        })
+        expect(uploadMock).toHaveBeenCalledWith(
+            '/config/tmp/torrents/ULCX/Movie.torrent',
+            expect.any(Object),
+            expect.any(String),
+            expect.any(String),
+            'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP',
+            { anonymous: false, modQueueOptIn: false }
+        )
     })
 
     it('rejects request with empty trackers array', async () => {

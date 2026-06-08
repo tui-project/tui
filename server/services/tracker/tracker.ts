@@ -39,7 +39,6 @@ export type TrackerUploadMetadata = Omit<Metadata, 'fileName'> &
 export interface TrackerUploadOptions {
     anonymous: boolean
     modQueueOptIn: boolean
-    title: string
 }
 
 export interface RuleViolation {
@@ -49,6 +48,6 @@ export interface RuleViolation {
 
 export interface TrackerService {
     getTitle(metadata: TrackerUploadMetadata): Promise<string>
-    upload(torrentPath: string, metadata: TrackerUploadMetadata, description: string, mediainfoText: string, options: TrackerUploadOptions): Promise<string>
+    upload(torrentPath: string, metadata: TrackerUploadMetadata, description: string, mediainfoText: string, title: string, options: TrackerUploadOptions): Promise<string>
     checkRules(metadata: TrackerUploadMetadata): RuleViolation[]
 }

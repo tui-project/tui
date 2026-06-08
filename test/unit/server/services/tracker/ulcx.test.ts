@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createUlcxTrackerService } from '../../../../../server/services/tracker/trackers/ulcx'
+import { ulcxTrackerService } from '../../../../../server/services/tracker/trackers/ulcx'
 import { AUDIO_CODECS, AUDIO_CHANNELS, MEDIA_TYPES, RATIOS, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS } from '../../../../../server/model/metadata'
 import type { TrackerUploadMetadata } from '../../../../../server/services/tracker/tracker'
 
 vi.mock('../../../../../server/utils/logger', () => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}))
+
+vi.mock('node:fs/promises', () => ({
+    readFile: vi.fn().mockResolvedValue(Buffer.from('fake-torrent')),
 }))
 
 const fetchMock = vi.fn()
@@ -40,8 +44,8 @@ const tvBaseMetadata: TrackerUploadMetadata = {
     season: 1,
 }
 
-describe('createUlcxTrackerService — getTitle', () => {
-    const service = createUlcxTrackerService('https://upload.cx', 'apikey')
+describe('ulcxTrackerService — getTitle', () => {
+    const service = ulcxTrackerService('https://upload.cx', 'apikey')
 
     beforeEach(() => {
         fetchMock.mockReset()
@@ -406,8 +410,8 @@ describe('createUlcxTrackerService — getTitle', () => {
     })
 })
 
-describe('createUlcxTrackerService — checkRules', () => {
-    const service = createUlcxTrackerService('https://upload.cx', 'apikey')
+describe('ulcxTrackerService — checkRules', () => {
+    const service = ulcxTrackerService('https://upload.cx', 'apikey')
 
     it('returns a violation for a banned release group', () => {
         const violations = service.checkRules({ ...baseMetadata, releaseGroup: 'YIFY' })
@@ -713,5 +717,17 @@ describe('createUlcxTrackerService — checkRules', () => {
             const violations = service.checkRules({ ...baseMetadata, audioCodec: AUDIO_CODECS.DTS_HD_MA, hasTrueHDCompatibilityTrack: undefined })
             expect(violations).toEqual([])
         })
+    })
+})
+
+describe('ulcxTrackerService — upload', () => {
+    it('delegates to unit3d upload with url, apiKey, title, and options', async () => {
+        fetchMock.mockResolvedValue({ data: 'https://upload.cx/torrent/download/1' })
+        const service = ulcxTrackerService('https://upload.cx', 'apikey')
+
+        const result = await service.upload('/fake.torrent', baseMetadata, 'desc', 'mediainfo', 'Movie 2024', { anonymous: false, modQueueOptIn: false })
+
+        expect(result).toBe('https://upload.cx/torrent/download/1')
+        expect(fetchMock).toHaveBeenCalledWith('https://upload.cx/api/torrents/upload', expect.objectContaining({ method: 'POST' }))
     })
 })

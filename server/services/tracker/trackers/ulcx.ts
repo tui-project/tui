@@ -1,18 +1,8 @@
 import { AUDIO_CODECS, MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS, type Resolution, type VideoCodec } from '../../../model/metadata'
 import { isDvd, isRemux, isHdtv, isEncode, isForeignContent, hasEnglishAudio } from '../util/metadata-util'
-import type { RuleViolation, TrackerService, TrackerUploadMetadata } from '../tracker'
+import type { RuleViolation, TrackerService, TrackerUploadMetadata, TrackerUploadOptions } from '../tracker'
 import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
-import { createUnit3dService } from '../unit3d-tracker'
-
-/**
- * Refer to:
- *  - naming guide: https://upload.cx/wikis/7
- *  - bannd groups: https://upload.cx/wikis/6
- *  - API spec.   : https://upload.cx/wikis/38
- */
-export function createUlcxTrackerService(url: string, apiKey: string): TrackerService {
-    return createUnit3dService(url, apiKey, buildTitle, checkRules)
-}
+import { upload } from '../unit3d-tracker'
 
 const BANNED_GROUPS = new Set(
     [
@@ -63,6 +53,21 @@ const BANNED_GROUPS = new Set(
         'YIFY',
     ].map((g) => g.toLowerCase())
 )
+
+/**
+ * Refer to:
+ *  - naming guide: https://upload.cx/wikis/7
+ *  - bannd groups: https://upload.cx/wikis/6
+ *  - API spec.   : https://upload.cx/wikis/38
+ */
+export function ulcxTrackerService(url: string, apiKey: string): TrackerService {
+    return {
+        getTitle: buildTitle,
+        checkRules,
+        upload: (torrentPath, metadata, description, mediainfoText, title: string, options: TrackerUploadOptions) =>
+            upload(url, apiKey, torrentPath, metadata, description, mediainfoText, title, options),
+    }
+}
 
 /**
  * Full Disc, Remux Template            : Name AKA Original LOCALE Year S##E## Cut Ratio Hybrid REPACK PROPER RERip Resolution Edition Region 3D SOURCE TYPE Hi10P HDR Vcodec Dub Acodec Channels Object-Tag

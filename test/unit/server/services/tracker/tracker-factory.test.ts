@@ -3,14 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const getSettings = vi.fn()
 
 vi.mock('../../../../../server/repositories/settings-repository', () => ({ getSettings }))
-vi.mock('../../../../../server/services/tracker/trackers/ulcx', () => ({ createUlcxTrackerService: vi.fn(() => ({ getTitle: vi.fn(), upload: vi.fn() })) }))
-vi.mock('../../../../../server/services/tracker/trackers/rfx', () => ({ createRfxTrackerService: vi.fn(() => ({ getTitle: vi.fn(), upload: vi.fn() })) }))
-vi.mock('../../../../../server/services/tracker/trackers/huno', () => ({ createHunoTrackerService: vi.fn(() => ({ getTitle: vi.fn(), upload: vi.fn() })) }))
-vi.mock('../../../../../server/services/tracker/trackers/sp', () => ({ createSpTrackerService: vi.fn(() => ({ getTitle: vi.fn(), upload: vi.fn() })) }))
-vi.mock('../../../../../server/services/tracker/trackers/lst', () => ({ createLstTrackerService: vi.fn(() => ({ getTitle: vi.fn(), upload: vi.fn() })) }))
-vi.mock('../../../../../server/services/tracker/trackers/ath', () => ({ createAthTrackerService: vi.fn(() => ({ getTitle: vi.fn(), upload: vi.fn() })) }))
-
-const TRACKER_CODES = ['ULCX', 'RFX', 'HUNO', 'SP', 'LST', 'ATH']
+vi.mock('../../../../../server/services/tracker/trackers/ulcx', () => ({ ulcxTrackerService: vi.fn(() => ({ getTitle: vi.fn(), checkRules: vi.fn(), upload: vi.fn() })) }))
+vi.mock('../../../../../server/services/tracker/trackers/ath', () => ({ athTrackerService: vi.fn(() => ({ getTitle: vi.fn(), checkRules: vi.fn(), upload: vi.fn() })) }))
+const TRACKER_CODES = ['ULCX', 'ATH']
 
 beforeEach(() => {
     getSettings.mockResolvedValue({

@@ -99,8 +99,7 @@ async function uploadToTrackers(
 
         try {
             const trackerService = await createTrackerService(tracker.code)
-            const torrentDownloadUrl = await trackerService.upload(torrentPath, metadata, description, mediainfoText, {
-                title: tracker.title,
+            const torrentDownloadUrl = await trackerService.upload(torrentPath, metadata, description, mediainfoText, tracker.title, {
                 anonymous: tracker.anonymous,
                 modQueueOptIn: tracker.modQueueOptIn,
             })

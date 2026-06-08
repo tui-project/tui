@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createAthTrackerService } from '../../../../../server/services/tracker/trackers/ath'
+import { athTrackerService } from '../../../../../server/services/tracker/trackers/ath'
 import { AUDIO_CHANNELS, AUDIO_CODECS, CUTS, HDR_TYPES, MEDIA_TYPES, RATIOS, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS } from '../../../../../server/model/metadata'
 import { getLanguageDisplayName } from '../../../../../server/repositories/language-repository'
 import type { TrackerUploadMetadata } from '../../../../../server/services/tracker/tracker'
@@ -49,8 +49,8 @@ const tvBaseMetadata: TrackerUploadMetadata = {
     season: 1,
 }
 
-describe('createAthTrackerService — checkRules', () => {
-    const service = createAthTrackerService('https://aither.cc', 'apikey')
+describe('athTrackerService — checkRules', () => {
+    const service = athTrackerService('https://aither.cc', 'apikey')
 
     it('returns no violations for a clean release', () => {
         expect(service.checkRules(baseMetadata)).toEqual([])
@@ -218,8 +218,8 @@ describe('createAthTrackerService — checkRules', () => {
     })
 })
 
-describe('createAthTrackerService — getTitle', () => {
-    const service = createAthTrackerService('https://aither.cc', 'apikey')
+describe('athTrackerService — getTitle', () => {
+    const service = athTrackerService('https://aither.cc', 'apikey')
 
     beforeEach(() => {
         fetchMock.mockReset()
@@ -590,14 +590,12 @@ describe('createAthTrackerService — getTitle', () => {
     })
 })
 
-describe('createAthTrackerService — upload extra fields', () => {
-    const service = createAthTrackerService('https://aither.cc', 'apikey')
-    const uploadOpts = { anonymous: false, modQueueOptIn: false, title: 'Movie 2024' }
-
+describe('athTrackerService — upload extra fields', () => {
+    const service = athTrackerService('https://aither.cc', 'apikey')
     async function getFormData(metadata: TrackerUploadMetadata): Promise<FormData> {
         fetchMock.mockClear()
         fetchMock.mockResolvedValue({ data: 'http://aither.cc/torrents/1' })
-        await service.upload('/fake.torrent', metadata, 'desc', 'mediainfo', uploadOpts)
+        await service.upload('/fake.torrent', metadata, 'desc', 'mediainfo', 'Movie 2024', { anonymous: false, modQueueOptIn: false })
         return fetchMock.mock.calls[0][1].body as FormData
     }
 

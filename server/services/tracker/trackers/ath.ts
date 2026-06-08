@@ -1,19 +1,9 @@
 import { AUDIO_CODECS, HDR_TYPES, MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, type SourceType } from '../../../model/metadata'
 import { hasEnglishAudio, isForeignContent, isRemux } from '../util/metadata-util'
 import { getLanguageDisplayName } from '../../../repositories/language-repository'
-import type { RuleViolation, TrackerService, TrackerUploadMetadata } from '../tracker'
+import type { RuleViolation, TrackerService, TrackerUploadMetadata, TrackerUploadOptions } from '../tracker'
 import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
-import { createUnit3dService } from '../unit3d-tracker'
-
-/**
- * Refer to:
- *  - naming guide: https://aither.cc/wikis/51
- *  - bannd groups: https://aither.cc/pages/blacklist/releasegroups
- *  - API spec.   : https://aither.cc/pages/api
- */
-export function createAthTrackerService(url: string, apiKey: string): TrackerService {
-    return createUnit3dService(url, apiKey, buildTitle, checkAthRules, appendAthFields)
-}
+import { upload } from '../unit3d-tracker'
 
 // null means banned for ALL source types; a Set means banned only for those specific types
 const BANNED_GROUPS: Map<string, Set<SourceType> | null> = new Map(
@@ -119,6 +109,21 @@ const BANNED_GROUPS: Map<string, Set<SourceType> | null> = new Map(
 const SD_RESOLUTIONS: string[] = [RESOLUTIONS['480i'], RESOLUTIONS['480p'], RESOLUTIONS['576i'], RESOLUTIONS['576p']]
 
 /**
+ * Refer to:
+ *  - naming guide: https://aither.cc/wikis/51
+ *  - bannd groups: https://aither.cc/pages/blacklist/releasegroups
+ *  - API spec.   : https://aither.cc/pages/api
+ */
+export function athTrackerService(url: string, apiKey: string): TrackerService {
+    return {
+        getTitle: buildTitle,
+        checkRules,
+        upload: (torrentPath: string, metadata: TrackerUploadMetadata, description: string, mediainfoText: string, title: string, options: TrackerUploadOptions) =>
+            upload(url, apiKey, torrentPath, metadata, description, mediainfoText, title, options, getExtraFields(metadata)),
+    }
+}
+
+/**
  * WEB-DL / WEBRip / Encode: Title [AKA Original] LOCALE Year S##E## [Cut] [Ratio] [Hybrid] [REPACK] [PROPER] [RERIP] [Language] Resolution [Service] Source Type [Dub] AudioCodec Channels [Metadata] [HDR] VideoCodec-Tag
  * Remux                   : Title [AKA Original] LOCALE Year S##E## [Cut] [Ratio] [Hybrid] [REPACK] [PROPER] [RERIP] [Language] Resolution Source REMUX [HDR] VideoCodec [Dub] AudioCodec Channels [Metadata]-Tag
  */
@@ -173,7 +178,7 @@ async function buildLanguageString(languages: string[]): Promise<string> {
     return displayName ? displayName.toUpperCase() : ''
 }
 
-function checkAthRules(metadata: TrackerUploadMetadata): RuleViolation[] {
+function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
     const violations: RuleViolation[] = []
 
     if (metadata.releaseGroup) {
@@ -223,10 +228,13 @@ function checkAthRules(metadata: TrackerUploadMetadata): RuleViolation[] {
     return violations
 }
 
-function appendAthFields(formData: FormData, metadata: TrackerUploadMetadata) {
+function getExtraFields(metadata: TrackerUploadMetadata): Record<string, string> {
     const hdr = metadata.hdr ?? []
-    formData.append('dv', hdr.includes(HDR_TYPES.DV) ? '1' : '0')
-    formData.append('hdr', hdr.includes(HDR_TYPES.HDR10) ? '1' : '0')
-    formData.append('hdr10p', hdr.includes(HDR_TYPES.HDR10_PLUS) ? '1' : '0')
-    formData.append('sd', SD_RESOLUTIONS.includes(metadata.resolution) ? '1' : '0')
+
+    return {
+        dv: hdr.includes(HDR_TYPES.DV) ? '1' : '0',
+        hdr: hdr.includes(HDR_TYPES.HDR10) ? '1' : '0',
+        hdr10p: hdr.includes(HDR_TYPES.HDR10_PLUS) ? '1' : '0',
+        sd: SD_RESOLUTIONS.includes(metadata.resolution) ? '1' : '0',
+    }
 }
