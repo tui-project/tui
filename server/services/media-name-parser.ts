@@ -1,5 +1,19 @@
 import path from 'node:path'
-import { RATIOS, SERVICES, SOURCE_TYPES, SOURCES, type Cut, type Ratio, type Service, type Source, type SourceType } from '../model/metadata'
+import {
+    HDR_TYPES,
+    RATIOS,
+    SERVICES,
+    SOURCE_TYPES,
+    SOURCES,
+    VIDEO_CODECS,
+    type Cut,
+    type HDR,
+    type Ratio,
+    type Service,
+    type Source,
+    type SourceType,
+    type VideoCodec,
+} from '../model/metadata'
 import { logger } from '../utils/logger'
 
 export interface ParsedNameMetadata {
@@ -18,6 +32,8 @@ export interface ParsedNameMetadata {
     hybrid: boolean
     releaseGroup?: string
     title: string
+    hdr: HDR[]
+    videoCodec: VideoCodec | undefined
 }
 
 export function parseMetadataFromName(name: string): ParsedNameMetadata {
@@ -39,6 +55,8 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
     const hybrid = upperTokens.some((token) => token === 'HYBRID')
     const ratio = parseRatio(nameWithoutExtension)
     const releaseGroup = parseReleaseGroup(nameWithoutExtension)
+    const hdr = parseHdr(nameWithoutExtension)
+    const videoCodec = parseVideoCodec(nameWithoutExtension)
 
     const parsedMetadata = {
         title,
@@ -56,6 +74,8 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
         rerip,
         hybrid,
         releaseGroup,
+        hdr,
+        videoCodec,
     }
 
     logger.debug('Parsed media metadata from name.', parsedMetadata)
@@ -253,4 +273,37 @@ function findFileMetadataIndex(name: string) {
     const indexes = metadataStartPatterns.map((pattern) => pattern.exec(name)?.index ?? -1).filter((index) => index >= 0)
 
     return indexes.length > 0 ? Math.min(...indexes) : -1
+}
+
+function parseHdr(name: string): HDR[] {
+    const hdr: HDR[] = []
+
+    if (/(?<![A-Z0-9])DV(?![A-Z0-9])/i.test(name) || /DOLBY.?VISION/i.test(name)) hdr.push(HDR_TYPES.DV)
+    if (/(?<![A-Z0-9])HDR10[+P](?![A-Z0-9])/i.test(name) || /HDR10PLUS/i.test(name)) hdr.push(HDR_TYPES.HDR10_PLUS)
+    if (/(?<![A-Z0-9])HDR(?![A-Z0-9])/i.test(name)) hdr.push(HDR_TYPES.HDR10)
+    if (/(?<![A-Z0-9])HLG(?![A-Z0-9])/i.test(name)) hdr.push(HDR_TYPES.HLG)
+
+    return hdr
+}
+
+function parseVideoCodec(name: string): VideoCodec | undefined {
+    const codecMap: [RegExp, VideoCodec][] = [
+        [/\bx265\b/i, VIDEO_CODECS.X265],
+        [/\bx264\b/i, VIDEO_CODECS.X264],
+        [/\bHEVC\b/i, VIDEO_CODECS.HEVC],
+        [/\bH\.265\b/i, VIDEO_CODECS.H265],
+        [/\bH\.264\b/i, VIDEO_CODECS.H264],
+        [/\bAVC\b/i, VIDEO_CODECS.AVC],
+        [/\bVC-1\b/i, VIDEO_CODECS.VC_1],
+        [/\bMPEG-2\b/i, VIDEO_CODECS.MPEG_2],
+        [/\bMPEG-1\b/i, VIDEO_CODECS.MPEG_1],
+        [/\bVP9\b/i, VIDEO_CODECS.VP9],
+        [/\bAV1\b/i, VIDEO_CODECS.AV1],
+    ]
+
+    for (const [re, codec] of codecMap) {
+        if (re.test(name)) return codec
+    }
+
+    return undefined
 }
