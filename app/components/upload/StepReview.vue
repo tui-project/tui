@@ -5,6 +5,7 @@ import { useSettings } from '~/composables/useSettings'
 import { useTrackerRequests, type TrackerItem } from '~/composables/useTrackerRequests'
 import { useTrackerTitle } from '~/composables/useTrackerTitle'
 import { useTrackerRules, type RuleViolation } from '~/composables/useTrackerRules'
+import { useTrackerDuplicates, type DuplicateEntry } from '~/composables/useTrackerDuplicates'
 
 const props = defineProps<{
     selectedTrackers: string[]
@@ -22,17 +23,27 @@ const { getSettings, loading: settingsLoading } = useSettings()
 const { uploadTorrent, loading: uploadLoading, error: uploadError } = useTrackerRequests()
 const { getTitle, loading: titlesLoading } = useTrackerTitle()
 const { getViolations, loading: rulesLoading } = useTrackerRules()
+const { getDuplicates, loading: duplicatesLoading } = useTrackerDuplicates()
 
 const trackerNames = ref<Record<string, string>>({})
 const trackerItems = ref<TrackerItem[]>([])
 const trackerViolations = ref<Record<string, RuleViolation[]>>({})
 const acceptedViolations = ref<Record<string, boolean>>({})
+const trackerDuplicates = ref<Record<string, DuplicateEntry[]>>({})
+const acceptedDuplicates = ref<Record<string, boolean>>({})
 
 const uploadableTrackers = computed(() =>
     trackerItems.value.filter((item) => {
         if (!item.title.trim()) return false
+
         const violations = trackerViolations.value[item.code] ?? []
-        return violations.length === 0 || acceptedViolations.value[item.code]
+        if (violations.length > 0 && !acceptedViolations.value[item.code]) return false
+
+        const duplicates = trackerDuplicates.value[item.code] ?? []
+        const nonTrumpable = duplicates.filter((d) => !d.trumpable)
+        if (nonTrumpable.length > 0 && !acceptedDuplicates.value[item.code]) return false
+
+        return true
     })
 )
 
@@ -61,23 +72,38 @@ async function loadTrackerItems() {
         )
     )
 
-    const violations = await Promise.all(
-        props.selectedTrackers.map(async (code) => ({
-            code,
-            violations: await getViolations(code, props.metadata!),
-        }))
-    )
+    const [violations, duplicates] = await Promise.all([
+        Promise.all(props.selectedTrackers.map(async (code) => ({ code, violations: await getViolations(code, props.metadata!) }))),
+        Promise.all(props.selectedTrackers.map(async (code) => ({ code, duplicates: await getDuplicates(code, props.metadata!) }))),
+    ])
 
     const newViolations: Record<string, RuleViolation[]> = {}
-    const newAccepted: Record<string, boolean> = {}
+    const newAcceptedViolations: Record<string, boolean> = {}
     for (const { code, violations: v } of violations) {
         newViolations[code] = v
         if (v.length > 0 && !(code in acceptedViolations.value)) {
-            newAccepted[code] = false
+            newAcceptedViolations[code] = false
         }
     }
     trackerViolations.value = newViolations
-    acceptedViolations.value = { ...newAccepted, ...Object.fromEntries(Object.entries(acceptedViolations.value).filter(([code]) => (newViolations[code]?.length ?? 0) > 0)) }
+    acceptedViolations.value = {
+        ...newAcceptedViolations,
+        ...Object.fromEntries(Object.entries(acceptedViolations.value).filter(([code]) => (newViolations[code]?.length ?? 0) > 0)),
+    }
+
+    const newDuplicates: Record<string, DuplicateEntry[]> = {}
+    const newAcceptedDuplicates: Record<string, boolean> = {}
+    for (const { code, duplicates: d } of duplicates) {
+        newDuplicates[code] = d
+        if (d.length > 0 && !(code in acceptedDuplicates.value)) {
+            newAcceptedDuplicates[code] = false
+        }
+    }
+    trackerDuplicates.value = newDuplicates
+    acceptedDuplicates.value = {
+        ...newAcceptedDuplicates,
+        ...Object.fromEntries(Object.entries(acceptedDuplicates.value).filter(([code]) => (newDuplicates[code]?.length ?? 0) > 0)),
+    }
 }
 
 async function onSubmit() {
@@ -106,7 +132,7 @@ async function onSubmit() {
 
         <UAlert v-if="uploadError" color="error" variant="soft" title="Failed to submit upload request. Please try again." class="mb-4" />
 
-        <div v-if="settingsLoading || titlesLoading || rulesLoading" class="space-y-4">
+        <div v-if="settingsLoading || titlesLoading || rulesLoading || duplicatesLoading" class="space-y-4">
             <USkeleton class="h-20 w-full" />
             <USkeleton class="h-20 w-full" />
         </div>
@@ -137,6 +163,47 @@ async function onSubmit() {
                     <UCheckbox v-model="acceptedViolations[item.code]" color="warning" label="I understand and want to upload to this tracker anyway" />
                 </div>
 
+                <template v-for="dupes in [trackerDuplicates[item.code] ?? []]" :key="dupes.length">
+                    <div v-if="dupes.length" class="space-y-3">
+                        <template v-if="dupes.every((d) => d.trumpable)">
+                            <UAlert
+                                color="info"
+                                variant="soft"
+                                title="Existing releases will be trumped"
+                                :description="`${dupes.length} existing release${dupes.length > 1 ? 's' : ''} on ${trackerNames[item.code] ?? item.code} will be trumped by this upload.`"
+                            />
+                            <ul class="space-y-1 pl-1">
+                                <li v-for="dupe in dupes" :key="dupe.name" class="flex items-start gap-2 text-sm text-info">
+                                    <UIcon name="i-lucide-arrow-up-circle" class="mt-0.5 shrink-0 size-4" />
+                                    <a v-if="dupe.url" :href="dupe.url" target="_blank" rel="noopener noreferrer" class="underline underline-offset-2">{{ dupe.name }}</a>
+                                    <span v-else>{{ dupe.name }}</span>
+                                </li>
+                            </ul>
+                        </template>
+                        <template v-else>
+                            <UAlert
+                                :color="acceptedDuplicates[item.code] ? 'warning' : 'error'"
+                                variant="soft"
+                                :title="acceptedDuplicates[item.code] ? 'Duplicates found on this tracker' : 'Duplicates found on this tracker — it will be skipped'"
+                                :description="`${dupes.filter((d) => !d.trumpable).length} existing release${dupes.filter((d) => !d.trumpable).length > 1 ? 's' : ''} found on ${trackerNames[item.code] ?? item.code}.`"
+                            />
+                            <ul class="space-y-1 pl-1">
+                                <li
+                                    v-for="dupe in dupes"
+                                    :key="dupe.name"
+                                    :class="['flex items-start gap-2 text-sm', dupe.trumpable ? 'text-info' : acceptedDuplicates[item.code] ? 'text-warning' : 'text-error']"
+                                >
+                                    <UIcon :name="dupe.trumpable ? 'i-lucide-arrow-up-circle' : 'i-lucide-copy'" class="mt-0.5 shrink-0 size-4" />
+                                    <a v-if="dupe.url" :href="dupe.url" target="_blank" rel="noopener noreferrer" class="underline underline-offset-2">{{ dupe.name }}</a>
+                                    <span v-else>{{ dupe.name }}</span>
+                                    <span v-if="dupe.trumpable" class="text-xs opacity-70">(trumpable)</span>
+                                </li>
+                            </ul>
+                            <UCheckbox v-model="acceptedDuplicates[item.code]" color="warning" label="I understand and want to upload to this tracker anyway" />
+                        </template>
+                    </div>
+                </template>
+
                 <UFormField label="Title">
                     <UInput v-model="item.title" class="w-full" :placeholder="`Title for ${item.code}`" @update:model-value="item.titleModified = true" />
                     <template #help>
@@ -152,7 +219,7 @@ async function onSubmit() {
 
         <StepNavigationButtons
             class="mt-5"
-            :next="{ label: 'Submit Upload', disabled: !canSubmit || titlesLoading || rulesLoading, loading: uploadLoading }"
+            :next="{ label: 'Submit Upload', disabled: !canSubmit || titlesLoading || rulesLoading || duplicatesLoading, loading: uploadLoading }"
             @back="emit('back')"
             @next="onSubmit"
         />

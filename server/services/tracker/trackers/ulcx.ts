@@ -2,7 +2,8 @@ import { AUDIO_CODECS, MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CO
 import { isDvd, isRemux, isHdtv, isEncode, isForeignContent, hasEnglishAudio } from '../util/metadata-util'
 import type { RuleViolation, TrackerService, TrackerUploadMetadata, TrackerUploadOptions } from '../tracker'
 import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
-import { upload } from '../unit3d-tracker'
+import { defaultFindDuplicates, getTorrents, upload } from '../unit3d-tracker'
+import { logger } from '../../../utils/logger'
 
 const BANNED_GROUPS = new Set(
     [
@@ -66,6 +67,18 @@ export function ulcxTrackerService(url: string, apiKey: string): TrackerService 
         checkRules,
         upload: (torrentPath, metadata, description, mediainfoText, title: string, options: TrackerUploadOptions) =>
             upload(url, apiKey, torrentPath, metadata, description, mediainfoText, title, options),
+        findDuplicates: async (metadata) => {
+            const candidates = await getTorrents(url, apiKey, {
+                tmdbId: metadata.tmdbId,
+                mediaType: metadata.mediaType,
+                resolutions: [metadata.resolution],
+                sourceTypes: [metadata.sourceType],
+            })
+            const duplicates = defaultFindDuplicates(candidates, metadata)
+            logger.info('ULCX duplicate check complete.', { title: metadata.title, candidates: candidates.length, duplicates: duplicates.length })
+            logger.debug('ULCX duplicates found.', { title: metadata.title, duplicates })
+            return duplicates
+        },
     }
 }
 
@@ -201,6 +214,10 @@ function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
             rule: 'missing_required_audio',
             message: 'Audio tracks must include at least the original language or an English dub.',
         })
+    }
+
+    if (violations.length > 0) {
+        logger.info('ULCX rule violations found.', { title: metadata.title, violations: violations.map((v) => v.rule) })
     }
 
     return violations

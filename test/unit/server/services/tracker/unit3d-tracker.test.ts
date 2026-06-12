@@ -1,12 +1,16 @@
 import { readFile } from 'node:fs/promises'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { upload } from '../../../../../server/services/tracker/unit3d-tracker'
+import { defaultFindDuplicates, getTorrents, upload } from '../../../../../server/services/tracker/unit3d-tracker'
 import { MEDIA_TYPES, SOURCE_TYPES, SOURCES, RESOLUTIONS } from '../../../../../server/model/metadata'
 import { TrackerError, type TrackerUploadMetadata, type TrackerUploadOptions } from '../../../../../server/services/tracker/tracker'
+import { parseMetadataFromName } from '../../../../../server/services/media-name-parser'
 
 vi.mock('node:fs/promises', () => ({ readFile: vi.fn() }))
 vi.mock('../../../../../server/utils/logger', () => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}))
+vi.mock('../../../../../server/services/media-name-parser', () => ({
+    parseMetadataFromName: vi.fn(() => ({ season: undefined, episode: undefined, repack: 0, proper: 0, rerip: 0, hdr: [], videoCodec: undefined })),
 }))
 
 const readFileMock = vi.mocked(readFile)
@@ -214,5 +218,154 @@ describe('upload', () => {
         expect(error).toBeInstanceOf(TrackerError)
         expect(error.statusCode).toBeUndefined()
         expect(error.responseData).toBeUndefined()
+    })
+})
+
+function makeTorrentEntry(
+    overrides: Partial<{ name: string; details_link: string; resolution_id: number; type_id: number; hdr: string | null; season_number: number; episode_number: number }> = {}
+) {
+    return {
+        attributes: {
+            name: 'Movie.2024.1080p.BluRay.ENCODE.x264-GROUP',
+            details_link: 'https://tracker.example.com/torrents/1',
+            resolution_id: 3,
+            type_id: 3,
+            hdr: null,
+            ...overrides,
+        },
+    }
+}
+
+function makeTorrentResult(
+    overrides: Partial<import('../../../../../server/services/tracker/unit3d-tracker').TorrentResult> = {}
+): import('../../../../../server/services/tracker/unit3d-tracker').TorrentResult {
+    return {
+        name: 'Movie.2024.1080p.BluRay.ENCODE.x264-GROUP',
+        url: 'https://tracker.example.com/torrents/1',
+        hdr: [],
+        repack: 0,
+        proper: 0,
+        rerip: 0,
+        hasOriginalAudio: true,
+        ...overrides,
+    }
+}
+
+describe('getTorrents', () => {
+    it('returns raw torrent data from the API', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ data: [makeTorrentEntry()] }))
+        const result = await getTorrents(URL, API_KEY, { tmdbId: 1 })
+        expect(result).toHaveLength(1)
+    })
+
+    it('queries with correct params', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({ data: [] })
+        vi.stubGlobal('$fetch', fetchMock)
+        await getTorrents(URL, API_KEY, { tmdbId: 99, mediaType: MEDIA_TYPES.TV, resolutions: [RESOLUTIONS['2160p']], sourceTypes: [SOURCE_TYPES.REMUX] })
+        const url: string = fetchMock.mock.calls[0][0]
+        expect(url).toContain('tmdbId=99')
+        expect(url).toContain('categories=2') // TV = 2
+        expect(url).toContain('resolutions%5B%5D=2') // 2160p = 2
+        expect(url).toContain('types%5B%5D=2') // REMUX = 2
+        expect(fetchMock).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ headers: expect.objectContaining({ Authorization: `Bearer ${API_KEY}` }) }))
+    })
+
+    it('passes seasonNumber and episodeNumber when provided', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({ data: [] })
+        vi.stubGlobal('$fetch', fetchMock)
+        await getTorrents(URL, API_KEY, { tmdbId: 1, seasonNumber: 2, episodeNumber: 5 })
+        const url: string = fetchMock.mock.calls[0][0]
+        expect(url).toContain('seasonNumber=2')
+        expect(url).toContain('episodeNumber=5')
+    })
+
+    it('omits params that are undefined', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({ data: [] })
+        vi.stubGlobal('$fetch', fetchMock)
+        await getTorrents(URL, API_KEY, { tmdbId: 1 })
+        const url: string = fetchMock.mock.calls[0][0]
+        expect(url).not.toContain('categories=')
+        expect(url).not.toContain('resolutions')
+        expect(url).not.toContain('types')
+        expect(url).not.toContain('seasonNumber')
+        expect(url).not.toContain('episodeNumber')
+    })
+
+    it('omits tmdbId when not provided', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({ data: [] })
+        vi.stubGlobal('$fetch', fetchMock)
+        await getTorrents(URL, API_KEY, {})
+        const url: string = fetchMock.mock.calls[0][0]
+        expect(url).not.toContain('tmdbId')
+    })
+
+    it('returns empty array and logs warning when $fetch throws', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('Network error')))
+        const result = await getTorrents(URL, API_KEY, { tmdbId: 1 })
+        expect(result).toEqual([])
+    })
+
+    it.each([
+        ['Movie 2024 1080p BluRay x264-GROUP', true],
+        ['Movie 2024 1080p BluRay Dual-Audio DD+ 5.1 x264-GROUP', true],
+        ['Movie 2024 FRENCH 1080p BluRay DD+ 5.1 x264-GROUP', true],
+        ['Movie 2024 1080p BluRay Dubbed DD+ 5.1 x264-GROUP', false],
+    ])('sets hasOriginalAudio correctly for "%s"', async (name, expected) => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ data: [makeTorrentEntry({ name })] }))
+        const [result] = await getTorrents(URL, API_KEY, { tmdbId: 1 })
+        expect(result!.hasOriginalAudio).toBe(expected)
+    })
+
+    it('maps hdr, videoCodec, repack, proper, rerip, season, episode from parseMetadataFromName', async () => {
+        vi.mocked(parseMetadataFromName).mockReturnValueOnce({ season: 2, episode: 5, repack: 1, proper: 0, rerip: 1, hdr: ['DV', 'HDR'], videoCodec: 'x265' } as never)
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ data: [makeTorrentEntry()] }))
+        const [result] = await getTorrents(URL, API_KEY, { tmdbId: 1 })
+        expect(result!.hdr).toEqual(['DV', 'HDR'])
+        expect(result!.videoCodec).toBe('x265')
+        expect(result!.repack).toBe(1)
+        expect(result!.proper).toBe(0)
+        expect(result!.rerip).toBe(1)
+        expect(result!.season).toBe(2)
+        expect(result!.episode).toBe(5)
+    })
+})
+
+describe('defaultFindDuplicates', () => {
+    it('returns matching entry as DuplicateEntry with trumpable false', () => {
+        const result = defaultFindDuplicates([makeTorrentResult()], baseMetadata)
+        expect(result).toEqual([{ name: 'Movie.2024.1080p.BluRay.ENCODE.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }])
+    })
+
+    it('omits url when url is absent', () => {
+        const result = defaultFindDuplicates([makeTorrentResult({ url: undefined })], baseMetadata)
+        expect(result[0]!.url).toBeUndefined()
+    })
+
+    it('filters out entries where HDR status differs (SDR upload vs HDR result)', () => {
+        expect(defaultFindDuplicates([makeTorrentResult({ hdr: ['HDR'] })], { ...baseMetadata, hdr: undefined })).toHaveLength(0)
+    })
+
+    it('filters out entries where HDR status differs (HDR upload vs SDR result)', () => {
+        expect(defaultFindDuplicates([makeTorrentResult({ hdr: [] })], { ...baseMetadata, hdr: ['HDR'] })).toHaveLength(0)
+    })
+
+    it('keeps HDR entry when upload also has HDR', () => {
+        expect(defaultFindDuplicates([makeTorrentResult({ hdr: ['HDR'] })], { ...baseMetadata, hdr: ['HDR'] })).toHaveLength(1)
+    })
+
+    it('filters out TV entries where season does not match', () => {
+        expect(defaultFindDuplicates([makeTorrentResult({ season: 2, episode: 1 })], { ...baseMetadata, mediaType: MEDIA_TYPES.TV, season: 1, episode: 1 })).toHaveLength(0)
+    })
+
+    it('filters out TV entries where episode does not match', () => {
+        expect(defaultFindDuplicates([makeTorrentResult({ season: 1, episode: 3 })], { ...baseMetadata, mediaType: MEDIA_TYPES.TV, season: 1, episode: 1 })).toHaveLength(0)
+    })
+
+    it('keeps TV entry when season and episode match', () => {
+        expect(defaultFindDuplicates([makeTorrentResult({ season: 1, episode: 1 })], { ...baseMetadata, mediaType: MEDIA_TYPES.TV, season: 1, episode: 1 })).toHaveLength(1)
+    })
+
+    it('does not filter by episode for season packs (episode undefined)', () => {
+        expect(defaultFindDuplicates([makeTorrentResult({ season: 1, episode: 0 })], { ...baseMetadata, mediaType: MEDIA_TYPES.TV, season: 1, episode: undefined })).toHaveLength(1)
     })
 })

@@ -2,9 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ulcxTrackerService } from '../../../../../server/services/tracker/trackers/ulcx'
 import { AUDIO_CODECS, AUDIO_CHANNELS, MEDIA_TYPES, RATIOS, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS } from '../../../../../server/model/metadata'
 import type { TrackerUploadMetadata } from '../../../../../server/services/tracker/tracker'
+import { parseMetadataFromName } from '../../../../../server/services/media-name-parser'
 
 vi.mock('../../../../../server/utils/logger', () => ({
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}))
+
+vi.mock('../../../../../server/services/media-name-parser', () => ({
+    parseMetadataFromName: vi.fn(() => ({ season: undefined, episode: undefined, repack: 0, proper: 0, hdr: [], videoCodec: undefined })),
 }))
 
 vi.mock('node:fs/promises', () => ({
@@ -729,5 +734,55 @@ describe('ulcxTrackerService — upload', () => {
 
         expect(result).toBe('https://upload.cx/torrent/download/1')
         expect(fetchMock).toHaveBeenCalledWith('https://upload.cx/api/torrents/upload', expect.objectContaining({ method: 'POST' }))
+    })
+})
+
+function makeUlcxCandidate(overrides: Partial<{ name: string; details_link: string; resolution_id: number; type_id: number }> = {}) {
+    return {
+        attributes: {
+            name: 'Movie.2024.1080p.BluRay.x264-GROUP',
+            details_link: 'https://upload.cx/torrents/1',
+            resolution_id: 3,
+            type_id: 3,
+            ...overrides,
+        },
+    }
+}
+
+describe('ulcxTrackerService — findDuplicates', () => {
+    const service = ulcxTrackerService('https://upload.cx', 'apikey')
+
+    beforeEach(() => {
+        fetchMock.mockResolvedValue({ data: [makeUlcxCandidate()] })
+    })
+
+    it('returns matching entry as non-trumpable duplicate', async () => {
+        const result = await service.findDuplicates(baseMetadata)
+        expect(result).toEqual([{ name: 'Movie.2024.1080p.BluRay.x264-GROUP', url: 'https://upload.cx/torrents/1', trumpable: false }])
+    })
+
+    it('filters out entries where HDR status differs', async () => {
+        vi.mocked(parseMetadataFromName).mockReturnValue({ season: undefined, episode: undefined, repack: 0, proper: 0, hdr: ['HDR'], videoCodec: undefined } as never)
+        expect(await service.findDuplicates({ ...baseMetadata, hdr: undefined })).toHaveLength(0)
+    })
+
+    it('keeps HDR entry when upload also has HDR', async () => {
+        vi.mocked(parseMetadataFromName).mockReturnValue({ season: undefined, episode: undefined, repack: 0, proper: 0, hdr: ['HDR'], videoCodec: undefined } as never)
+        expect(await service.findDuplicates({ ...baseMetadata, hdr: ['HDR'] })).toHaveLength(1)
+    })
+
+    it('filters out TV entries where season does not match', async () => {
+        vi.mocked(parseMetadataFromName).mockReturnValue({ season: 2, episode: 1, repack: 0, proper: 0, hdr: [], videoCodec: undefined } as never)
+        expect(await service.findDuplicates({ ...baseMetadata, mediaType: MEDIA_TYPES.TV, season: 1, episode: 1 })).toHaveLength(0)
+    })
+
+    it('keeps TV entry when season and episode match', async () => {
+        vi.mocked(parseMetadataFromName).mockReturnValue({ season: 1, episode: 1, repack: 0, proper: 0, hdr: [], videoCodec: undefined } as never)
+        expect(await service.findDuplicates({ ...baseMetadata, mediaType: MEDIA_TYPES.TV, season: 1, episode: 1 })).toHaveLength(1)
+    })
+
+    it('returns empty array when fetch fails', async () => {
+        fetchMock.mockRejectedValue(new Error('network error'))
+        expect(await service.findDuplicates(baseMetadata)).toEqual([])
     })
 })

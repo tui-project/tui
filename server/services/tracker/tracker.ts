@@ -46,8 +46,15 @@ export interface RuleViolation {
     message: string
 }
 
+export interface DuplicateEntry {
+    name: string
+    url?: string
+    trumpable: boolean
+}
+
 export interface TrackerService {
     getTitle(metadata: TrackerUploadMetadata): Promise<string>
     upload(torrentPath: string, metadata: TrackerUploadMetadata, description: string, mediainfoText: string, title: string, options: TrackerUploadOptions): Promise<string>
     checkRules(metadata: TrackerUploadMetadata): RuleViolation[]
+    findDuplicates(metadata: TrackerUploadMetadata): Promise<DuplicateEntry[]>
 }
