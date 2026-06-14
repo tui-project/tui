@@ -35,6 +35,7 @@ export interface Metadata {
     imdbId?: string
     tvdbId?: number
     locale?: string
+    originCountry?: string
 }
 
 export const MEDIA_TYPES = {

@@ -501,7 +501,7 @@ describe('tmdb service', () => {
             })
         )
 
-        await expect(findByTitle('Queer Eye', 'tv')).resolves.toMatchObject({ id: 20, origin_country: undefined })
+        await expect(findByTitle('Queer Eye', 'tv')).resolves.toMatchObject({ id: 20, origin_country: 'US', locale: undefined })
     })
 
     it('detectLocale returns undefined when movie duplicates are from the same country', async () => {
@@ -534,73 +534,49 @@ describe('tmdb service', () => {
         )
 
         // id 9 has year=undefined → NaN sort; stable sort keeps id:10 first → it IS the earliest → no locale
-        await expect(findByTitle('Show', 'tv')).resolves.toMatchObject({ id: 10, origin_country: undefined })
+        await expect(findByTitle('Show', 'tv')).resolves.toMatchObject({ id: 10, origin_country: 'US', locale: undefined })
     })
 })
 
 describe('tmdb service — getAlternativeTitles', () => {
-    it('returns transliteration title from tv results array', async () => {
+    it('returns entries from tv results array', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { getAlternativeTitles } = await loadTMDbService()
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({
-                results: [
-                    { iso_3166_1: 'ES', title: 'Por cuatro perras', type: '' },
-                    { iso_3166_1: 'US', title: 'My Two Cents', type: 'transliteration' },
-                ],
-            })
-        )
+        const entries = [
+            { iso_3166_1: 'ES', title: 'Por cuatro perras', type: '' },
+            { iso_3166_1: 'US', title: 'My Two Cents', type: 'transliteration' },
+        ]
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ results: entries }))
 
-        await expect(getAlternativeTitles(304597, 'tv')).resolves.toBe('My Two Cents')
+        await expect(getAlternativeTitles(304597, 'tv')).resolves.toEqual(entries)
     })
 
-    it('returns transliteration title from movie titles array', async () => {
+    it('returns entries from movie titles array', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { getAlternativeTitles } = await loadTMDbService()
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({
-                titles: [
-                    { iso_3166_1: 'RU', title: 'Neposlushnaya', type: 'transliteration' },
-                    { iso_3166_1: 'US', title: 'Naughty', type: 'imdb title' },
-                ],
-            })
-        )
+        const entries = [
+            { iso_3166_1: 'RU', title: 'Neposlushnaya', type: 'transliteration' },
+            { iso_3166_1: 'US', title: 'Naughty', type: 'imdb title' },
+        ]
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ titles: entries }))
 
-        await expect(getAlternativeTitles(1057491, 'movie')).resolves.toBe('Neposlushnaya')
+        await expect(getAlternativeTitles(1057491, 'movie')).resolves.toEqual(entries)
     })
 
-    it('returns null when no transliteration entry exists', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { getAlternativeTitles } = await loadTMDbService()
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({
-                results: [
-                    { iso_3166_1: 'ES', title: 'Other Title', type: '' },
-                    { iso_3166_1: 'US', title: 'Another Title', type: 'imdb title' },
-                ],
-            })
-        )
-
-        await expect(getAlternativeTitles(1, 'tv')).resolves.toBeNull()
-    })
-
-    it('returns null when results and titles arrays are both absent', async () => {
+    it('returns empty array when results and titles arrays are both absent', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { getAlternativeTitles } = await loadTMDbService()
         vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ id: 1 }))
 
-        await expect(getAlternativeTitles(1, 'movie')).resolves.toBeNull()
+        await expect(getAlternativeTitles(1, 'movie')).resolves.toEqual([])
     })
 
-    it('returns null when fetch fails', async () => {
+    it('returns empty array when fetch fails', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { getAlternativeTitles } = await loadTMDbService()
         vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('network error')))
 
-        await expect(getAlternativeTitles(1, 'movie')).resolves.toBeNull()
+        await expect(getAlternativeTitles(1, 'movie')).resolves.toEqual([])
     })
 })
 

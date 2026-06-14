@@ -38,6 +38,7 @@ export interface TMDbSearchResult {
     year: number
     media_type: MediaType
     origin_country?: string
+    locale?: string
     external_ids: TMDbExternalIDs
 }
 
@@ -70,7 +71,7 @@ export async function findByTitle(title: string, mediaType: MediaType): Promise<
 
         if (match.media_type === MEDIA_TYPES.TV) {
             const locale = detectLocale(match, results, mediaType)
-            return { ...match, origin_country: locale }
+            return { ...match, locale }
         } else {
             return match
         }
@@ -297,7 +298,7 @@ export async function getLanguages(): Promise<{ iso_639_1: string; english_name:
     }
 }
 
-export async function getAlternativeTitles(tmdbId: number, mediaType: MediaType): Promise<string | null> {
+export async function getAlternativeTitles(tmdbId: number, mediaType: MediaType): Promise<{ iso_3166_1: string; title: string; type: string }[]> {
     const apiKey = await getApiKey()
     const path = `${TMDB_BASE_URL}/${mediaType}/${tmdbId}/alternative_titles`
 
@@ -309,11 +310,12 @@ export async function getAlternativeTitles(tmdbId: number, mediaType: MediaType)
         })
 
         const entries = response.results ?? response.titles ?? []
-        const match = entries.find((entry) => entry.type === 'transliteration')
 
-        return match?.title ?? null
+        logger.trace('TMDB alternative titles response', { entries })
+
+        return entries
     } catch (error: unknown) {
         logger.warn('TMDB request failed.', { path, error })
-        return null
+        return []
     }
 }

@@ -34,7 +34,7 @@ beforeEach(() => {
     findByTitle.mockResolvedValue({})
     findLocale.mockResolvedValue(undefined)
     getExternalIDs.mockResolvedValue({})
-    getAlternativeTitles.mockResolvedValue(null)
+    getAlternativeTitles.mockResolvedValue([])
     findTvdbSpecial.mockResolvedValue(null)
     findTvdbSpecialRange.mockResolvedValue(null)
     parseMetadataFromName.mockReturnValue({
@@ -574,7 +574,7 @@ describe('GET /api/metadata route handler', () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 100 })
         getDetails.mockResolvedValue({ title: 'Фильм', original_title: undefined, original_language: 'ru', year: 2020, external_ids: {} })
-        getAlternativeTitles.mockResolvedValue('Film')
+        getAlternativeTitles.mockResolvedValue([{ iso_3166_1: 'US', title: 'Film', type: 'transliteration' }])
 
         const handler = await loadHandler()
         const result = await handler({} as never)
@@ -613,11 +613,43 @@ describe('GET /api/metadata route handler', () => {
         expect(getAlternativeTitles).not.toHaveBeenCalled()
     })
 
-    it('leaves originalTitle empty when alternative titles returns null', async () => {
+    it('falls back to locale entry when no transliteration entry exists and locale is already set', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [] })
+        findByTitle.mockResolvedValue({ id: 100, title: 'Фильм', original_title: undefined, original_language: 'ru', year: 2020, origin_country: 'RU' })
+        getExternalIDs.mockResolvedValue({})
+        getAlternativeTitles.mockResolvedValue([
+            { iso_3166_1: 'RU', title: 'Film RU', type: 'imdb title' },
+            { iso_3166_1: 'US', title: 'Film US', type: 'imdb title' },
+        ])
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.originalTitle).toBe('Film RU')
+        expect(findLocale).not.toHaveBeenCalled()
+    })
+
+    it('calls getDetails to resolve originCountry when originCountry is absent and no transliteration entry exists', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 100 })
+        getDetails.mockResolvedValue({ title: 'Фильм', original_title: undefined, original_language: 'ru', year: 2020, external_ids: {}, origin_country: 'RU' })
+        getAlternativeTitles.mockResolvedValue([
+            { iso_3166_1: 'RU', title: 'Film RU', type: 'imdb title' },
+            { iso_3166_1: 'US', title: 'Film US', type: 'imdb title' },
+        ])
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.originalTitle).toBe('Film RU')
+        expect(findLocale).not.toHaveBeenCalled()
+        expect(getDetails).toHaveBeenCalledWith('100', 'movie')
+    })
+
+    it('leaves originalTitle empty when alternative titles returns empty array', async () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 100 })
         getDetails.mockResolvedValue({ title: 'Фильм', original_title: undefined, original_language: 'ru', year: 2020, external_ids: {} })
-        getAlternativeTitles.mockResolvedValue(null)
+        getAlternativeTitles.mockResolvedValue([])
 
         const handler = await loadHandler()
         const result = await handler({} as never)

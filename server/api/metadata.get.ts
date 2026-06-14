@@ -69,6 +69,7 @@ async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameM
             metadata.year = details.year
             metadata.imdbId = details.external_ids?.imdb_id
             metadata.tvdbId = details.external_ids?.tvdb_id
+            metadata.originCountry = details.origin_country
             if (metadata.title && metadata.mediaType === MEDIA_TYPES.TV) metadata.locale = await findLocale(metadata?.title, metadata.tmdbId, metadata.mediaType)
         }
     } else if (metadata.imdbId) {
@@ -109,7 +110,8 @@ async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameM
             metadata.originalTitle = searchResult.original_title
             metadata.originalLanguage = searchResult.original_language
             metadata.year = searchResult.year
-            metadata.locale = searchResult.origin_country
+            metadata.originCountry = searchResult.origin_country
+            metadata.locale = searchResult.locale
 
             logger.debug('Fetching TMDB external IDs.', { tmdbId: metadata.tmdbId, mediaType: metadata.mediaType })
 
@@ -124,8 +126,16 @@ async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameM
     if (isForeignMediaWithoutOriginalTitle(metadata) && metadata.tmdbId) {
         logger.debug('Fetching TMDB alternative titles for transliteration.', { tmdbId: metadata.tmdbId, originalLanguage: metadata.originalLanguage })
 
-        const transliteration = await getAlternativeTitles(metadata.tmdbId, metadata.mediaType)
-        if (transliteration) metadata.originalTitle = transliteration
+        const alternativeTitles = await getAlternativeTitles(metadata.tmdbId, metadata.mediaType)
+        const byType = alternativeTitles.find((entry) => entry.type === 'transliteration')
+
+        let transliteration = byType
+        if (!transliteration && metadata.title) {
+            const originCountry = metadata.originCountry ?? (await getDetails(String(metadata.tmdbId), metadata.mediaType))?.origin_country
+            transliteration = alternativeTitles.find((entry) => entry.iso_3166_1 === originCountry)
+        }
+
+        if (transliteration) metadata.originalTitle = transliteration.title
     }
 
     if (isSpecialEpisode(metadata) && metadata.tvdbId) {
