@@ -264,9 +264,9 @@ describe('getTorrents', () => {
         await getTorrents(URL, API_KEY, { tmdbId: 99, mediaType: MEDIA_TYPES.TV, resolutions: [RESOLUTIONS['2160p']], sourceTypes: [SOURCE_TYPES.REMUX] })
         const url: string = fetchMock.mock.calls[0][0]
         expect(url).toContain('tmdbId=99')
-        expect(url).toContain('categories=2') // TV = 2
-        expect(url).toContain('resolutions%5B%5D=2') // 2160p = 2
-        expect(url).toContain('types%5B%5D=2') // REMUX = 2
+        expect(url).toContain('categories[]=2') // TV = 2
+        expect(url).toContain('resolutions[]=2') // 2160p = 2
+        expect(url).toContain('types[]=2') // REMUX = 2
         expect(fetchMock).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ headers: expect.objectContaining({ Authorization: `Bearer ${API_KEY}` }) }))
     })
 
@@ -284,7 +284,7 @@ describe('getTorrents', () => {
         vi.stubGlobal('$fetch', fetchMock)
         await getTorrents(URL, API_KEY, { tmdbId: 1 })
         const url: string = fetchMock.mock.calls[0][0]
-        expect(url).not.toContain('categories=')
+        expect(url).not.toContain('categories[]=')
         expect(url).not.toContain('resolutions')
         expect(url).not.toContain('types')
         expect(url).not.toContain('seasonNumber')

@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { basename } from 'node:path'
-import { MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, type MediaType, type Resolution, type SourceType } from '../../model/metadata'
+import { MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, type VideoCodec, type MediaType, type Resolution, type SourceType, type HDR, type Service } from '../../model/metadata'
 import { logger } from '../../utils/logger'
 import { BiMap } from '../../utils/bi-map'
 import { parseMetadataFromName } from '../media-name-parser'
@@ -9,17 +9,21 @@ import { TrackerError, type DuplicateEntry, type TrackerUploadMetadata, type Tra
 export type TorrentResult = {
     name: string
     url: string
-    mediaType?: string
-    resolution?: string
-    sourceType?: string
-    videoCodec?: string
-    hdr: string[]
+    mediaType: MediaType
+    resolution: Resolution
+    sourceType: SourceType
+    videoCodec: VideoCodec
+    hdr: HDR[]
     repack: number
     proper: number
     rerip: number
     hasOriginalAudio: boolean
     season?: number
     episode?: number
+    service?: Service
+    cut?: string
+    ratio?: string
+    hybrid: boolean
 }
 
 type Attributes = {
@@ -128,15 +132,16 @@ export async function getTorrents(
     apiKey: string,
     params: { tmdbId?: number; mediaType?: string; resolutions?: string[]; sourceTypes?: string[]; seasonNumber?: number; episodeNumber?: number }
 ): Promise<TorrentResult[]> {
-    const query = new URLSearchParams()
-    if (params.tmdbId != null) query.set('tmdbId', String(params.tmdbId))
-    if (params.mediaType != null) query.set('categories', String(CATEGORY_IDS.getByKey(params.mediaType as MediaType)))
-    for (const resolution of params.resolutions ?? []) query.append('resolutions[]', String(RESOLUTION_IDS.getByKey(resolution as Resolution)))
-    for (const sourceType of params.sourceTypes ?? []) query.append('types[]', String(TYPE_IDS.getByKey(sourceType as SourceType)))
-    if (params.seasonNumber != null) query.set('seasonNumber', String(params.seasonNumber))
-    if (params.episodeNumber != null) query.set('episodeNumber', String(params.episodeNumber))
+    const parts: string[] = []
+    if (params.tmdbId != null) parts.push(`tmdbId=${params.tmdbId}`)
+    if (params.mediaType != null) parts.push(`categories[]=${CATEGORY_IDS.getByKey(params.mediaType as MediaType)}`)
+    for (const resolution of params.resolutions ?? []) parts.push(`resolutions[]=${RESOLUTION_IDS.getByKey(resolution as Resolution)}`)
+    for (const sourceType of params.sourceTypes ?? []) parts.push(`types[]=${TYPE_IDS.getByKey(sourceType as SourceType)}`)
+    if (params.seasonNumber != null) parts.push(`seasonNumber=${params.seasonNumber}`)
+    if (params.episodeNumber != null) parts.push(`episodeNumber=${params.episodeNumber}`)
+    const query = parts.join('&')
 
-    logger.debug('Fetching existing torrents from UNIT3D tracker.', { trackerUrl: url, params })
+    logger.debug('Fetching existing torrents from UNIT3D tracker.', { trackerUrl: url, query })
 
     try {
         const response = await $fetch<{ data: Array<{ attributes: Attributes }> }>(`${url}/api/torrents/filter?${query}`, {
@@ -158,10 +163,10 @@ function mapTorrentAttributes(attrs: Attributes): TorrentResult {
     return {
         name: attrs.name,
         url: attrs.details_link,
-        mediaType: CATEGORY_IDS.getByValue(attrs.category_id),
-        resolution: RESOLUTION_IDS.getByValue(attrs.resolution_id),
-        sourceType: TYPE_IDS.getByValue(attrs.type_id),
-        videoCodec: parsed.videoCodec,
+        mediaType: CATEGORY_IDS.getByValue(attrs.category_id)!,
+        resolution: RESOLUTION_IDS.getByValue(attrs.resolution_id)!,
+        sourceType: TYPE_IDS.getByValue(attrs.type_id)!,
+        videoCodec: parsed.videoCodec!,
         hdr: parsed.hdr,
         repack: parsed.repack,
         proper: parsed.proper,
@@ -170,6 +175,10 @@ function mapTorrentAttributes(attrs: Attributes): TorrentResult {
         hasOriginalAudio: !/\bDubbed\b/i.test(attrs.name),
         season: parsed.season,
         episode: parsed.episode,
+        service: parsed.service,
+        cut: parsed.cut,
+        ratio: parsed.ratio,
+        hybrid: parsed.hybrid,
     }
 }
 

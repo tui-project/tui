@@ -653,80 +653,66 @@ describe('athTrackerService — findDuplicates', () => {
         fetchMock.mockResolvedValue({ data: [makeAthCandidate()] })
     })
 
-    it('returns a dupe when HDR tier and codec match', async () => {
+    function mockParsedDefault(overrides: Record<string, unknown> = {}) {
+        vi.mocked(parseMetadataFromName).mockReturnValue({
+            season: undefined,
+            episode: undefined,
+            repack: 0,
+            proper: 0,
+            rerip: 0,
+            hdr: [],
+            videoCodec: 'x264',
+            hybrid: false,
+            service: undefined,
+            cut: undefined,
+            ratio: undefined,
+            ...overrides,
+        } as never)
+    }
+
+    it('returns a dupe when slot matches', async () => {
+        mockParsedDefault()
         const result = await service.findDuplicates(baseMetadata)
         expect(result).toHaveLength(1)
         expect(result[0]).toMatchObject({ name: 'Movie.2024.1080p.BluRay.ENCODE.x264-GROUP', trumpable: false })
     })
 
     it('returns no dupe when upload is HDR and existing is SDR', async () => {
-        vi.mocked(parseMetadataFromName).mockReturnValue({ season: undefined, episode: undefined, repack: 0, proper: 0, rerip: 0, hdr: [], videoCodec: 'x264' } as never)
+        mockParsedDefault()
         expect(await service.findDuplicates({ ...baseMetadata, hdr: [HDR_TYPES.HDR10] })).toHaveLength(0)
     })
 
     it('returns no dupe when upload is SDR and existing is HDR', async () => {
-        vi.mocked(parseMetadataFromName).mockReturnValue({
-            season: undefined,
-            episode: undefined,
-            repack: 0,
-            proper: 0,
-            rerip: 0,
-            hdr: [HDR_TYPES.HDR10],
-            videoCodec: 'x264',
-        } as never)
+        mockParsedDefault({ hdr: [HDR_TYPES.HDR10] })
         expect(await service.findDuplicates({ ...baseMetadata, hdr: undefined })).toHaveLength(0)
     })
 
     it('returns no dupe when upload is DV-only and existing is HDR (different slots)', async () => {
-        vi.mocked(parseMetadataFromName).mockReturnValue({
-            season: undefined,
-            episode: undefined,
-            repack: 0,
-            proper: 0,
-            rerip: 0,
-            hdr: [HDR_TYPES.HDR10],
-            videoCodec: 'x264',
-        } as never)
+        mockParsedDefault({ hdr: [HDR_TYPES.HDR10] })
         expect(await service.findDuplicates({ ...baseMetadata, hdr: [HDR_TYPES.DV] })).toHaveLength(0)
     })
 
     it('returns trumpable dupe when upload is DV/HDR and existing is HDR', async () => {
-        vi.mocked(parseMetadataFromName).mockReturnValue({
-            season: undefined,
-            episode: undefined,
-            repack: 0,
-            proper: 0,
-            rerip: 0,
-            hdr: [HDR_TYPES.HDR10],
-            videoCodec: 'x264',
-        } as never)
+        mockParsedDefault({ hdr: [HDR_TYPES.HDR10] })
         const result = await service.findDuplicates({ ...baseMetadata, hdr: [HDR_TYPES.DV, HDR_TYPES.HDR10] })
         expect(result).toHaveLength(1)
         expect(result[0]).toMatchObject({ trumpable: true })
     })
 
     it('returns trumpable dupe when upload is DV/HDR10+ and existing is HDR10+', async () => {
-        vi.mocked(parseMetadataFromName).mockReturnValue({
-            season: undefined,
-            episode: undefined,
-            repack: 0,
-            proper: 0,
-            rerip: 0,
-            hdr: [HDR_TYPES.HDR10_PLUS],
-            videoCodec: 'x264',
-        } as never)
+        mockParsedDefault({ hdr: [HDR_TYPES.HDR10_PLUS] })
         const result = await service.findDuplicates({ ...baseMetadata, hdr: [HDR_TYPES.DV, HDR_TYPES.HDR10_PLUS] })
         expect(result).toHaveLength(1)
         expect(result[0]).toMatchObject({ trumpable: true })
     })
 
     it('returns no dupe when x264 upload vs x265 existing (different slots)', async () => {
-        vi.mocked(parseMetadataFromName).mockReturnValue({ season: undefined, episode: undefined, repack: 0, proper: 0, rerip: 0, hdr: [], videoCodec: 'x265' } as never)
+        mockParsedDefault({ videoCodec: 'x265' })
         expect(await service.findDuplicates({ ...baseMetadata, videoCodec: VIDEO_CODECS.X264 })).toHaveLength(0)
     })
 
     it('returns no dupe when x265 upload vs x264 existing (different slots)', async () => {
-        vi.mocked(parseMetadataFromName).mockReturnValue({ season: undefined, episode: undefined, repack: 0, proper: 0, rerip: 0, hdr: [], videoCodec: 'x264' } as never)
+        mockParsedDefault({ videoCodec: 'x264' })
         expect(await service.findDuplicates({ ...baseMetadata, videoCodec: VIDEO_CODECS.X265 })).toHaveLength(0)
     })
 
@@ -736,7 +722,7 @@ describe('athTrackerService — findDuplicates', () => {
         ['RERIP1 upload vs non-rerip existing', { repack: 0, proper: 0, rerip: 1 }, { repack: 0, proper: 0, rerip: 0 }],
         ['REPACK2 upload vs REPACK1 existing', { repack: 2, proper: 0, rerip: 0 }, { repack: 1, proper: 0, rerip: 0 }],
     ] as const)('marks as trumpable: %s', async (_, upload, existing) => {
-        vi.mocked(parseMetadataFromName).mockReturnValue({ season: undefined, episode: undefined, ...existing, hdr: [], videoCodec: 'x264' } as never)
+        mockParsedDefault({ ...existing })
         expect((await service.findDuplicates({ ...baseMetadata, ...upload }))[0]).toMatchObject({ trumpable: true })
     })
 
@@ -745,7 +731,7 @@ describe('athTrackerService — findDuplicates', () => {
         ['non-repack upload vs REPACK1 existing', { repack: 0, proper: 0, rerip: 0 }, { repack: 1, proper: 0, rerip: 0 }],
         ['REPACK1 upload vs REPACK1 existing', { repack: 1, proper: 0, rerip: 0 }, { repack: 1, proper: 0, rerip: 0 }],
     ] as const)('does not mark as trumpable: %s', async (_, upload, existing) => {
-        vi.mocked(parseMetadataFromName).mockReturnValue({ season: undefined, episode: undefined, ...existing, hdr: [], videoCodec: 'x264' } as never)
+        mockParsedDefault({ ...existing })
         expect((await service.findDuplicates({ ...baseMetadata, ...upload }))[0]).toMatchObject({ trumpable: false })
     })
 
@@ -754,19 +740,19 @@ describe('athTrackerService — findDuplicates', () => {
         ['WEB-DL upload vs HDTV existing', SOURCE_TYPES.WEB_DL, 6, true],
         ['WEBRip upload vs WEB-DL existing', SOURCE_TYPES.WEBRIP, 4, false],
     ] as const)('source trump: %s', async (_, uploadSourceType, existingTypeId, trumpable) => {
-        vi.mocked(parseMetadataFromName).mockReturnValue({ season: undefined, episode: undefined, repack: 0, proper: 0, rerip: 0, hdr: [], videoCodec: 'x264' } as never)
+        mockParsedDefault()
         fetchMock.mockResolvedValue({ data: [makeAthCandidate({ type_id: existingTypeId })] })
         expect((await service.findDuplicates({ ...baseMetadata, sourceType: uploadSourceType }))[0]).toMatchObject({ trumpable })
     })
 
     it('does not mark as trumpable when the existing release is already a RERIP', async () => {
-        vi.mocked(parseMetadataFromName).mockReturnValue({ season: undefined, episode: undefined, repack: 0, proper: 0, rerip: 1, hdr: [], videoCodec: 'x264' } as never)
+        mockParsedDefault({ rerip: 1 })
         fetchMock.mockResolvedValue({ data: [makeAthCandidate()] })
         expect((await service.findDuplicates({ ...baseMetadata, repack: 1 }))[0]).toMatchObject({ trumpable: false })
     })
 
     it('does not mark SD WEB-DL as trumping an existing SD HDTV (HDTV ties with WEB at SD)', async () => {
-        vi.mocked(parseMetadataFromName).mockReturnValue({ season: undefined, episode: undefined, repack: 0, proper: 0, rerip: 0, hdr: [], videoCodec: 'x264' } as never)
+        mockParsedDefault()
         fetchMock.mockResolvedValue({ data: [makeAthCandidate({ resolution_id: 8, type_id: 6 })] })
         const result = await service.findDuplicates({ ...baseMetadata, resolution: RESOLUTIONS['480p'], sourceType: SOURCE_TYPES.WEB_DL })
         expect(result).toHaveLength(1)
@@ -774,7 +760,7 @@ describe('athTrackerService — findDuplicates', () => {
     })
 
     it('marks SD WEB-DL as trumping an existing SD WEBRip', async () => {
-        vi.mocked(parseMetadataFromName).mockReturnValue({ season: undefined, episode: undefined, repack: 0, proper: 0, rerip: 0, hdr: [], videoCodec: 'x264' } as never)
+        mockParsedDefault()
         fetchMock.mockResolvedValue({ data: [makeAthCandidate({ resolution_id: 8, type_id: 5 })] })
         const result = await service.findDuplicates({ ...baseMetadata, resolution: RESOLUTIONS['480p'], sourceType: SOURCE_TYPES.WEB_DL })
         expect(result).toHaveLength(1)
@@ -782,7 +768,7 @@ describe('athTrackerService — findDuplicates', () => {
     })
 
     it('marks an existing Dubbed release as trumpable when the upload carries the original audio', async () => {
-        vi.mocked(parseMetadataFromName).mockReturnValue({ season: undefined, episode: undefined, repack: 0, proper: 0, rerip: 0, hdr: [], videoCodec: 'x264' } as never)
+        mockParsedDefault()
         fetchMock.mockResolvedValue({ data: [makeAthCandidate({ name: 'Movie 2024 1080p BluRay Dubbed DD+ 5.1 x264-GROUP' })] })
         const result = await service.findDuplicates({ ...baseMetadata, language: ['ja', 'en'], originalLanguage: 'ja' })
         expect(result).toHaveLength(1)
@@ -790,7 +776,7 @@ describe('athTrackerService — findDuplicates', () => {
     })
 
     it('does not mark an existing Dubbed release as trumpable when the upload is also dubbed', async () => {
-        vi.mocked(parseMetadataFromName).mockReturnValue({ season: undefined, episode: undefined, repack: 0, proper: 0, rerip: 0, hdr: [], videoCodec: 'x264' } as never)
+        mockParsedDefault()
         fetchMock.mockResolvedValue({ data: [makeAthCandidate({ name: 'Movie 2024 1080p BluRay Dubbed DD+ 5.1 x264-GROUP' })] })
         const result = await service.findDuplicates({ ...baseMetadata, language: ['en'], originalLanguage: 'ja' })
         expect(result).toHaveLength(1)
@@ -807,6 +793,10 @@ describe('athTrackerService — findDuplicates', () => {
                 rerip: 0,
                 hdr: [],
                 videoCodec: 'x264',
+                hybrid: false,
+                service: undefined,
+                cut: undefined,
+                ratio: undefined,
                 ...overrides,
             } as never)
         }
@@ -818,7 +808,7 @@ describe('athTrackerService — findDuplicates', () => {
             expect(fetchMock).toHaveBeenCalledTimes(1)
             const url: string = fetchMock.mock.calls[0][0]
             for (const id of [6, 7, 8, 9]) {
-                expect(url).toContain(`resolutions%5B%5D=${id}`)
+                expect(url).toContain(`resolutions[]=${id}`)
             }
         })
 
@@ -830,7 +820,7 @@ describe('athTrackerService — findDuplicates', () => {
             expect(result[0]).toMatchObject({ trumpable: false })
         })
 
-        it('does not report an SD remux as a dupe of an SD DVDRip (separate slots)', async () => {
+        it('does not report an SD encode as a dupe of an SD remux (separate families)', async () => {
             mockParsed()
             fetchMock.mockResolvedValue({ data: [makeAthCandidate({ resolution_id: 8, type_id: 2 })] })
             expect(await service.findDuplicates({ ...baseMetadata, resolution: RESOLUTIONS['480p'], sourceType: SOURCE_TYPES.ENCODE })).toHaveLength(0)
@@ -882,12 +872,13 @@ describe('athTrackerService — findDuplicates', () => {
         })
 
         it('keeps 2160p HDR and HDR10+ WEB releases in separate slots', async () => {
-            mockParsed({ videoCodec: 'H.265', hdr: [HDR_TYPES.HDR10_PLUS] })
+            mockParsed({ videoCodec: 'H.265', hdr: [HDR_TYPES.HDR10_PLUS], service: 'NF' })
             fetchMock.mockResolvedValue({ data: [makeAthCandidate({ resolution_id: 2, type_id: 4 })] })
             const result = await service.findDuplicates({
                 ...baseMetadata,
                 resolution: RESOLUTIONS['2160p'],
                 sourceType: SOURCE_TYPES.WEB_DL,
+                service: 'NF',
                 videoCodec: VIDEO_CODECS.H265,
                 hdr: [HDR_TYPES.HDR10],
             })
@@ -907,14 +898,6 @@ describe('athTrackerService — findDuplicates', () => {
             expect(result).toHaveLength(0)
         })
 
-        it('falls back to the upload resolution and source type for unmapped ids on the existing torrent', async () => {
-            mockParsed()
-            fetchMock.mockResolvedValue({ data: [makeAthCandidate({ resolution_id: 99, type_id: 99 })] })
-            const result = await service.findDuplicates(baseMetadata)
-            expect(result).toHaveLength(1)
-            expect(result[0]).toMatchObject({ trumpable: false })
-        })
-
         it('does not dupe an encode when the existing codec is unknown', async () => {
             mockParsed({ videoCodec: undefined })
             fetchMock.mockResolvedValue({ data: [makeAthCandidate()] })
@@ -926,6 +909,71 @@ describe('athTrackerService — findDuplicates', () => {
             fetchMock.mockResolvedValue({ data: [makeAthCandidate()] })
             expect(await service.findDuplicates(baseMetadata)).toHaveLength(0)
         })
+
+        it('does not dupe WEB from NF against WEB from AMZN (different providers)', async () => {
+            mockParsed({ videoCodec: 'H.264', service: 'NF' })
+            fetchMock.mockResolvedValue({ data: [makeAthCandidate({ type_id: 4 })] })
+            const result = await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.WEB_DL, service: 'AMZN', videoCodec: VIDEO_CODECS.H264 })
+            expect(result).toHaveLength(0)
+        })
+
+        it('dupes WEB from AMZN against WEB from AMZN (same provider)', async () => {
+            mockParsed({ videoCodec: 'H.264', service: 'AMZN' })
+            fetchMock.mockResolvedValue({ data: [makeAthCandidate({ type_id: 4 })] })
+            const result = await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.WEB_DL, service: 'AMZN', videoCodec: VIDEO_CODECS.H264 })
+            expect(result).toHaveLength(1)
+        })
+
+        it("does not dupe remuxes with different cuts (Director's Cut vs no cut)", async () => {
+            mockParsed({ videoCodec: 'AVC', cut: "Director's Cut" })
+            fetchMock.mockResolvedValue({ data: [makeAthCandidate({ type_id: 2 })] })
+            const result = await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX, videoCodec: VIDEO_CODECS.AVC, cut: undefined })
+            expect(result).toHaveLength(0)
+        })
+
+        it('does not dupe remuxes with different ratios', async () => {
+            mockParsed({ videoCodec: 'AVC', ratio: 'IMAX' })
+            fetchMock.mockResolvedValue({ data: [makeAthCandidate({ type_id: 2 })] })
+            const result = await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX, videoCodec: VIDEO_CODECS.AVC, ratio: undefined })
+            expect(result).toHaveLength(0)
+        })
+
+        it('does not dupe WEB releases with different cuts', async () => {
+            mockParsed({ videoCodec: 'H.264', service: 'NF', cut: "Director's Cut" })
+            fetchMock.mockResolvedValue({ data: [makeAthCandidate({ type_id: 4 })] })
+            const result = await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.WEB_DL, service: 'NF', videoCodec: VIDEO_CODECS.H264, cut: undefined })
+            expect(result).toHaveLength(0)
+        })
+
+        it('marks a disc DV upload as trumping an existing hybrid DV release (same slot)', async () => {
+            mockParsed({ videoCodec: 'HEVC', hdr: [HDR_TYPES.DV], hybrid: true })
+            fetchMock.mockResolvedValue({ data: [makeAthCandidate({ resolution_id: 2, type_id: 2 })] })
+            const result = await service.findDuplicates({
+                ...baseMetadata,
+                resolution: RESOLUTIONS['2160p'],
+                sourceType: SOURCE_TYPES.REMUX,
+                videoCodec: VIDEO_CODECS.HEVC,
+                hdr: [HDR_TYPES.DV],
+                hybrid: false,
+            })
+            expect(result).toHaveLength(1)
+            expect(result[0]).toMatchObject({ trumpable: true })
+        })
+
+        it('does not mark a hybrid DV upload as trumping an existing disc DV release', async () => {
+            mockParsed({ videoCodec: 'HEVC', hdr: [HDR_TYPES.DV], hybrid: false })
+            fetchMock.mockResolvedValue({ data: [makeAthCandidate({ resolution_id: 2, type_id: 2 })] })
+            const result = await service.findDuplicates({
+                ...baseMetadata,
+                resolution: RESOLUTIONS['2160p'],
+                sourceType: SOURCE_TYPES.REMUX,
+                videoCodec: VIDEO_CODECS.HEVC,
+                hdr: [HDR_TYPES.DV],
+                hybrid: true,
+            })
+            expect(result).toHaveLength(1)
+            expect(result[0]).toMatchObject({ trumpable: false })
+        })
     })
 
     it('passes only encode type in a single call for an encode upload (excludes web/remux)', async () => {
@@ -934,9 +982,9 @@ describe('athTrackerService — findDuplicates', () => {
         await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.ENCODE })
         expect(fetchMock).toHaveBeenCalledTimes(1)
         const url: string = fetchMock.mock.calls[0][0]
-        expect(url).toContain('types%5B%5D=3') // ENCODE
-        expect(url).not.toContain('types%5B%5D=4') // not WEB-DL
-        expect(url).not.toContain('types%5B%5D=2') // not REMUX
+        expect(url).toContain('types[]=3') // ENCODE
+        expect(url).not.toContain('types[]=4') // not WEB-DL
+        expect(url).not.toContain('types[]=2') // not REMUX
     })
 
     it('passes only remux type in a single call for a remux upload (excludes web/encode)', async () => {
@@ -945,21 +993,21 @@ describe('athTrackerService — findDuplicates', () => {
         await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX })
         expect(fetchMock).toHaveBeenCalledTimes(1)
         const url: string = fetchMock.mock.calls[0][0]
-        expect(url).toContain('types%5B%5D=2') // REMUX
-        expect(url).not.toContain('types%5B%5D=3') // not ENCODE
-        expect(url).not.toContain('types%5B%5D=4') // not WEB-DL
+        expect(url).toContain('types[]=2') // REMUX
+        expect(url).not.toContain('types[]=3') // not ENCODE
+        expect(url).not.toContain('types[]=4') // not WEB-DL
     })
 
     it('passes resolution to the API for a 1080p upload', async () => {
         fetchMock.mockResolvedValue({ data: [] })
         await service.findDuplicates({ ...baseMetadata, resolution: RESOLUTIONS['1080p'] })
-        expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('resolutions%5B%5D=3'), expect.anything())
+        expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('resolutions[]=3'), expect.anything())
     })
 
     it('passes resolution to the API for a 2160p upload', async () => {
         fetchMock.mockResolvedValue({ data: [] })
         await service.findDuplicates({ ...baseMetadata, resolution: RESOLUTIONS['2160p'] })
-        expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('resolutions%5B%5D=2'), expect.anything())
+        expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('resolutions[]=2'), expect.anything())
     })
 
     it('passes all web family types in a single call for a WEB-DL upload (WEB-DL, WEBRip, HDTV)', async () => {
@@ -968,9 +1016,9 @@ describe('athTrackerService — findDuplicates', () => {
         await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.WEB_DL })
         expect(fetchMock).toHaveBeenCalledTimes(1)
         const url: string = fetchMock.mock.calls[0][0]
-        expect(url).toContain('types%5B%5D=4') // WEB-DL
-        expect(url).toContain('types%5B%5D=5') // WEBRip
-        expect(url).toContain('types%5B%5D=6') // HDTV
+        expect(url).toContain('types[]=4') // WEB-DL
+        expect(url).toContain('types[]=5') // WEBRip
+        expect(url).toContain('types[]=6') // HDTV
     })
 
     it('passes seasonNumber and episodeNumber to getTorrents for TV episodes', async () => {

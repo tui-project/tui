@@ -1,4 +1,4 @@
-import { SOURCES, SOURCE_TYPES } from '../../../model/metadata'
+import { type Resolution, SD_RESOLUTIONS, SOURCES, SOURCE_TYPES, type SourceType, WEB_SOURCE_TYPES } from '../../../model/metadata'
 import type { TrackerUploadMetadata } from '../tracker'
 
 export function isDvd(metadata: TrackerUploadMetadata): boolean {
@@ -23,4 +23,12 @@ export function isForeignContent(metadata: TrackerUploadMetadata): boolean {
 
 export function hasEnglishAudio(metadata: TrackerUploadMetadata): boolean {
     return metadata.language.includes('en')
+}
+
+export function isWebSource(sourceType: SourceType) {
+    return (WEB_SOURCE_TYPES as string[]).includes(sourceType)
+}
+
+export function isSDResolution(resolution: Resolution) {
+    return (SD_RESOLUTIONS as string[]).includes(resolution)
 }

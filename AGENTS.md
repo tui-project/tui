@@ -139,6 +139,26 @@ by trusting the parsed episode number first and only overriding it when
 another special scores strictly higher on title matching.
 ```
 
+## Tracker Duplicate Detection Pattern
+
+When implementing `findDuplicates` for a tracker service, always follow this structure:
+
+1. **`TorrentContext`** — a plain object capturing the properties relevant to slot and trump evaluation for one release (slot string, revision, sourceRank, hasOriginalAudio, etc.). No raw `TorrentResult` fields should appear inside the rule functions.
+
+2. **`DUPLICATE_RULES`** — an array of `(upload: TorrentContext, existing: TorrentContext) => boolean` functions. A candidate is a duplicate when **any** rule returns `true`. Each rule expresses one coexistence boundary (e.g. same slot).
+
+3. **`TRUMP_RULES`** — an array of the same signature. A duplicate is trumpable when **any** rule returns `true`. Each rule expresses one trump condition (e.g. higher revision, higher source rank, original audio over dubbed-only).
+
+4. **`findDuplicates`** — builds an `uploadContext`, maps candidates to `existingContext` objects, then delegates entirely to `DUPLICATE_RULES` and `TRUMP_RULES`:
+
+```ts
+const duplicates = existingContexts
+    .filter(({ context }) => DUPLICATE_RULES.some((rule) => rule(uploadContext, context)))
+    .map(({ torrent, context }) => ({ name: torrent.name, url: torrent.url, trumpable: TRUMP_RULES.some((rule) => rule(uploadContext, context)) }))
+```
+
+Do not inline duplicate or trump logic inside the loop — all conditions belong in the rule arrays. See `server/services/tracker/trackers/ath.ts` and `ulcx.ts` for reference implementations.
+
 ## Editing Notes
 
 - Keep changes small and aligned with existing patterns.
@@ -148,3 +168,4 @@ another special scores strictly higher on title matching.
 - Use ASCII text unless the surrounding file already uses non-ASCII.
 - Do not add defensive checks for conditions that cannot realistically occur given the inputs the code receives. Only validate at genuine system boundaries (user input, external APIs). Unreachable branches hurt coverage and signal false uncertainty about invariants.
 - Define helper/dependent functions after the function that uses them, in order of first usage. The public or top-level entry point comes first; its helpers follow.
+- Prefer `switch` over multiple `if`/`else if` chains when branching on a single value.

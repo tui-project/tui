@@ -1,8 +1,30 @@
-import { AUDIO_CODECS, MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS, type Resolution, type VideoCodec } from '../../../model/metadata'
-import { isDvd, isRemux, isHdtv, isEncode, isForeignContent, hasEnglishAudio } from '../util/metadata-util'
+import {
+    AUDIO_CODECS,
+    MEDIA_TYPES,
+    RESOLUTIONS,
+    type Service,
+    SOURCE_TYPES,
+    SOURCES,
+    type SourceType,
+    VIDEO_CODECS,
+    WEB_SOURCE_TYPES,
+    type Resolution,
+    type VideoCodec,
+} from '../../../model/metadata'
+import { isDvd, isRemux, isHdtv, isEncode, isForeignContent, hasEnglishAudio, isWebSource } from '../util/metadata-util'
+import {
+    type HdrTier,
+    type TorrentContext as BaseTorrentContext,
+    type TorrentRule,
+    SLOT_TIERS,
+    HDR_TIER_TRUMPS,
+    getHdrTier,
+    getCodecFamily,
+    WEB_SOURCE_RANK,
+} from '../util/tracker-util'
 import type { RuleViolation, TrackerService, TrackerUploadMetadata, TrackerUploadOptions } from '../tracker'
 import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
-import { defaultFindDuplicates, getTorrents, upload } from '../unit3d-tracker'
+import { getTorrents, upload } from '../unit3d-tracker'
 import { logger } from '../../../utils/logger'
 
 const BANNED_GROUPS = new Set(
@@ -59,7 +81,7 @@ const BANNED_GROUPS = new Set(
  * Refer to:
  *  - naming guide: https://upload.cx/wikis/7
  *  - bannd groups: https://upload.cx/wikis/6
- *  - API spec.   : https://upload.cx/wikis/38
+ *  - API spec    : https://upload.cx/wikis/38
  */
 export function ulcxTrackerService(url: string, apiKey: string): TrackerService {
     return {
@@ -67,18 +89,7 @@ export function ulcxTrackerService(url: string, apiKey: string): TrackerService 
         checkRules,
         upload: (torrentPath, metadata, description, mediainfoText, title: string, options: TrackerUploadOptions) =>
             upload(url, apiKey, torrentPath, metadata, description, mediainfoText, title, options),
-        findDuplicates: async (metadata) => {
-            const candidates = await getTorrents(url, apiKey, {
-                tmdbId: metadata.tmdbId,
-                mediaType: metadata.mediaType,
-                resolutions: [metadata.resolution],
-                sourceTypes: [metadata.sourceType],
-            })
-            const duplicates = defaultFindDuplicates(candidates, metadata)
-            logger.info('ULCX duplicate check complete.', { title: metadata.title, candidates: candidates.length, duplicates: duplicates.length })
-            logger.debug('ULCX duplicates found.', { title: metadata.title, duplicates })
-            return duplicates
-        },
+        findDuplicates: (metadata: TrackerUploadMetadata) => findDuplicates(url, apiKey, metadata),
     }
 }
 
@@ -221,4 +232,106 @@ function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
     }
 
     return violations
+}
+
+type TorrentContext = BaseTorrentContext & { isNoGrp: boolean }
+
+/**
+ * Refer to:
+ *  - rules    : https://upload.cx/pages/1
+ *  - API spec : https://upload.cx/wikis/38
+ */
+async function findDuplicates(url: string, apiKey: string, metadata: TrackerUploadMetadata) {
+    const sourceTypes = isWebSource(metadata.sourceType) ? WEB_SOURCE_TYPES : [metadata.sourceType]
+
+    const candidates = await getTorrents(url, apiKey, {
+        tmdbId: metadata.tmdbId,
+        mediaType: metadata.mediaType,
+        resolutions: [metadata.resolution],
+        sourceTypes,
+        seasonNumber: metadata.mediaType === MEDIA_TYPES.TV ? metadata.season : undefined,
+        episodeNumber: metadata.mediaType === MEDIA_TYPES.TV ? (metadata.episode ?? 0) : undefined,
+    })
+
+    const uploadHdrTier = getHdrTier(metadata.hdr ?? [])
+    const uploadContext: TorrentContext = {
+        slot: getSlot(metadata.sourceType, uploadHdrTier, metadata.videoCodec, metadata.service, metadata.cut, metadata.ratio),
+        hdrTier: uploadHdrTier,
+        sourceRank: WEB_SOURCE_RANK[metadata.sourceType] ?? 0,
+        revision: Math.max(metadata.repack, metadata.proper, metadata.rerip),
+        hasOriginalAudio: metadata.language.includes(metadata.originalLanguage),
+        hybrid: metadata.hybrid,
+        isNoGrp: !metadata.releaseGroup,
+    }
+
+    const existingContexts = candidates.map((torrent) => {
+        const hdrTier = getHdrTier(torrent.hdr)
+        const context: TorrentContext = {
+            slot: getSlot(torrent.sourceType, hdrTier, torrent.videoCodec, torrent.service, torrent.cut, torrent.ratio),
+            hdrTier,
+            sourceRank: WEB_SOURCE_RANK[torrent.sourceType] ?? 0,
+            revision: Math.max(torrent.repack, torrent.proper, torrent.rerip),
+            hasOriginalAudio: torrent.hasOriginalAudio,
+            hybrid: torrent.hybrid,
+            isNoGrp: /\bNOGROUP\b/i.test(torrent.name),
+        }
+        return { torrent, context }
+    })
+
+    const duplicates = existingContexts
+        .filter(({ context }) => uploadContext.slot === context.slot)
+        .map(({ torrent, context }) => ({ name: torrent.name, url: torrent.url, trumpable: TRUMP_RULES.some((rule) => rule(uploadContext, context)) }))
+
+    logger.info('ULCX duplicate check complete.', {
+        title: metadata.title,
+        candidates: candidates.length,
+        duplicates: duplicates.length,
+        trumpable: duplicates.filter((d) => d.trumpable).length,
+    })
+    logger.debug('ULCX duplicates found.', { title: metadata.title, duplicates })
+
+    return duplicates
+}
+
+const TRUMP_RULES: TorrentRule<TorrentContext>[] = [
+    // Disc DV trumps a hybrid source in the same DV slot
+    (upload, existing) => !upload.hybrid && existing.hybrid && upload.hdrTier === 'DV',
+    // DV/HDR over HDR, DV/HDR10+ over HDR10+
+    (upload, existing) => HDR_TIER_TRUMPS[upload.hdrTier] === existing.hdrTier,
+    // Higher revision (REPACK/PROPER/RERIP) trumps lower
+    (upload, existing) => upload.revision > existing.revision,
+    // WEB-DL trumps WEBRip from the same provider (same slot, higher source rank)
+    (upload, existing) => upload.sourceRank > 0 && existing.sourceRank > 0 && upload.sourceRank > existing.sourceRank,
+    // Upload carrying original audio trumps a dubbed-only release
+    (upload, existing) => upload.hasOriginalAudio && !existing.hasOriginalAudio,
+    // A named group trumps a NOGROUP release
+    (upload, existing) => !upload.isNoGrp && existing.isNoGrp,
+]
+
+/**
+ * Computes the content slot a release occupies; two releases are duplicates when they share a slot.
+ *
+ * Slot format: {family}:{service}:{cut}:{ratio}:{hdrTier}[:{codec}]
+ *
+ * - All families split by service, cut, and ratio — different editions/providers coexist
+ * - WEB slots split by HDR tier: SDR, DV, HDR (incl. DV/HDR), HDR10+ (incl. DV/HDR10+)
+ * - Encode slots additionally split by x264 vs x265
+ * - Remux slots split by HDR tier; cut/ratio allow different editions to coexist
+ */
+function getSlot(sourceType: SourceType, tier: HdrTier, videoCodec: VideoCodec, service?: Service, cut?: string, ratio?: string): string {
+    const slotTier = SLOT_TIERS[tier]
+    const svc = service ?? ''
+    const cutPart = cut ?? ''
+    const ratioPart = ratio ?? ''
+
+    switch (sourceType) {
+        case SOURCE_TYPES.REMUX:
+            return `remux:${svc}:${cutPart}:${ratioPart}:${slotTier}`
+        case SOURCE_TYPES.ENCODE:
+            return `encode:${svc}:${cutPart}:${ratioPart}:${slotTier}:${getCodecFamily(videoCodec)}`
+        // WEB-DL, WEBRip, HDTV — provider-scoped slot; WEB-DL and WEBRip from the same provider
+        // share a slot so that WEB-DL can trump WEBRip (they are not separate coexisting slots)
+        default:
+            return `web:${svc}:${cutPart}:${ratioPart}:${slotTier}`
+    }
 }

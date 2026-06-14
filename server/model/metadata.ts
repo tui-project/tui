@@ -65,6 +65,7 @@ export const SOURCE_TYPES = {
     HDTV: 'HDTV',
 } as const
 export type SourceType = (typeof SOURCE_TYPES)[keyof typeof SOURCE_TYPES]
+export const WEB_SOURCE_TYPES = [SOURCE_TYPES.WEB_DL, SOURCE_TYPES.WEBRIP, SOURCE_TYPES.HDTV]
 
 export const SERVICES = {
     '9NOW': '9NOW',
@@ -267,6 +268,7 @@ export const RESOLUTIONS = {
     '4320p': '4320p',
 } as const
 export type Resolution = (typeof RESOLUTIONS)[keyof typeof RESOLUTIONS]
+export const SD_RESOLUTIONS = [RESOLUTIONS['480i'], RESOLUTIONS['480p'], RESOLUTIONS['576i'], RESOLUTIONS['576p']]
 
 export const RATIOS = {
     IMAX: 'IMAX',
