@@ -44,64 +44,6 @@ describe('useTrackerRequests composable', () => {
         vi.unstubAllGlobals()
     })
 
-    describe('getRequests', () => {
-        it('fetches requests with the given limit and returns them', async () => {
-            const expected = [buildRequest()]
-            const fetchMock = vi.fn().mockResolvedValue(expected)
-            vi.stubGlobal('$fetch', fetchMock)
-
-            const { useTrackerRequests } = await import('../../../../app/composables/useTrackerRequests')
-            const { getRequests, loading, error } = useTrackerRequests()
-
-            const result = await getRequests(6)
-
-            expect(result).toEqual(expected)
-            expect(fetchMock).toHaveBeenCalledWith('/api/tracker/requests', { query: { limit: 6 } })
-            expect(loading.value).toBe(false)
-            expect(error.value).toBe(false)
-        })
-
-        it('sets an error flag and returns null when the fetch fails', async () => {
-            const fetchMock = vi.fn().mockRejectedValue(new Error('network error'))
-            vi.stubGlobal('$fetch', fetchMock)
-
-            const { useTrackerRequests } = await import('../../../../app/composables/useTrackerRequests')
-            const { getRequests, loading, error } = useTrackerRequests()
-
-            const result = await getRequests(6)
-
-            expect(result).toBeNull()
-            expect(loading.value).toBe(false)
-            expect(error.value).toBe(true)
-        })
-
-        it('skips a fetch while another is already in progress', async () => {
-            let resolveGet: ((value: TrackerRequest[]) => void) | undefined
-            const fetchMock = vi.fn().mockImplementation(
-                () =>
-                    new Promise<TrackerRequest[]>((resolve) => {
-                        resolveGet = () => resolve([buildRequest()])
-                    })
-            )
-            vi.stubGlobal('$fetch', fetchMock)
-
-            const { useTrackerRequests } = await import('../../../../app/composables/useTrackerRequests')
-            const { getRequests, loading } = useTrackerRequests()
-
-            const firstGet = getRequests(6)
-            expect(loading.value).toBe(true)
-
-            await expect(getRequests(6)).resolves.toBeNull()
-            expect(fetchMock).toHaveBeenCalledTimes(1)
-
-            resolveGet?.([buildRequest()])
-            const result = await firstGet
-
-            expect(result).toEqual([buildRequest()])
-            expect(loading.value).toBe(false)
-        })
-    })
-
     describe('retryRequest', () => {
         it('calls the PATCH endpoint with action:retry', async () => {
             const fetchMock = vi.fn().mockResolvedValue(undefined)

@@ -333,7 +333,7 @@ describe('tracker upload request repository', () => {
         expect(result).toBeNull()
     })
 
-    it('returns only the most recent tracker upload requests up to the limit when provided', async () => {
+    it('returns only the most recent tracker upload requests for the given page and size', async () => {
         const { saveTrackerUploadRequest, findAllTrackerUploadRequests } = await import('../../../../server/repositories/tracker-request-repository')
 
         for (const id of ['upload-6', 'upload-7', 'upload-8']) {
@@ -369,7 +369,7 @@ describe('tracker upload request repository', () => {
             await new Promise((resolve) => setTimeout(resolve, 5))
         }
 
-        const recent = await findAllTrackerUploadRequests(2)
+        const recent = await findAllTrackerUploadRequests(1, 2)
 
         expect(recent).toHaveLength(2)
         expect(recent.map((request) => request.id)).toEqual(['upload-8', 'upload-7'])

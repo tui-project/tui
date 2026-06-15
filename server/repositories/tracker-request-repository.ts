@@ -9,9 +9,12 @@ export async function findTrackerUploadRequestById(id: string) {
     return await trackerUploadRequestCollection.findOneAsync({ id })
 }
 
-export async function findAllTrackerUploadRequests(limit?: number) {
-    const query = trackerUploadRequestCollection.findAsync({}).sort({ createdAt: -1 })
-    return limit !== undefined ? query.limit(limit) : query
+export async function findAllTrackerUploadRequests(page: number, size: number) {
+    return trackerUploadRequestCollection
+        .findAsync({})
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * size)
+        .limit(size)
 }
 
 export async function updateTrackerUploadRequestStatus(id: string, status: TrackerUploadStatus, failedTrackerCodes?: string[]) {

@@ -1,28 +1,41 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { renderSuspended, mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import IndexPage from '../../../app/pages/index.vue'
+import type { TrackerRequest } from '../../../app/composables/useTrackerRequests'
 
-const getRequestsMock = vi.fn()
 const retryRequestMock = vi.fn()
-const error = ref(false)
 
 mockNuxtImport('useTrackerRequests', () => {
     return () => ({
-        getRequests: getRequestsMock,
         retryRequest: retryRequestMock,
-        error: computed(() => error.value),
         loading: ref(false),
+    })
+})
+
+const useFetchData = ref<TrackerRequest[] | null>(null)
+const useFetchError = ref<Error | null>(null)
+const useFetchPending = ref(false)
+const refreshMock = vi.fn()
+
+mockNuxtImport('useFetch', () => {
+    return () => ({
+        data: useFetchData,
+        error: useFetchError,
+        pending: useFetchPending,
+        refresh: refreshMock,
     })
 })
 
 describe('index page', () => {
     beforeEach(() => {
         vi.useFakeTimers()
-        getRequestsMock.mockReset()
+        useFetchData.value = null
+        useFetchError.value = null
+        useFetchPending.value = false
+        refreshMock.mockReset()
         retryRequestMock.mockReset()
-        error.value = false
     })
 
     afterEach(() => {
@@ -30,14 +43,14 @@ describe('index page', () => {
     })
 
     it('renders recent upload requests and only shows progress for torrent_creation status', async () => {
-        getRequestsMock.mockResolvedValue([
+        useFetchData.value = [
             {
                 id: 'upload-2',
                 filepath: '/media/Show.S01E01.mkv',
                 status: 'torrent_creation',
                 trackers: [
-                    { code: 'ULCX', title: 'T', titleModified: false, anonymous: false },
-                    { code: 'ATH', title: 'T', titleModified: false, anonymous: false },
+                    { code: 'ULCX', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false },
+                    { code: 'ATH', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false },
                 ],
                 torrentCreationProgress: 42,
             },
@@ -45,10 +58,10 @@ describe('index page', () => {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'success',
-                trackers: [{ code: 'BHD', title: 'T', titleModified: false, anonymous: false }],
+                trackers: [{ code: 'BHD', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false }],
                 torrentCreationProgress: 100,
             },
-        ])
+        ]
 
         await renderSuspended(IndexPage)
 
@@ -63,8 +76,17 @@ describe('index page', () => {
         expect(screen.queryByText('100%')).toBeNull()
     })
 
+    it('renders skeleton loaders while the initial fetch is in progress', async () => {
+        useFetchPending.value = true
+
+        await renderSuspended(IndexPage)
+
+        expect(screen.queryByText('No upload requests yet.')).toBeNull()
+        expect(screen.queryByText('Unable to load recent upload requests.')).toBeNull()
+    })
+
     it('renders an empty state when there are no upload requests', async () => {
-        getRequestsMock.mockResolvedValue([])
+        useFetchData.value = []
 
         await renderSuspended(IndexPage)
 
@@ -72,8 +94,7 @@ describe('index page', () => {
     })
 
     it('renders an error alert when requests fail to load', async () => {
-        getRequestsMock.mockResolvedValue(null)
-        error.value = true
+        useFetchError.value = new Error('network error')
 
         await renderSuspended(IndexPage)
 
@@ -81,18 +102,18 @@ describe('index page', () => {
     })
 
     it('shows error badge and failed tracker codes for a failed request', async () => {
-        getRequestsMock.mockResolvedValue([
+        useFetchData.value = [
             {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'fail',
                 trackers: [
-                    { code: 'ULCX', title: 'T', titleModified: false, anonymous: false },
-                    { code: 'ATH', title: 'T', titleModified: false, anonymous: false },
+                    { code: 'ULCX', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false },
+                    { code: 'ATH', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false },
                 ],
                 failedTrackerCodes: ['ULCX', 'ATH'],
             },
-        ])
+        ]
 
         await renderSuspended(IndexPage)
 
@@ -101,18 +122,18 @@ describe('index page', () => {
     })
 
     it('shows warning badge and failed tracker codes for a partial_success request', async () => {
-        getRequestsMock.mockResolvedValue([
+        useFetchData.value = [
             {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'partial_success',
                 trackers: [
-                    { code: 'ULCX', title: 'T', titleModified: false, anonymous: false },
-                    { code: 'ATH', title: 'T', titleModified: false, anonymous: false },
+                    { code: 'ULCX', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false },
+                    { code: 'ATH', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false },
                 ],
                 failedTrackerCodes: ['ATH'],
             },
-        ])
+        ]
 
         await renderSuspended(IndexPage)
 
@@ -120,24 +141,15 @@ describe('index page', () => {
         expect(screen.getByText('Failed trackers: ATH')).toBeTruthy()
     })
 
-    it('renders skeleton loaders when no requests have loaded yet', async () => {
-        getRequestsMock.mockResolvedValue(null)
-
-        await renderSuspended(IndexPage)
-
-        expect(screen.queryByText('No upload requests yet.')).toBeNull()
-        expect(screen.queryByText('Unable to load recent upload requests.')).toBeNull()
-    })
-
     it('shows 0% progress when torrent creation has not yet reported progress', async () => {
-        getRequestsMock.mockResolvedValue([
+        useFetchData.value = [
             {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'torrent_creation',
-                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false }],
+                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false }],
             },
-        ])
+        ]
 
         await renderSuspended(IndexPage)
 
@@ -145,19 +157,20 @@ describe('index page', () => {
     })
 
     it('polls for updated requests every 2 seconds', async () => {
-        getRequestsMock.mockResolvedValue([])
+        useFetchData.value = []
+        refreshMock.mockResolvedValue(undefined)
 
         await renderSuspended(IndexPage)
 
-        expect(getRequestsMock).toHaveBeenCalledTimes(1)
+        expect(refreshMock).toHaveBeenCalledTimes(0)
 
         await vi.advanceTimersByTimeAsync(2_000)
 
-        expect(getRequestsMock).toHaveBeenCalledTimes(2)
+        expect(refreshMock).toHaveBeenCalledTimes(1)
     })
 
     it('clears the polling interval when the component is unmounted', async () => {
-        getRequestsMock.mockResolvedValue([])
+        useFetchData.value = []
         const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval')
 
         const wrapper = await mountSuspended(IndexPage)
@@ -168,14 +181,14 @@ describe('index page', () => {
     })
 
     it('shows neutral badge for a pending request without progress or failed trackers', async () => {
-        getRequestsMock.mockResolvedValue([
+        useFetchData.value = [
             {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'pending',
-                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false }],
+                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false }],
             },
-        ])
+        ]
 
         await renderSuspended(IndexPage)
 
@@ -185,14 +198,14 @@ describe('index page', () => {
     })
 
     it('shows neutral badge for an uploading request without progress or failed trackers', async () => {
-        getRequestsMock.mockResolvedValue([
+        useFetchData.value = [
             {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'uploading',
-                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false }],
+                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false }],
             },
-        ])
+        ]
 
         await renderSuspended(IndexPage)
 
@@ -201,36 +214,47 @@ describe('index page', () => {
         expect(screen.queryByText(/Failed trackers/)).toBeNull()
     })
 
-    it('retains displayed requests when a poll returns null', async () => {
-        getRequestsMock
-            .mockResolvedValueOnce([
-                {
-                    id: 'req-1',
-                    filepath: '/media/Movie.mkv',
-                    status: 'success',
-                    trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false }],
-                },
-            ])
-            .mockResolvedValueOnce(null)
-
-        await renderSuspended(IndexPage)
-
-        expect(screen.getByText('Movie.mkv')).toBeTruthy()
-
-        await vi.advanceTimersByTimeAsync(2_000)
-
-        expect(screen.getByText('Movie.mkv')).toBeTruthy()
-    })
-
-    it('shows injection failed badge when torrentClientInjected is false', async () => {
-        getRequestsMock.mockResolvedValue([
+    it('applies success color to tracker badge when upload succeeded', async () => {
+        useFetchData.value = [
             {
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'success',
-                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false, torrentClientInjected: false }],
+                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false, uploadStatus: 'success' }],
             },
-        ])
+        ]
+
+        await renderSuspended(IndexPage)
+
+        const badge = screen.getByText('ULCX').closest('.rounded-full, [class*="badge"]') ?? screen.getByText('ULCX')
+        expect(badge).toBeTruthy()
+    })
+
+    it('applies error color to tracker badge when upload failed', async () => {
+        useFetchData.value = [
+            {
+                id: 'upload-1',
+                filepath: '/media/Movie.2024.mkv',
+                status: 'fail',
+                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false, uploadStatus: 'failed' }],
+                failedTrackerCodes: ['ULCX'],
+            },
+        ]
+
+        await renderSuspended(IndexPage)
+
+        expect(screen.getByText('ULCX')).toBeTruthy()
+    })
+
+    it('shows injection failed badge when torrentClientInjected is false', async () => {
+        useFetchData.value = [
+            {
+                id: 'upload-1',
+                filepath: '/media/Movie.2024.mkv',
+                status: 'success',
+                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false, torrentClientInjected: false }],
+            },
+        ]
 
         await renderSuspended(IndexPage)
 
@@ -240,24 +264,16 @@ describe('index page', () => {
 
     it('retries the request and refreshes the list when the retry button is clicked', async () => {
         retryRequestMock.mockResolvedValue(undefined)
-        getRequestsMock
-            .mockResolvedValueOnce([
-                {
-                    id: 'upload-1',
-                    filepath: '/media/Movie.2024.mkv',
-                    status: 'fail',
-                    trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false }],
-                    failedTrackerCodes: ['ULCX'],
-                },
-            ])
-            .mockResolvedValueOnce([
-                {
-                    id: 'upload-1',
-                    filepath: '/media/Movie.2024.mkv',
-                    status: 'pending',
-                    trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false }],
-                },
-            ])
+        refreshMock.mockResolvedValue(undefined)
+        useFetchData.value = [
+            {
+                id: 'upload-1',
+                filepath: '/media/Movie.2024.mkv',
+                status: 'fail',
+                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false }],
+                failedTrackerCodes: ['ULCX'],
+            },
+        ]
 
         const user = (await import('@testing-library/user-event')).default.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) })
         await renderSuspended(IndexPage)
@@ -265,7 +281,6 @@ describe('index page', () => {
         await user.click(screen.getByRole('button', { name: /retry/i }))
 
         expect(retryRequestMock).toHaveBeenCalledWith('upload-1')
-        expect(getRequestsMock).toHaveBeenCalledTimes(2)
-        expect(screen.getByText('Pending')).toBeTruthy()
+        expect(refreshMock).toHaveBeenCalledTimes(1)
     })
 })

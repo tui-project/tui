@@ -74,7 +74,15 @@ async function onConfirmLogout() {
             <UDashboardPanel>
                 <template #body>
                     <div class="mx-auto w-full max-w-480">
-                        <slot />
+                        <Suspense>
+                            <slot />
+                            <template #fallback>
+                                <div class="space-y-4 p-4">
+                                    <USkeleton class="h-8 w-48" />
+                                    <USkeleton class="h-40 w-full" />
+                                </div>
+                            </template>
+                        </Suspense>
                     </div>
                 </template>
             </UDashboardPanel>

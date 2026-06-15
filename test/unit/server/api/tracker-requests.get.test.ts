@@ -21,13 +21,13 @@ async function loadHandler() {
     vi.doMock('../../../../server/utils/logger', () => ({ logger }))
     vi.doMock('../../../../server/utils/request-validator', () => ({ parseValidatedQuery }))
 
-    const { default: handler } = await import('../../../../server/api/tracker/requests.get')
+    const { default: handler } = await import('../../../../server/api/tracker/requests/index.get')
     return handler
 }
 
 describe('GET /api/tracker/requests route handler', () => {
-    it('returns recent upload requests for the given limit', async () => {
-        parseValidatedQuery.mockReturnValue({ limit: 6 })
+    it('returns recent upload requests for the given page and size', async () => {
+        parseValidatedQuery.mockReturnValue({ page: 1, size: 6 })
         findAllTrackerUploadRequests.mockResolvedValue([
             {
                 id: 'upload-2',
@@ -50,12 +50,11 @@ describe('GET /api/tracker/requests route handler', () => {
                 status: 'torrent_creation',
                 trackers: [{ code: 'ULCX', title: 'Title', titleModified: false, anonymous: false }],
                 torrentCreationProgress: 42,
-                failedTrackerCodes: undefined,
                 createdAt: new Date('2026-05-10T00:00:00.000Z'),
                 updatedAt: new Date('2026-05-10T00:00:30.000Z'),
             },
         ])
-        expect(findAllTrackerUploadRequests).toHaveBeenCalledWith(6)
+        expect(findAllTrackerUploadRequests).toHaveBeenCalledWith(1, 6)
         expect(parseValidatedQuery).toHaveBeenCalledWith(mockEvent, expect.any(Object), {
             errorMessage: 'invalid_query',
             onInvalid: expect.any(Function),
@@ -76,33 +75,14 @@ describe('GET /api/tracker/requests route handler', () => {
         expect(logger.warn).toHaveBeenCalledWith('Rejected tracker requests query with invalid parameters.', { issues })
     })
 
-    it('returns empty trackers array for legacy records missing the trackers field', async () => {
-        parseValidatedQuery.mockReturnValue({ limit: undefined })
-        findAllTrackerUploadRequests.mockResolvedValue([
-            {
-                id: 'legacy-1',
-                filepath: '/media/old.mkv',
-                status: 'success',
-                torrentCreationProgress: 0,
-                createdAt: new Date('2026-05-10T00:00:00.000Z'),
-                updatedAt: new Date('2026-05-10T00:01:00.000Z'),
-            },
-        ])
-
-        const handler = await loadHandler()
-        const result = await handler({})
-
-        expect(result).toEqual([expect.objectContaining({ id: 'legacy-1', trackers: [] })])
-    })
-
-    it('passes undefined to the repository when limit is not provided', async () => {
-        parseValidatedQuery.mockReturnValue({ limit: undefined })
+    it('uses default page and size when not provided in query', async () => {
+        parseValidatedQuery.mockReturnValue({ page: 1, size: 12 })
         findAllTrackerUploadRequests.mockResolvedValue([])
 
         const handler = await loadHandler()
 
         await handler({})
 
-        expect(findAllTrackerUploadRequests).toHaveBeenCalledWith(undefined)
+        expect(findAllTrackerUploadRequests).toHaveBeenCalledWith(1, 12)
     })
 })

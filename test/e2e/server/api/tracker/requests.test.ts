@@ -122,11 +122,11 @@ describe('tracker upload requests', async () => {
         expect(requests.some((r) => r.id === created.id)).toBe(true)
     })
 
-    it('GET respects the optional limit query parameter', async () => {
+    it('GET respects the optional page and size query parameters', async () => {
         const cookie = await getSessionCookie()
 
         const requests = await $fetch<unknown[]>('/api/tracker/requests', {
-            query: { limit: 1 },
+            query: { page: 1, size: 1 },
             headers: { cookie },
         })
 
