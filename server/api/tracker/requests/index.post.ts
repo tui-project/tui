@@ -1,10 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
-import { TRACKER_UPLOAD_STATUSES, type TrackerItem } from '../../model/tracker-upload-request'
-import { saveTrackerUploadRequest } from '../../repositories/tracker-request-repository'
-import { logger } from '../../utils/logger'
-import { parseValidatedBody } from '../../utils/request-validator'
-import { upload as trackerUpload } from '../../services/tracker-upload'
+import { saveTrackerRequest } from '../../../repositories/tracker-request-repository'
+import { logger } from '../../../utils/logger'
+import { parseValidatedBody } from '../../../utils/request-validator'
+import { upload as trackerUpload } from '../../../services/tracker-upload'
 
 const trackerItemSchema = z.object({
     code: z.string().trim().min(1),
@@ -33,13 +32,13 @@ export default defineEventHandler(async (event) => {
     })
 
     const uploadRequestId = randomUUID()
-    const uploadRequest = await saveTrackerUploadRequest({
+    const uploadRequest = await saveTrackerRequest({
         id: uploadRequestId,
         filepath: request.filepath,
         metadata: request.metadata,
         description: request.description,
         trackers: request.trackers,
-        status: TRACKER_UPLOAD_STATUSES.PENDING,
+        status: STATUS.PENDING,
         torrentCreationProgress: 0,
     })
 

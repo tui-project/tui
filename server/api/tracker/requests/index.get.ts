@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { findAllTrackerUploadRequests } from '../../../repositories/tracker-request-repository'
+import { getTrackerRequests } from '../../../repositories/tracker-request-repository'
 import { logger } from '../../../utils/logger'
 import { parseValidatedQuery } from '../../../utils/request-validator'
 
@@ -16,5 +16,5 @@ export default defineEventHandler(async (event): Promise<TrackerRequest[]> => {
         onInvalid: (issues) => logger.warn('Rejected tracker requests query with invalid parameters.', { issues }),
     })
 
-    return await findAllTrackerUploadRequests(page, size)
+    return await getTrackerRequests(page, size)
 })

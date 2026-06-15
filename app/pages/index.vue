@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const REFRESH_INTERVAL_MS = 2_000
-const FINAL_STATUSES = new Set<string>([STATUS.success, STATUS.partialSuccess, STATUS.fail])
+const FINAL_STATUSES = new Set<string>([STATUS.SUCCESS, STATUS.PARTIAL_SUCCESS, STATUS.FAIL])
 
 const { pending, data: requests, error, refresh } = useFetch('/api/tracker/requests')
 
@@ -27,7 +27,7 @@ function getRequestLabel(filepath: string) {
 }
 
 function shouldShowProgress(status: Status) {
-    return status === STATUS.torrentCreation
+    return status === STATUS.TORRENT_CREATION
 }
 
 function hasFinalStatus(status: Status) {
@@ -36,11 +36,11 @@ function hasFinalStatus(status: Status) {
 
 function getStatusColor(status: Status) {
     switch (status) {
-        case STATUS.fail:
+        case STATUS.FAIL:
             return 'error'
-        case STATUS.success:
+        case STATUS.SUCCESS:
             return 'success'
-        case STATUS.partialSuccess:
+        case STATUS.PARTIAL_SUCCESS:
             return 'warning'
         default:
             return 'neutral'
@@ -49,27 +49,27 @@ function getStatusColor(status: Status) {
 
 function getStatusIcon(status: Status) {
     switch (status) {
-        case STATUS.success:
+        case STATUS.SUCCESS:
             return 'i-heroicons-check-circle'
-        case STATUS.fail:
+        case STATUS.FAIL:
             return 'i-heroicons-x-circle'
-        case STATUS.partialSuccess:
+        case STATUS.PARTIAL_SUCCESS:
             return 'i-heroicons-exclamation-triangle'
-        case STATUS.pending:
+        case STATUS.PENDING:
             return 'i-heroicons-clock'
-        case STATUS.torrentCreation:
+        case STATUS.TORRENT_CREATION:
             return 'i-heroicons-cog-6-tooth'
-        case STATUS.uploading:
+        case STATUS.UPLOADING:
             return 'i-heroicons-arrow-up-tray'
     }
 }
 
 function shouldAnimateIcon(status: Status) {
-    return status === STATUS.torrentCreation
+    return status === STATUS.TORRENT_CREATION
 }
 
 function isRetryable(status: Status) {
-    return status === STATUS.fail || status === STATUS.partialSuccess
+    return status === STATUS.FAIL || status === STATUS.PARTIAL_SUCCESS
 }
 
 function getTrackerUploadStatusColor(uploadStatus?: UploadStatus) {

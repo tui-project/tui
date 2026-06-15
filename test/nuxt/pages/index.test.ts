@@ -4,7 +4,7 @@ import { screen } from '@testing-library/vue'
 import { ref } from 'vue'
 import IndexPage from '../../../app/pages/index.vue'
 
-const useFetchData = ref<TrackerRequest[] | null>(null)
+const useFetchData = ref<Partial<TrackerRequest>[] | null>(null)
 const useFetchError = ref<Error | null>(null)
 const useFetchPending = ref(false)
 const refreshMock = vi.fn()
@@ -26,6 +26,11 @@ mockNuxtImport('useFetch', () => {
     }
 })
 
+const BASE_REQUEST = {
+    metadata: { title: 'Movie', mediaType: 'movie' as const, year: 2024 } as TrackerRequest['metadata'],
+    description: '',
+}
+
 describe('index page', () => {
     beforeEach(() => {
         vi.useFakeTimers()
@@ -44,6 +49,7 @@ describe('index page', () => {
     it('renders recent upload requests and only shows progress for torrent_creation status', async () => {
         useFetchData.value = [
             {
+                ...BASE_REQUEST,
                 id: 'upload-2',
                 filepath: '/media/Show.S01E01.mkv',
                 status: 'torrent_creation',
@@ -54,6 +60,7 @@ describe('index page', () => {
                 torrentCreationProgress: 42,
             },
             {
+                ...BASE_REQUEST,
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'success',
@@ -103,6 +110,7 @@ describe('index page', () => {
     it('shows error badge and failed tracker codes for a failed request', async () => {
         useFetchData.value = [
             {
+                ...BASE_REQUEST,
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'fail',
@@ -123,6 +131,7 @@ describe('index page', () => {
     it('shows warning badge and failed tracker codes for a partial_success request', async () => {
         useFetchData.value = [
             {
+                ...BASE_REQUEST,
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'partial_success',
@@ -143,6 +152,7 @@ describe('index page', () => {
     it('shows 0% progress when torrent creation has not yet reported progress', async () => {
         useFetchData.value = [
             {
+                ...BASE_REQUEST,
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'torrent_creation',
@@ -182,6 +192,7 @@ describe('index page', () => {
     it('shows neutral badge for a pending request without progress or failed trackers', async () => {
         useFetchData.value = [
             {
+                ...BASE_REQUEST,
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'pending',
@@ -199,6 +210,7 @@ describe('index page', () => {
     it('shows neutral badge for an uploading request without progress or failed trackers', async () => {
         useFetchData.value = [
             {
+                ...BASE_REQUEST,
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'uploading',
@@ -216,6 +228,7 @@ describe('index page', () => {
     it('applies success color to tracker badge when upload succeeded', async () => {
         useFetchData.value = [
             {
+                ...BASE_REQUEST,
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'success',
@@ -232,6 +245,7 @@ describe('index page', () => {
     it('applies error color to tracker badge when upload failed', async () => {
         useFetchData.value = [
             {
+                ...BASE_REQUEST,
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'fail',
@@ -248,6 +262,7 @@ describe('index page', () => {
     it('shows injection failed badge when torrentClientInjected is false', async () => {
         useFetchData.value = [
             {
+                ...BASE_REQUEST,
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'success',
@@ -266,6 +281,7 @@ describe('index page', () => {
         refreshMock.mockResolvedValue(undefined)
         useFetchData.value = [
             {
+                ...BASE_REQUEST,
                 id: 'upload-1',
                 filepath: '/media/Movie.2024.mkv',
                 status: 'fail',

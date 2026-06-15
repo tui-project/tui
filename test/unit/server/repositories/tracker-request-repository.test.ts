@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 describe('tracker upload request repository', () => {
     it('creates and finds tracker upload requests', async () => {
-        const { saveTrackerUploadRequest, findTrackerUploadRequestById, findAllTrackerUploadRequests } = await import('../../../../server/repositories/tracker-request-repository')
+        const { saveTrackerRequest, getTrackerRequest, getTrackerRequests } = await import('../../../../server/repositories/tracker-request-repository')
 
-        await saveTrackerUploadRequest({
+        await saveTrackerRequest({
             id: 'upload-1',
             filepath: '/media/Movie.2024.1080p.mkv',
             metadata: {
@@ -36,8 +36,8 @@ describe('tracker upload request repository', () => {
             status: 'pending',
         })
 
-        const byId = await findTrackerUploadRequestById('upload-1')
-        const all = await findAllTrackerUploadRequests()
+        const byId = await getTrackerRequest('upload-1')
+        const all = await getTrackerRequests()
 
         expect(byId).toMatchObject({
             id: 'upload-1',
@@ -56,10 +56,9 @@ describe('tracker upload request repository', () => {
     })
 
     it('updates partial success status with failed tracker codes', async () => {
-        const { saveTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestStatus } =
-            await import('../../../../server/repositories/tracker-request-repository')
+        const { saveTrackerRequest, getTrackerRequest, updateTrackerRequestStatus } = await import('../../../../server/repositories/tracker-request-repository')
 
-        await saveTrackerUploadRequest({
+        await saveTrackerRequest({
             id: 'upload-2',
             filepath: '/media/Show.S01E01.2024.1080p.mkv',
             metadata: {
@@ -95,8 +94,8 @@ describe('tracker upload request repository', () => {
             status: 'uploading',
         })
 
-        await updateTrackerUploadRequestStatus('upload-2', 'partial_success', ['ATH'])
-        const updated = await findTrackerUploadRequestById('upload-2')
+        await updateTrackerRequestStatus('upload-2', 'partial_success', ['ATH'])
+        const updated = await getTrackerRequest('upload-2')
 
         expect(updated).toMatchObject({
             id: 'upload-2',
@@ -106,10 +105,9 @@ describe('tracker upload request repository', () => {
     })
 
     it('clears failed tracker codes when leaving partial success', async () => {
-        const { saveTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestStatus } =
-            await import('../../../../server/repositories/tracker-request-repository')
+        const { saveTrackerRequest, getTrackerRequest, updateTrackerRequestStatus } = await import('../../../../server/repositories/tracker-request-repository')
 
-        await saveTrackerUploadRequest({
+        await saveTrackerRequest({
             id: 'upload-3',
             filepath: '/media/Movie.2024.1080p.mkv',
             metadata: {
@@ -139,8 +137,8 @@ describe('tracker upload request repository', () => {
             failedTrackerCodes: ['ULCX'],
         })
 
-        await updateTrackerUploadRequestStatus('upload-3', 'success')
-        const updated = await findTrackerUploadRequestById('upload-3')
+        await updateTrackerRequestStatus('upload-3', 'success')
+        const updated = await getTrackerRequest('upload-3')
 
         expect(updated).toMatchObject({
             id: 'upload-3',
@@ -150,10 +148,9 @@ describe('tracker upload request repository', () => {
     })
 
     it('stores torrent creation progress updates', async () => {
-        const { saveTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestTorrentCreationProgress } =
-            await import('../../../../server/repositories/tracker-request-repository')
+        const { saveTrackerRequest, getTrackerRequest, updateTrackerRequestTorrentCreationProgress } = await import('../../../../server/repositories/tracker-request-repository')
 
-        await saveTrackerUploadRequest({
+        await saveTrackerRequest({
             id: 'upload-4',
             filepath: '/media/Movie.2024.1080p.mkv',
             metadata: {
@@ -182,8 +179,8 @@ describe('tracker upload request repository', () => {
             status: 'torrent_creation',
         })
 
-        await updateTrackerUploadRequestTorrentCreationProgress('upload-4', 67)
-        const updated = await findTrackerUploadRequestById('upload-4')
+        await updateTrackerRequestTorrentCreationProgress('upload-4', 67)
+        const updated = await getTrackerRequest('upload-4')
 
         expect(updated).toMatchObject({
             id: 'upload-4',
@@ -192,10 +189,9 @@ describe('tracker upload request repository', () => {
     })
 
     it('defaults failed tracker codes to an empty list for partial success', async () => {
-        const { saveTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerUploadRequestStatus } =
-            await import('../../../../server/repositories/tracker-request-repository')
+        const { saveTrackerRequest, getTrackerRequest, updateTrackerRequestStatus } = await import('../../../../server/repositories/tracker-request-repository')
 
-        await saveTrackerUploadRequest({
+        await saveTrackerRequest({
             id: 'upload-5',
             filepath: '/media/Movie.2024.1080p.mkv',
             metadata: {
@@ -224,8 +220,8 @@ describe('tracker upload request repository', () => {
             status: 'uploading',
         })
 
-        await updateTrackerUploadRequestStatus('upload-5', 'partial_success')
-        const updated = await findTrackerUploadRequestById('upload-5')
+        await updateTrackerRequestStatus('upload-5', 'partial_success')
+        const updated = await getTrackerRequest('upload-5')
 
         expect(updated).toMatchObject({
             id: 'upload-5',
@@ -235,9 +231,9 @@ describe('tracker upload request repository', () => {
     })
 
     it('resets a failed request back to pending and clears progress and failed codes', async () => {
-        const { saveTrackerUploadRequest, resetTrackerUploadRequest, findTrackerUploadRequestById } = await import('../../../../server/repositories/tracker-request-repository')
+        const { saveTrackerRequest, resetTrackerRequest, getTrackerRequest } = await import('../../../../server/repositories/tracker-request-repository')
 
-        await saveTrackerUploadRequest({
+        await saveTrackerRequest({
             id: 'upload-reset-1',
             filepath: '/media/Movie.2024.1080p.mkv',
             metadata: {
@@ -268,8 +264,8 @@ describe('tracker upload request repository', () => {
             failedTrackerCodes: ['ULCX'],
         })
 
-        const reset = await resetTrackerUploadRequest('upload-reset-1')
-        const found = await findTrackerUploadRequestById('upload-reset-1')
+        const reset = await resetTrackerRequest('upload-reset-1')
+        const found = await getTrackerRequest('upload-reset-1')
 
         expect(reset).toMatchObject({ id: 'upload-reset-1', status: 'pending', torrentCreationProgress: 0 })
         expect(reset?.failedTrackerCodes).toBeUndefined()
@@ -278,9 +274,9 @@ describe('tracker upload request repository', () => {
     })
 
     it('updates uploadStatus and torrentClientInjected on a specific tracker item', async () => {
-        const { saveTrackerUploadRequest, findTrackerUploadRequestById, updateTrackerItem } = await import('../../../../server/repositories/tracker-request-repository')
+        const { saveTrackerRequest, getTrackerRequest, updateTrackerItem } = await import('../../../../server/repositories/tracker-request-repository')
 
-        await saveTrackerUploadRequest({
+        await saveTrackerRequest({
             id: 'upload-tracker-item-1',
             filepath: '/media/Movie.2024.1080p.mkv',
             metadata: {
@@ -313,7 +309,7 @@ describe('tracker upload request repository', () => {
         })
 
         await updateTrackerItem('upload-tracker-item-1', 'ULCX', { uploadStatus: 'success', torrentClientInjected: true })
-        const updated = await findTrackerUploadRequestById('upload-tracker-item-1')
+        const updated = await getTrackerRequest('upload-tracker-item-1')
 
         expect(updated?.trackers.find((t) => t.code === 'ULCX')).toMatchObject({ uploadStatus: 'success', torrentClientInjected: true })
         expect(updated?.trackers.find((t) => t.code === 'ATH')).not.toHaveProperty('uploadStatus')
@@ -325,19 +321,19 @@ describe('tracker upload request repository', () => {
         await expect(updateTrackerItem('nonexistent', 'ULCX', { uploadStatus: 'failed' })).resolves.toBeUndefined()
     })
 
-    it('returns null from resetTrackerUploadRequest when the id does not exist', async () => {
-        const { resetTrackerUploadRequest } = await import('../../../../server/repositories/tracker-request-repository')
+    it('returns null from resetTrackerRequest when the id does not exist', async () => {
+        const { resetTrackerRequest } = await import('../../../../server/repositories/tracker-request-repository')
 
-        const result = await resetTrackerUploadRequest('nonexistent-id')
+        const result = await resetTrackerRequest('nonexistent-id')
 
         expect(result).toBeNull()
     })
 
     it('returns only the most recent tracker upload requests for the given page and size', async () => {
-        const { saveTrackerUploadRequest, findAllTrackerUploadRequests } = await import('../../../../server/repositories/tracker-request-repository')
+        const { saveTrackerRequest, getTrackerRequests } = await import('../../../../server/repositories/tracker-request-repository')
 
         for (const id of ['upload-6', 'upload-7', 'upload-8']) {
-            await saveTrackerUploadRequest({
+            await saveTrackerRequest({
                 id,
                 filepath: `/media/${id}.mkv`,
                 metadata: {
@@ -369,7 +365,7 @@ describe('tracker upload request repository', () => {
             await new Promise((resolve) => setTimeout(resolve, 5))
         }
 
-        const recent = await findAllTrackerUploadRequests(1, 2)
+        const recent = await getTrackerRequests(1, 2)
 
         expect(recent).toHaveLength(2)
         expect(recent.map((request) => request.id)).toEqual(['upload-8', 'upload-7'])

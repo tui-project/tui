@@ -939,4 +939,65 @@ describe('StepMetadata', () => {
         await user.click(screen.getByRole('checkbox', { name: 'ReRip' }))
         expect(screen.getByRole('spinbutton', { name: 'ReRip number' })).toBeDefined()
     })
+
+    it('hides rerip count input when rerip is unchecked after being checked', async () => {
+        const user = userEvent.setup()
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ rerip: 1 })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.getByRole('spinbutton', { name: 'ReRip number' })).toBeDefined()
+
+        await user.click(screen.getByRole('checkbox', { name: 'ReRip' }))
+        await waitFor(() => {
+            expect(screen.queryByRole('spinbutton', { name: 'ReRip number' })).toBeNull()
+        })
+    })
+
+    it('toggles English Subs checkbox off', async () => {
+        const user = userEvent.setup()
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ originalLanguage: 'ko', hasEnglishSubs: true })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+        await screen.findByDisplayValue('Dune')
+
+        const checkbox = screen.getByRole('checkbox', { name: 'English Subs' })
+        expect(checkbox.getAttribute('data-state')).toBe('checked')
+
+        await user.click(checkbox)
+        await waitFor(() => {
+            expect(screen.getByRole('checkbox', { name: 'English Subs' }).getAttribute('data-state')).toBe('unchecked')
+        })
+    })
+
+    it('unticks TrueHD Compatibility Track checkbox when clicked twice', async () => {
+        const user = userEvent.setup()
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ audioCodec: 'TrueHD', hasTrueHDCompatibilityTrack: true })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+        await screen.findByDisplayValue('Dune')
+
+        const checkbox = screen.getByRole('checkbox', { name: 'TrueHD Compatibility Track' })
+        expect(checkbox.getAttribute('data-state')).toBe('checked')
+
+        await user.click(checkbox)
+        await waitFor(() => {
+            expect(screen.getByRole('checkbox', { name: 'TrueHD Compatibility Track' }).getAttribute('data-state')).toBe('unchecked')
+        })
+    })
+
+    it('updates rerip count input via typing', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ rerip: 1 })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+        await screen.findByDisplayValue('Dune')
+
+        const reripInput = screen.getByRole('spinbutton', { name: 'ReRip number' })
+        await fireEvent.update(reripInput, '2')
+
+        await waitFor(() => {
+            expect(reripInput.getAttribute('value')).toBe('2')
+        })
+    })
 })

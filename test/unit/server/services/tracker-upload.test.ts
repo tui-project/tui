@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const rm = vi.fn()
-const updateTrackerUploadRequestStatus = vi.fn()
-const updateTrackerUploadRequestTorrentCreationProgress = vi.fn()
+const updateTrackerRequestStatus = vi.fn()
+const updateTrackerRequestTorrentCreationProgress = vi.fn()
 const updateTrackerItem = vi.fn()
 const findGenericTorrentCacheByFilepath = vi.fn()
 const saveGenericTorrentCache = vi.fn()
@@ -50,8 +50,8 @@ beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
 
-    updateTrackerUploadRequestStatus.mockResolvedValue(undefined)
-    updateTrackerUploadRequestTorrentCreationProgress.mockResolvedValue(undefined)
+    updateTrackerRequestStatus.mockResolvedValue(undefined)
+    updateTrackerRequestTorrentCreationProgress.mockResolvedValue(undefined)
     updateTrackerItem.mockResolvedValue(undefined)
     findGenericTorrentCacheByFilepath.mockResolvedValue(null)
     saveGenericTorrentCache.mockResolvedValue(undefined)
@@ -70,15 +70,15 @@ beforeEach(() => {
 
 async function loadService() {
     vi.doMock('node:fs/promises', () => ({ rm }))
-    vi.doMock('../../../../server/model/tracker-upload-request', () => ({ TRACKER_UPLOAD_STATUSES }))
+    vi.doMock('../../../../shared/types/tracker-request', () => ({ STATUS: TRACKER_UPLOAD_STATUSES }))
     vi.doMock('../../../../server/repositories/generic-torrent-cache-repository', () => ({
         findGenericTorrentCacheByFilepath,
         saveGenericTorrentCache,
     }))
     vi.doMock('../../../../server/repositories/settings-repository', () => ({ getSettings }))
     vi.doMock('../../../../server/repositories/tracker-request-repository', () => ({
-        updateTrackerUploadRequestStatus,
-        updateTrackerUploadRequestTorrentCreationProgress,
+        updateTrackerRequestStatus,
+        updateTrackerRequestTorrentCreationProgress,
         updateTrackerItem,
     }))
     vi.doMock('../../../../server/services/torrent', () => ({ createGenericTorrent, createTrackerTorrent }))
@@ -100,9 +100,9 @@ describe('tracker upload service', () => {
 
             await upload('req-1', '/media/Movie.mkv', defaultTrackers, defaultMetadata, 'desc')
 
-            expect(updateTrackerUploadRequestStatus).toHaveBeenNthCalledWith(1, 'req-1', 'torrent_creation')
-            expect(updateTrackerUploadRequestStatus).toHaveBeenNthCalledWith(2, 'req-1', 'uploading')
-            expect(updateTrackerUploadRequestStatus).toHaveBeenNthCalledWith(3, 'req-1', 'success')
+            expect(updateTrackerRequestStatus).toHaveBeenNthCalledWith(1, 'req-1', 'torrent_creation')
+            expect(updateTrackerRequestStatus).toHaveBeenNthCalledWith(2, 'req-1', 'uploading')
+            expect(updateTrackerRequestStatus).toHaveBeenNthCalledWith(3, 'req-1', 'success')
         })
 
         it('creates a generic torrent and saves cache entry when no cache exists', async () => {
@@ -131,7 +131,7 @@ describe('tracker upload service', () => {
 
             expect(createGenericTorrent).not.toHaveBeenCalled()
             expect(saveGenericTorrentCache).not.toHaveBeenCalled()
-            expect(updateTrackerUploadRequestTorrentCreationProgress).toHaveBeenCalledWith('req-1', 100)
+            expect(updateTrackerRequestTorrentCreationProgress).toHaveBeenCalledWith('req-1', 100)
         })
 
         it('creates tracker-specific torrents with announce URLs', async () => {
@@ -227,7 +227,7 @@ describe('tracker upload service', () => {
 
             await upload('req-1', '/media/Movie.mkv', defaultTrackers, defaultMetadata, 'desc')
 
-            expect(updateTrackerUploadRequestStatus).toHaveBeenCalledWith('req-1', 'partial_success', ['TRK2'])
+            expect(updateTrackerRequestStatus).toHaveBeenCalledWith('req-1', 'partial_success', ['TRK2'])
         })
 
         it('stores the parsed reason as uploadError and logs full response for TrackerError', async () => {
@@ -260,7 +260,7 @@ describe('tracker upload service', () => {
 
             await upload('req-1', '/media/Movie.mkv', defaultTrackers, defaultMetadata, 'desc')
 
-            expect(updateTrackerUploadRequestStatus).toHaveBeenCalledWith('req-1', 'fail')
+            expect(updateTrackerRequestStatus).toHaveBeenCalledWith('req-1', 'fail')
         })
 
         it('marks tracker item as failed and records code when torrent path is missing', async () => {
@@ -288,7 +288,7 @@ describe('tracker upload service', () => {
 
             await upload('req-1', '/media/Movie.mkv', defaultTrackers, defaultMetadata, 'desc')
 
-            expect(updateTrackerUploadRequestStatus).toHaveBeenCalledWith('req-1', 'fail')
+            expect(updateTrackerRequestStatus).toHaveBeenCalledWith('req-1', 'fail')
             expect(logger.error).toHaveBeenCalledWith('Failed to process tracker upload request.', expect.any(Error), { id: 'req-1', filepath: '/media/Movie.mkv' })
         })
     })

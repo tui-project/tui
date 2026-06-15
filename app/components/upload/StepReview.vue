@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import StepNavigationButtons from './StepNavigationButtons.vue'
 import { useSettings } from '~/composables/useSettings'
-import { useTrackerRequests } from '~/composables/useTrackerRequests'
 import { useTrackerTitle } from '~/composables/useTrackerTitle'
 import { useTrackerRules, type RuleViolation } from '~/composables/useTrackerRules'
 import { useTrackerDuplicates, type DuplicateEntry } from '~/composables/useTrackerDuplicates'
@@ -19,8 +18,24 @@ const emit = defineEmits<{
 
 const toast = useToast()
 const { getSettings, loading: settingsLoading } = useSettings()
-const { uploadTorrent, loading: uploadLoading, error: uploadError } = useTrackerRequests()
 const { getTitle, loading: titlesLoading } = useTrackerTitle()
+
+const {
+    pending: uploadPending,
+    error: uploadError,
+    execute: executeUpload,
+} = useFetch('/api/tracker/requests', {
+    immediate: false,
+    method: 'POST',
+    body: computed(() => ({
+        filepath: props.sourcePath,
+        metadata: props.metadata,
+        description: props.description,
+        trackers: uploadableTrackers.value,
+    })),
+    watch: false,
+})
+
 const { getViolations, loading: rulesLoading } = useTrackerRules()
 const { getDuplicates, loading: duplicatesLoading } = useTrackerDuplicates()
 
@@ -106,17 +121,17 @@ async function loadTrackerItems() {
 }
 
 async function onSubmit() {
-    if (!props.sourcePath || !props.metadata || uploadLoading.value || !canSubmit.value) return
+    if (!props.sourcePath || !props.metadata || uploadPending.value || !canSubmit.value) return
 
-    await uploadTorrent(props.sourcePath, props.metadata, props.description, uploadableTrackers.value)
-    if (uploadError.value) return
-
-    toast.add({
-        title: 'Upload request submitted.',
-        description: 'Your torrent is queued and available from the dashboard.',
-        color: 'success',
-    })
-    await navigateTo('/')
+    await executeUpload()
+    if (!uploadError.value) {
+        toast.add({
+            title: 'Upload request submitted.',
+            description: 'Your torrent is queued and available from the dashboard.',
+            color: 'success',
+        })
+        await navigateTo('/')
+    }
 }
 </script>
 
@@ -218,7 +233,7 @@ async function onSubmit() {
 
         <StepNavigationButtons
             class="mt-5"
-            :next="{ label: 'Submit Upload', disabled: !canSubmit || titlesLoading || rulesLoading || duplicatesLoading, loading: uploadLoading }"
+            :next="{ label: 'Submit Upload', disabled: !canSubmit || titlesLoading || rulesLoading || duplicatesLoading, loading: uploadPending }"
             @back="emit('back')"
             @next="onSubmit"
         />

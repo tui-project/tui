@@ -119,6 +119,10 @@ Coverage expectations:
 - Run `pnpm test:coverage` after every change and verify coverage before reporting the task as complete.
 - If a file is intentionally excluded from coverage (for example model/type-only files), document the reason in configuration comments.
 
+## Shared Types
+
+Types exported from `shared/types/` are auto-imported by Nuxt 4 and available globally in both the app (`app/`) and server (`server/`) layers. Do not add explicit import statements for them — no `import type { TrackerRequest } from '../../shared/types/tracker-request'` or similar.
+
 ## HTTP Clients
 
 - Use `$fetch` (Nitro global, ofetch under the hood) for all server-side HTTP requests. Do not use the native `fetch` API. `$fetch` is available globally in Nitro without imports and automatically throws on non-2xx responses.

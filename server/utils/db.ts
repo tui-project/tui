@@ -6,7 +6,6 @@ import type { DirectoryCache } from '../model/directory-cache'
 import type { GenericTorrentCache } from '../model/generic-torrent-cache'
 import type { Settings } from '../model/settings'
 import type { Language } from '../model/language'
-import type { TrackerUploadRequest } from '../model/tracker-upload-request'
 import type { User } from '../model/user'
 import { logger } from './logger'
 
@@ -15,7 +14,7 @@ export type SessionDocument = Document<Session>
 export type SettingsDocument = Document<Settings>
 export type DirectoryCacheDocument = Document<DirectoryCache>
 export type GenericTorrentCacheDocument = Document<GenericTorrentCache>
-export type TrackerUploadRequestDocument = Document<TrackerUploadRequest>
+export type TrackerRequestDocument = Document<TrackerRequest>
 export type LanguageDocument = Document<Language>
 
 const AUTO_COMPACTION_INTERVAL_MS = 60_000
@@ -60,7 +59,7 @@ export const genericTorrentCacheCollection = new Datastore<GenericTorrentCache>(
 })
 
 const trackerUploadRequestCollectionDataDir = join(dataDir, 'tracker-upload-requests.db')
-export const trackerUploadRequestCollection = new Datastore<TrackerUploadRequest>({
+export const trackerUploadRequestCollection = new Datastore<TrackerRequest>({
     filename: trackerUploadRequestCollectionDataDir,
     autoload: true,
     timestampData: true,

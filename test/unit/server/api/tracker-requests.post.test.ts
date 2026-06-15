@@ -10,11 +10,11 @@ const logger = {
 const readBody = vi.fn()
 const createError = vi.fn((payload: unknown) => payload)
 const setResponseStatus = vi.fn()
-const saveTrackerUploadRequest = vi.fn()
+const saveTrackerRequest = vi.fn()
 const findGenericTorrentCacheByFilepath = vi.fn()
 const saveGenericTorrentCache = vi.fn()
-const updateTrackerUploadRequestStatus = vi.fn()
-const updateTrackerUploadRequestTorrentCreationProgress = vi.fn()
+const updateTrackerRequestStatus = vi.fn()
+const updateTrackerRequestTorrentCreationProgress = vi.fn()
 const updateTrackerItem = vi.fn()
 const createGenericTorrent = vi.fn()
 const createTrackerTorrent = vi.fn()
@@ -49,9 +49,9 @@ async function loadHandler() {
         saveGenericTorrentCache,
     }))
     vi.doMock('../../../../server/repositories/tracker-request-repository', () => ({
-        saveTrackerUploadRequest,
-        updateTrackerUploadRequestStatus,
-        updateTrackerUploadRequestTorrentCreationProgress,
+        saveTrackerRequest,
+        updateTrackerRequestStatus,
+        updateTrackerRequestTorrentCreationProgress,
         updateTrackerItem,
     }))
     vi.doMock('../../../../server/repositories/settings-repository', () => ({
@@ -74,7 +74,7 @@ async function loadHandler() {
         injectTorrent,
     }))
 
-    const { default: handler } = await import('../../../../server/api/tracker/requests.post')
+    const { default: handler } = await import('../../../../server/api/tracker/requests/index.post')
     return handler
 }
 
@@ -142,7 +142,7 @@ describe('POST /api/tracker/requests route handler', () => {
     it('accepts valid upload requests', async () => {
         readBody.mockResolvedValue(buildRequest())
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
-        saveTrackerUploadRequest.mockResolvedValue({
+        saveTrackerRequest.mockResolvedValue({
             id: 'upload-1',
             ...buildRequest(),
             status: 'pending',
@@ -165,7 +165,7 @@ describe('POST /api/tracker/requests route handler', () => {
         await flushPromises()
 
         expect(setResponseStatus).toHaveBeenCalledWith(expect.any(Object), 201)
-        expect(saveTrackerUploadRequest).toHaveBeenCalledWith({
+        expect(saveTrackerRequest).toHaveBeenCalledWith({
             id: expect.any(String),
             description: 'Release description',
             filepath: '/media/Movie.2024.1080p.mkv',
@@ -174,14 +174,14 @@ describe('POST /api/tracker/requests route handler', () => {
             status: 'pending',
             torrentCreationProgress: 0,
         })
-        expect(updateTrackerUploadRequestStatus).toHaveBeenNthCalledWith(1, 'upload-1', 'torrent_creation')
-        expect(updateTrackerUploadRequestTorrentCreationProgress).toHaveBeenNthCalledWith(1, 'upload-1', 25)
-        expect(updateTrackerUploadRequestTorrentCreationProgress).toHaveBeenNthCalledWith(2, 'upload-1', 100)
+        expect(updateTrackerRequestStatus).toHaveBeenNthCalledWith(1, 'upload-1', 'torrent_creation')
+        expect(updateTrackerRequestTorrentCreationProgress).toHaveBeenNthCalledWith(1, 'upload-1', 25)
+        expect(updateTrackerRequestTorrentCreationProgress).toHaveBeenNthCalledWith(2, 'upload-1', 100)
         expect(saveGenericTorrentCache).toHaveBeenCalledWith({
             filepath: '/media/Movie.2024.1080p.mkv',
             genericTorrentPath: '/repo/config/torrents/generic-1.torrent',
         })
-        expect(updateTrackerUploadRequestStatus).toHaveBeenNthCalledWith(2, 'upload-1', 'uploading')
+        expect(updateTrackerRequestStatus).toHaveBeenNthCalledWith(2, 'upload-1', 'uploading')
         expect(logger.info).toHaveBeenCalledWith('Tracker upload request uploading to trackers.', {
             id: 'upload-1',
             filepath: '/media/Movie.2024.1080p.mkv',
@@ -198,7 +198,7 @@ describe('POST /api/tracker/requests route handler', () => {
             filepath: '/media/Movie.2024.1080p.mkv',
             genericTorrentPath: '/repo/config/torrents/cached.torrent',
         })
-        saveTrackerUploadRequest.mockResolvedValue({
+        saveTrackerRequest.mockResolvedValue({
             id: 'upload-1',
             ...buildRequest(),
             status: 'pending',
@@ -214,15 +214,15 @@ describe('POST /api/tracker/requests route handler', () => {
 
         expect(createGenericTorrent).not.toHaveBeenCalled()
         expect(saveGenericTorrentCache).not.toHaveBeenCalled()
-        expect(updateTrackerUploadRequestTorrentCreationProgress).toHaveBeenCalledWith('upload-1', 100)
+        expect(updateTrackerRequestTorrentCreationProgress).toHaveBeenCalledWith('upload-1', 100)
         expect(logger.debug).toHaveBeenCalledWith('Reusing cached generic torrent for tracker upload request.', {
             id: 'upload-1',
             filepath: '/media/Movie.2024.1080p.mkv',
             trackerCodes: ['ULCX'],
             genericTorrentPath: '/repo/config/torrents/cached.torrent',
         })
-        expect(updateTrackerUploadRequestStatus).toHaveBeenNthCalledWith(1, 'upload-1', 'torrent_creation')
-        expect(updateTrackerUploadRequestStatus).toHaveBeenNthCalledWith(2, 'upload-1', 'uploading')
+        expect(updateTrackerRequestStatus).toHaveBeenNthCalledWith(1, 'upload-1', 'torrent_creation')
+        expect(updateTrackerRequestStatus).toHaveBeenNthCalledWith(2, 'upload-1', 'uploading')
     })
 
     it('rejects tv metadata without season and tvdbId', async () => {
@@ -267,7 +267,7 @@ describe('POST /api/tracker/requests route handler', () => {
     it('creates tracker-specific torrents when a configured tracker has a passKey', async () => {
         readBody.mockResolvedValue(buildRequest())
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
-        saveTrackerUploadRequest.mockResolvedValue({
+        saveTrackerRequest.mockResolvedValue({
             id: 'upload-1',
             ...buildRequest(),
             status: 'pending',
@@ -293,7 +293,7 @@ describe('POST /api/tracker/requests route handler', () => {
             announceUrl: 'https://ulcx.example.com/announce/secret123',
             sourcePath: '/media/Movie.2024.1080p.mkv',
         })
-        expect(updateTrackerUploadRequestStatus).toHaveBeenLastCalledWith('upload-1', 'success')
+        expect(updateTrackerRequestStatus).toHaveBeenLastCalledWith('upload-1', 'success')
         expect(logger.info).toHaveBeenLastCalledWith('Tracker upload request completed successfully.', {
             id: 'upload-1',
             trackerCodes: ['ULCX'],
@@ -305,7 +305,7 @@ describe('POST /api/tracker/requests route handler', () => {
         createTrackerService.mockResolvedValue({ upload: uploadMock })
         readBody.mockResolvedValue(buildRequest({ trackers: [{ code: 'ULCX', title: 'Custom Title', titleModified: true, anonymous: true, modQueueOptIn: true }] }))
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
-        saveTrackerUploadRequest.mockResolvedValue({
+        saveTrackerRequest.mockResolvedValue({
             id: 'upload-1',
             ...buildRequest(),
             status: 'pending',
@@ -332,7 +332,7 @@ describe('POST /api/tracker/requests route handler', () => {
         createTrackerService.mockResolvedValue({ upload: uploadMock })
         readBody.mockResolvedValue(buildRequest())
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
-        saveTrackerUploadRequest.mockResolvedValue({
+        saveTrackerRequest.mockResolvedValue({
             id: 'upload-1',
             ...buildRequest(),
             status: 'pending',
@@ -381,7 +381,7 @@ describe('POST /api/tracker/requests route handler', () => {
             })
         )
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
-        saveTrackerUploadRequest.mockResolvedValue({
+        saveTrackerRequest.mockResolvedValue({
             id: 'upload-1',
             ...buildRequest(),
             status: 'pending',
@@ -402,7 +402,7 @@ describe('POST /api/tracker/requests route handler', () => {
         await flushPromises()
         await flushPromises()
 
-        expect(updateTrackerUploadRequestStatus).toHaveBeenCalledWith('upload-1', 'partial_success', ['ATH'])
+        expect(updateTrackerRequestStatus).toHaveBeenCalledWith('upload-1', 'partial_success', ['ATH'])
         expect(logger.warn).toHaveBeenCalledWith('Tracker upload request completed with partial success.', {
             id: 'upload-1',
             failedTrackerCodes: ['ATH'],
@@ -415,7 +415,7 @@ describe('POST /api/tracker/requests route handler', () => {
         createTrackerService.mockResolvedValue({ upload: uploadMock })
         readBody.mockResolvedValue(buildRequest())
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
-        saveTrackerUploadRequest.mockResolvedValue({
+        saveTrackerRequest.mockResolvedValue({
             id: 'upload-1',
             ...buildRequest(),
             status: 'pending',
@@ -433,7 +433,7 @@ describe('POST /api/tracker/requests route handler', () => {
         await flushPromises()
         await flushPromises()
 
-        expect(updateTrackerUploadRequestStatus).toHaveBeenCalledWith('upload-1', 'fail')
+        expect(updateTrackerRequestStatus).toHaveBeenCalledWith('upload-1', 'fail')
         expect(logger.error).toHaveBeenCalledWith('Tracker upload request failed for all trackers.', undefined, {
             id: 'upload-1',
             trackerCodes: ['ULCX'],
@@ -445,7 +445,7 @@ describe('POST /api/tracker/requests route handler', () => {
         injectTorrent.mockResolvedValue(true)
         readBody.mockResolvedValue(buildRequest())
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
-        saveTrackerUploadRequest.mockResolvedValue({ id: 'upload-1', ...buildRequest(), status: 'pending' })
+        saveTrackerRequest.mockResolvedValue({ id: 'upload-1', ...buildRequest(), status: 'pending' })
         createGenericTorrent.mockResolvedValue({ genericTorrentPath: '/repo/config/torrents/generic-1.torrent' })
         getSettings.mockResolvedValue({
             trackers: [{ code: 'ULCX', url: 'https://ulcx.example.com', passKey: 'secret' }],
@@ -471,7 +471,7 @@ describe('POST /api/tracker/requests route handler', () => {
         injectTorrent.mockResolvedValue(false)
         readBody.mockResolvedValue(buildRequest())
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
-        saveTrackerUploadRequest.mockResolvedValue({ id: 'upload-1', ...buildRequest(), status: 'pending' })
+        saveTrackerRequest.mockResolvedValue({ id: 'upload-1', ...buildRequest(), status: 'pending' })
         createGenericTorrent.mockResolvedValue({ genericTorrentPath: '/repo/config/torrents/generic-1.torrent' })
         getSettings.mockResolvedValue({
             trackers: [{ code: 'ULCX', url: 'https://ulcx.example.com', passKey: 'secret' }],
@@ -493,7 +493,7 @@ describe('POST /api/tracker/requests route handler', () => {
     it('marks the request as failed when torrent creation fails', async () => {
         readBody.mockResolvedValue(buildRequest())
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
-        saveTrackerUploadRequest.mockResolvedValue({
+        saveTrackerRequest.mockResolvedValue({
             id: 'upload-1',
             ...buildRequest(),
             status: 'pending',
@@ -509,8 +509,8 @@ describe('POST /api/tracker/requests route handler', () => {
 
         await flushPromises()
 
-        expect(updateTrackerUploadRequestStatus).toHaveBeenNthCalledWith(1, 'upload-1', 'torrent_creation')
-        expect(updateTrackerUploadRequestStatus).toHaveBeenCalledWith('upload-1', 'fail')
+        expect(updateTrackerRequestStatus).toHaveBeenNthCalledWith(1, 'upload-1', 'torrent_creation')
+        expect(updateTrackerRequestStatus).toHaveBeenCalledWith('upload-1', 'fail')
         expect(logger.error).toHaveBeenCalledWith('Failed to process tracker upload request.', error, {
             id: 'upload-1',
             filepath: '/media/Movie.2024.1080p.mkv',

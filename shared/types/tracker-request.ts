@@ -1,16 +1,16 @@
 export const UPLOAD_STATUS = {
-    success: 'success',
-    failed: 'failed',
+    SUCCESS: 'success',
+    FAILED: 'failed',
 } as const
 export type UploadStatus = (typeof UPLOAD_STATUS)[keyof typeof UPLOAD_STATUS]
 
 export const STATUS = {
-    pending: 'pending',
-    torrentCreation: 'torrent_creation',
-    uploading: 'uploading',
-    success: 'success',
-    partialSuccess: 'partial_success',
-    fail: 'fail',
+    PENDING: 'pending',
+    TORRENT_CREATION: 'torrent_creation',
+    UPLOADING: 'uploading',
+    SUCCESS: 'success',
+    PARTIAL_SUCCESS: 'partial_success',
+    FAIL: 'fail',
 } as const
 export type Status = (typeof STATUS)[keyof typeof STATUS]
 
@@ -28,6 +28,8 @@ export interface TrackerItem {
 export interface TrackerRequest {
     id: string
     filepath: string
+    metadata: Omit<Metadata, 'fileName'>
+    description: string
     status: Status
     trackers: TrackerItem[]
     torrentCreationProgress?: number

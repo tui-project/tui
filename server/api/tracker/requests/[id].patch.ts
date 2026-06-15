@@ -1,6 +1,5 @@
 import { z } from 'zod'
-import { TRACKER_UPLOAD_STATUSES } from '../../../model/tracker-upload-request'
-import { findTrackerUploadRequestById, resetTrackerUploadRequest } from '../../../repositories/tracker-request-repository'
+import { getTrackerRequest, resetTrackerRequest } from '../../../repositories/tracker-request-repository'
 import { logger } from '../../../utils/logger'
 import { parseValidatedBody } from '../../../utils/request-validator'
 import { upload as trackerUpload } from '../../../services/tracker-upload'
@@ -10,7 +9,7 @@ const patchBodySchema = z.object({
     action: z.literal('retry'),
 })
 
-const retryableStatuses = new Set<string>([TRACKER_UPLOAD_STATUSES.FAIL, TRACKER_UPLOAD_STATUSES.PARTIAL_SUCCESS])
+const RETRYABLE_STATUSES = new Set<string>([STATUS.FAIL, STATUS.PARTIAL_SUCCESS])
 
 export default defineEventHandler(async (event) => {
     const id = getRouterParam(event, 'id')!
@@ -19,24 +18,24 @@ export default defineEventHandler(async (event) => {
         onInvalid: (issues) => logger.warn('Rejected tracker request patch with invalid payload.', { id, issues }),
     })
 
-    const existing = await findTrackerUploadRequestById(id)
+    const existing = await getTrackerRequest(id)
 
     if (!existing) {
         throw createError({ statusCode: 404, message: 'not_found' })
     }
 
-    if (!retryableStatuses.has(existing.status)) {
+    if (!RETRYABLE_STATUSES.has(existing.status)) {
         throw createError({ statusCode: 409, message: 'not_retryable' })
     }
 
     logger.info('Retrying tracker upload request.', { id, previousStatus: existing.status })
 
     const trackersToRetry =
-        existing.status === TRACKER_UPLOAD_STATUSES.PARTIAL_SUCCESS && existing.failedTrackerCodes?.length
+        existing.status === STATUS.PARTIAL_SUCCESS && existing.failedTrackerCodes?.length
             ? existing.trackers.filter((t) => existing.failedTrackerCodes!.includes(t.code))
             : existing.trackers
 
-    const reset = await resetTrackerUploadRequest(id)
+    const reset = await resetTrackerRequest(id)
     if (!reset) {
         throw createError({ statusCode: 500, message: 'reset_failed' })
     }

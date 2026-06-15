@@ -10,8 +10,8 @@ const logger = {
 const createError = vi.fn((payload: unknown) => payload)
 const getRouterParam = vi.fn()
 const parseValidatedBody = vi.fn()
-const findTrackerUploadRequestById = vi.fn()
-const resetTrackerUploadRequest = vi.fn()
+const getTrackerRequest = vi.fn()
+const resetTrackerRequest = vi.fn()
 const processTrackerUploadRequest = vi.fn()
 
 beforeEach(() => {
@@ -32,8 +32,8 @@ async function loadHandler() {
     vi.doMock('../../../../server/utils/logger', () => ({ logger }))
     vi.doMock('../../../../server/utils/request-validator', () => ({ parseValidatedBody }))
     vi.doMock('../../../../server/repositories/tracker-request-repository', () => ({
-        findTrackerUploadRequestById,
-        resetTrackerUploadRequest,
+        getTrackerRequest,
+        resetTrackerRequest,
     }))
     vi.doMock('../../../../server/services/tracker-upload', () => ({ upload: processTrackerUploadRequest }))
 
@@ -59,14 +59,14 @@ function buildExistingRequest(overrides: Record<string, unknown> = {}) {
 
 describe('PATCH /api/tracker/requests/:id route handler', () => {
     it('returns 404 when the request does not exist', async () => {
-        findTrackerUploadRequestById.mockResolvedValue(null)
+        getTrackerRequest.mockResolvedValue(null)
         const handler = await loadHandler()
 
         await expect(handler(mockEvent())).rejects.toEqual({ statusCode: 404, message: 'not_found' })
     })
 
     it('returns 409 when the request is not retryable', async () => {
-        findTrackerUploadRequestById.mockResolvedValue(buildExistingRequest({ status: 'success' }))
+        getTrackerRequest.mockResolvedValue(buildExistingRequest({ status: 'success' }))
         const handler = await loadHandler()
 
         await expect(handler(mockEvent())).rejects.toEqual({ statusCode: 409, message: 'not_retryable' })
@@ -85,21 +85,21 @@ describe('PATCH /api/tracker/requests/:id route handler', () => {
 
     it('resets and retries all trackers for a failed request', async () => {
         const existing = buildExistingRequest({ status: 'fail' })
-        findTrackerUploadRequestById.mockResolvedValue(existing)
-        resetTrackerUploadRequest.mockResolvedValue({ id: 'upload-1', status: 'pending' })
+        getTrackerRequest.mockResolvedValue(existing)
+        resetTrackerRequest.mockResolvedValue({ id: 'upload-1', status: 'pending' })
         const handler = await loadHandler()
 
         const result = await handler(mockEvent())
 
         expect(result).toEqual({ id: 'upload-1', status: 'pending' })
-        expect(resetTrackerUploadRequest).toHaveBeenCalledWith('upload-1')
+        expect(resetTrackerRequest).toHaveBeenCalledWith('upload-1')
         expect(processTrackerUploadRequest).toHaveBeenCalledWith('upload-1', existing.filepath, existing.trackers, existing.metadata, existing.description)
     })
 
     it('retries only failed trackers for a partial_success request', async () => {
         const existing = buildExistingRequest({ status: 'partial_success', failedTrackerCodes: ['ATH'] })
-        findTrackerUploadRequestById.mockResolvedValue(existing)
-        resetTrackerUploadRequest.mockResolvedValue({ id: 'upload-1', status: 'pending' })
+        getTrackerRequest.mockResolvedValue(existing)
+        resetTrackerRequest.mockResolvedValue({ id: 'upload-1', status: 'pending' })
         const handler = await loadHandler()
 
         await handler(mockEvent())
@@ -115,8 +115,8 @@ describe('PATCH /api/tracker/requests/:id route handler', () => {
 
     it('retries all trackers for partial_success when failedTrackerCodes is empty', async () => {
         const existing = buildExistingRequest({ status: 'partial_success', failedTrackerCodes: [] })
-        findTrackerUploadRequestById.mockResolvedValue(existing)
-        resetTrackerUploadRequest.mockResolvedValue({ id: 'upload-1', status: 'pending' })
+        getTrackerRequest.mockResolvedValue(existing)
+        resetTrackerRequest.mockResolvedValue({ id: 'upload-1', status: 'pending' })
         const handler = await loadHandler()
 
         await handler(mockEvent())
@@ -125,16 +125,16 @@ describe('PATCH /api/tracker/requests/:id route handler', () => {
     })
 
     it('returns 500 when reset fails', async () => {
-        findTrackerUploadRequestById.mockResolvedValue(buildExistingRequest({ status: 'fail' }))
-        resetTrackerUploadRequest.mockResolvedValue(null)
+        getTrackerRequest.mockResolvedValue(buildExistingRequest({ status: 'fail' }))
+        resetTrackerRequest.mockResolvedValue(null)
         const handler = await loadHandler()
 
         await expect(handler(mockEvent())).rejects.toEqual({ statusCode: 500, message: 'reset_failed' })
     })
 
     it('logs the retry with previous status', async () => {
-        findTrackerUploadRequestById.mockResolvedValue(buildExistingRequest({ status: 'fail' }))
-        resetTrackerUploadRequest.mockResolvedValue({ id: 'upload-1', status: 'pending' })
+        getTrackerRequest.mockResolvedValue(buildExistingRequest({ status: 'fail' }))
+        resetTrackerRequest.mockResolvedValue({ id: 'upload-1', status: 'pending' })
         const handler = await loadHandler()
 
         await handler(mockEvent())

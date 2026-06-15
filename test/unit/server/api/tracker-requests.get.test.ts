@@ -5,7 +5,7 @@ const logger = {
     warn: vi.fn(),
 }
 
-const findAllTrackerUploadRequests = vi.fn()
+const getTrackerRequests = vi.fn()
 const parseValidatedQuery = vi.fn()
 
 beforeEach(() => {
@@ -16,7 +16,7 @@ beforeEach(() => {
 
 async function loadHandler() {
     vi.doMock('../../../../server/repositories/tracker-request-repository', () => ({
-        findAllTrackerUploadRequests,
+        getTrackerRequests,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({ logger }))
     vi.doMock('../../../../server/utils/request-validator', () => ({ parseValidatedQuery }))
@@ -28,7 +28,7 @@ async function loadHandler() {
 describe('GET /api/tracker/requests route handler', () => {
     it('returns recent upload requests for the given page and size', async () => {
         parseValidatedQuery.mockReturnValue({ page: 1, size: 6 })
-        findAllTrackerUploadRequests.mockResolvedValue([
+        getTrackerRequests.mockResolvedValue([
             {
                 id: 'upload-2',
                 filepath: '/media/Show.S01E01.mkv',
@@ -54,7 +54,7 @@ describe('GET /api/tracker/requests route handler', () => {
                 updatedAt: new Date('2026-05-10T00:00:30.000Z'),
             },
         ])
-        expect(findAllTrackerUploadRequests).toHaveBeenCalledWith(1, 6)
+        expect(getTrackerRequests).toHaveBeenCalledWith(1, 6)
         expect(parseValidatedQuery).toHaveBeenCalledWith(mockEvent, expect.any(Object), {
             errorMessage: 'invalid_query',
             onInvalid: expect.any(Function),
@@ -77,12 +77,12 @@ describe('GET /api/tracker/requests route handler', () => {
 
     it('uses default page and size when not provided in query', async () => {
         parseValidatedQuery.mockReturnValue({ page: 1, size: 12 })
-        findAllTrackerUploadRequests.mockResolvedValue([])
+        getTrackerRequests.mockResolvedValue([])
 
         const handler = await loadHandler()
 
         await handler({})
 
-        expect(findAllTrackerUploadRequests).toHaveBeenCalledWith(1, 12)
+        expect(getTrackerRequests).toHaveBeenCalledWith(1, 12)
     })
 })
