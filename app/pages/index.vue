@@ -1,13 +1,19 @@
 <script setup lang="ts">
-import type { TrackerRequest } from '~/composables/useTrackerRequests'
+import type { TrackerRequest } from '#shared/types/tracker-request'
 import { STATUS, type Status, type UploadStatus } from '~~/shared/types/tracker-request'
 
 const REFRESH_INTERVAL_MS = 2_000
 const FINAL_STATUSES = new Set<string>([STATUS.success, STATUS.partialSuccess, STATUS.fail])
 
-const { retryRequest } = useTrackerRequests()
-
 const { pending, data: requests, error, refresh } = useFetch('/api/tracker/requests')
+
+const retryId = ref<string | null>(null)
+const { execute: executeRetry } = useFetch(() => `/api/tracker/requests/${retryId.value}`, {
+    immediate: false,
+    method: 'PATCH',
+    body: { action: 'retry' },
+    watch: false,
+})
 
 const refreshTimer = globalThis.setInterval(refresh, REFRESH_INTERVAL_MS)
 onBeforeUnmount(() => clearInterval(refreshTimer))
@@ -94,7 +100,8 @@ function hasInjectionFailure(request: TrackerRequest) {
 }
 
 async function handleRetry(request: TrackerRequest) {
-    await retryRequest(request.id)
+    retryId.value = request.id
+    await executeRetry()
     await refresh()
 }
 </script>

@@ -3,29 +3,28 @@ import { renderSuspended, mountSuspended, mockNuxtImport } from '@nuxt/test-util
 import { screen } from '@testing-library/vue'
 import { ref } from 'vue'
 import IndexPage from '../../../app/pages/index.vue'
-import type { TrackerRequest } from '../../../app/composables/useTrackerRequests'
-
-const retryRequestMock = vi.fn()
-
-mockNuxtImport('useTrackerRequests', () => {
-    return () => ({
-        retryRequest: retryRequestMock,
-        loading: ref(false),
-    })
-})
+import type { TrackerRequest } from '#shared/types/tracker-request'
 
 const useFetchData = ref<TrackerRequest[] | null>(null)
 const useFetchError = ref<Error | null>(null)
 const useFetchPending = ref(false)
 const refreshMock = vi.fn()
+const executeRetryMock = vi.fn()
+let capturedRetryUrlGetter: (() => string) | null = null
 
 mockNuxtImport('useFetch', () => {
-    return () => ({
-        data: useFetchData,
-        error: useFetchError,
-        pending: useFetchPending,
-        refresh: refreshMock,
-    })
+    return (url: unknown) => {
+        if (typeof url === 'function') {
+            capturedRetryUrlGetter = url as () => string
+            return { execute: executeRetryMock, status: ref('idle'), error: ref(null) }
+        }
+        return {
+            data: useFetchData,
+            error: useFetchError,
+            pending: useFetchPending,
+            refresh: refreshMock,
+        }
+    }
 })
 
 describe('index page', () => {
@@ -34,8 +33,9 @@ describe('index page', () => {
         useFetchData.value = null
         useFetchError.value = null
         useFetchPending.value = false
+        capturedRetryUrlGetter = null
         refreshMock.mockReset()
-        retryRequestMock.mockReset()
+        executeRetryMock.mockReset()
     })
 
     afterEach(() => {
@@ -263,7 +263,7 @@ describe('index page', () => {
     })
 
     it('retries the request and refreshes the list when the retry button is clicked', async () => {
-        retryRequestMock.mockResolvedValue(undefined)
+        executeRetryMock.mockResolvedValue(undefined)
         refreshMock.mockResolvedValue(undefined)
         useFetchData.value = [
             {
@@ -280,7 +280,8 @@ describe('index page', () => {
 
         await user.click(screen.getByRole('button', { name: /retry/i }))
 
-        expect(retryRequestMock).toHaveBeenCalledWith('upload-1')
+        expect(executeRetryMock).toHaveBeenCalledTimes(1)
         expect(refreshMock).toHaveBeenCalledTimes(1)
+        expect(capturedRetryUrlGetter?.()).toBe('/api/tracker/requests/upload-1')
     })
 })

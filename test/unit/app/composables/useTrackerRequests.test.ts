@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Metadata } from '../../../../app/components/upload/upload.types'
-import type { TrackerRequest } from '../../../../app/composables/useTrackerRequests'
 
 const buildMetadata = (): Metadata => ({
     fileName: 'Movie.2024.1080p.mkv',
@@ -31,70 +30,10 @@ const buildMetadata = (): Metadata => ({
     tvdbId: null,
 })
 
-const buildRequest = (): TrackerRequest => ({
-    id: 'req-1',
-    filepath: '/media/movie.mkv',
-    status: 'pending',
-    trackers: [{ code: 'ULCX', title: 'Title', titleModified: false, anonymous: false }],
-})
-
 describe('useTrackerRequests composable', () => {
     beforeEach(() => {
         vi.resetModules()
         vi.unstubAllGlobals()
-    })
-
-    describe('retryRequest', () => {
-        it('calls the PATCH endpoint with action:retry', async () => {
-            const fetchMock = vi.fn().mockResolvedValue(undefined)
-            vi.stubGlobal('$fetch', fetchMock)
-
-            const { useTrackerRequests } = await import('../../../../app/composables/useTrackerRequests')
-            const { retryRequest, loading, error } = useTrackerRequests()
-
-            await retryRequest('req-1')
-
-            expect(fetchMock).toHaveBeenCalledWith('/api/tracker/requests/req-1', { method: 'PATCH', body: { action: 'retry' } })
-            expect(loading.value).toBe(false)
-            expect(error.value).toBe(false)
-        })
-
-        it('sets an error flag when the retry call fails', async () => {
-            const fetchMock = vi.fn().mockRejectedValue(new Error('network error'))
-            vi.stubGlobal('$fetch', fetchMock)
-
-            const { useTrackerRequests } = await import('../../../../app/composables/useTrackerRequests')
-            const { retryRequest, loading, error } = useTrackerRequests()
-
-            await retryRequest('req-1')
-
-            expect(loading.value).toBe(false)
-            expect(error.value).toBe(true)
-        })
-
-        it('skips a retry while another operation is in progress', async () => {
-            let resolveRetry: (() => void) | undefined
-            const fetchMock = vi.fn().mockImplementation(
-                () =>
-                    new Promise((resolve) => {
-                        resolveRetry = () => resolve(undefined)
-                    })
-            )
-            vi.stubGlobal('$fetch', fetchMock)
-
-            const { useTrackerRequests } = await import('../../../../app/composables/useTrackerRequests')
-            const { retryRequest, loading } = useTrackerRequests()
-
-            const first = retryRequest('req-1')
-            expect(loading.value).toBe(true)
-
-            await retryRequest('req-1')
-            expect(fetchMock).toHaveBeenCalledTimes(1)
-
-            resolveRetry?.()
-            await first
-            expect(loading.value).toBe(false)
-        })
     })
 
     describe('uploadTorrent', () => {
