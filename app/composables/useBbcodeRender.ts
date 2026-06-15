@@ -68,6 +68,7 @@ const extendedPresetHTML5 = presetHTML5.extend((tags: PresetTagsDefinition<strin
             {
                 class: 'inline-block max-w-full my-1',
                 src: render(node.content),
+                referrerpolicy: 'no-referrer',
                 ...(width && { width }),
             },
             null

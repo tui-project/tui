@@ -29,8 +29,6 @@ const setupError = computed(() => {
         return ''
     }
 
-    console.log('errorMessage', errorMessage.value)
-
     if (errorMessage.value === 'setup_completed') {
         return 'Setup is already completed. Please log in.'
     }

@@ -19,6 +19,7 @@ describe('useBbcodeRender composable', () => {
         expect(html).toContain('class="text-center"')
         expect(html).toContain('class="text-right"')
         expect(html).toContain('src="https://img"')
+        expect(html).toContain('referrerpolicy="no-referrer"')
         expect(html).toContain('width="500px"')
         expect(html).toContain('font-size:100px;')
         expect(html).toContain('href="https://example.com"')
@@ -50,6 +51,7 @@ describe('useBbcodeRender composable', () => {
         const html = toHtml('[img]https://plain[/img][spoiler]Hidden[/spoiler][comparison]Body[/comparison][font]Plain[/font]')
 
         expect(html).toContain('src="https://plain"')
+        expect(html).toContain('referrerpolicy="no-referrer"')
         expect(html).not.toContain('width=')
         expect(html).toContain('>Spoiler<')
         expect(html).toContain('Comparison')
