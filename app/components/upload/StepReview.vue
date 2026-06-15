@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import StepNavigationButtons from './StepNavigationButtons.vue'
-import type { Metadata } from './upload.types'
 import { useSettings } from '~/composables/useSettings'
-import { useTrackerRequests, type TrackerItem } from '~/composables/useTrackerRequests'
+import { useTrackerRequests } from '~/composables/useTrackerRequests'
 import { useTrackerTitle } from '~/composables/useTrackerTitle'
 import { useTrackerRules, type RuleViolation } from '~/composables/useTrackerRules'
 import { useTrackerDuplicates, type DuplicateEntry } from '~/composables/useTrackerDuplicates'

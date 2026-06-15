@@ -1,24 +1,6 @@
 import { logger } from '../utils/logger'
 import { runCommand } from '../utils/process'
 import { getSettings } from '../repositories/settings-repository'
-import {
-    AUDIO_CHANNELS,
-    AUDIO_CODECS,
-    AUDIO_METADATA_TYPES,
-    HDR_TYPES,
-    RESOLUTIONS,
-    VIDEO_CODECS,
-    SOURCE_TYPES,
-    type AudioChannels,
-    type AudioCodec,
-    type AudioMetadata,
-    type HDR,
-    type Resolution,
-    type SourceType,
-    type VideoCodec,
-    type VideoStandard,
-    VIDEO_STANDARDS,
-} from '../model/metadata'
 
 type MediaInfoTrackType = 'General' | 'Video' | 'Audio' | 'Text'
 

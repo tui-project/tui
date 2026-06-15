@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StepReview from '~/components/upload/StepReview.vue'
-import type { Metadata } from '~/components/upload/upload.types'
 
 const { toastAddMock, navigateToMock } = vi.hoisted(() => ({
     toastAddMock: vi.fn(),
@@ -70,20 +69,13 @@ const metadata: Metadata = {
     title: 'Movie',
     originalTitle: 'Movie',
     year: 2024,
-    season: null,
-    episode: null,
-    episodeEnd: null,
-    specialName: '',
     language: ['English'],
     originalLanguage: 'English',
     sourceType: 'ENCODE',
     source: 'BluRay',
-    service: '',
     repack: 0,
     proper: 0,
     rerip: 0,
-    cut: '',
-    ratio: '',
     hybrid: false,
     hi10p: false,
     hasEnglishSubs: false,
@@ -92,11 +84,8 @@ const metadata: Metadata = {
     videoCodec: 'H.264',
     audioCodec: 'DTS-HD MA',
     audioChannels: '5.1',
-    audioMetadata: '',
     tmdbId: 1,
     imdbId: 'tt1234567',
-    tvdbId: null,
-    locale: '',
 }
 
 const DEFAULT_TITLE = 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP'

@@ -1,16 +1,3 @@
-import {
-    AUDIO_CODECS,
-    MEDIA_TYPES,
-    RESOLUTIONS,
-    type Service,
-    SOURCE_TYPES,
-    SOURCES,
-    type SourceType,
-    VIDEO_CODECS,
-    WEB_SOURCE_TYPES,
-    type Resolution,
-    type VideoCodec,
-} from '../../../model/metadata'
 import { isDvd, isRemux, isHdtv, isEncode, isForeignContent, hasEnglishAudio, isWebSource } from '../util/metadata-util'
 import {
     type HdrTier,

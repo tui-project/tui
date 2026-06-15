@@ -1,6 +1,5 @@
 import { readFile } from 'node:fs/promises'
 import { basename } from 'node:path'
-import { MEDIA_TYPES, RESOLUTIONS, SOURCE_TYPES, type VideoCodec, type MediaType, type Resolution, type SourceType, type HDR, type Service } from '../../model/metadata'
 import { logger } from '../../utils/logger'
 import { BiMap } from '../../utils/bi-map'
 import { parseMetadataFromName } from '../media-name-parser'

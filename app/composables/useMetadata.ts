@@ -1,5 +1,3 @@
-import type { Metadata } from '~/components/upload/upload.types'
-
 export function useMetadata() {
     const loading = ref(false)
     const error = ref(false)

@@ -1,4 +1,3 @@
-import { type Resolution, SD_RESOLUTIONS, SOURCES, SOURCE_TYPES, type SourceType, WEB_SOURCE_TYPES } from '../../../model/metadata'
 import type { TrackerUploadMetadata } from '../tracker'
 
 export function isDvd(metadata: TrackerUploadMetadata): boolean {

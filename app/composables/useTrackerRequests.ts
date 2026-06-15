@@ -1,8 +1,4 @@
-import type { Metadata } from '~/components/upload/upload.types'
-import type { TrackerItem } from '#shared/types/tracker-request'
 import { readonly, ref } from 'vue'
-
-export type { TrackerItem, TrackerRequest } from '#shared/types/tracker-request'
 
 export function useTrackerRequests() {
     const loading = ref(false)

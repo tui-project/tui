@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ulcxTrackerService } from '../../../../../server/services/tracker/trackers/ulcx'
-import { AUDIO_CODECS, AUDIO_CHANNELS, HDR_TYPES, MEDIA_TYPES, RATIOS, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS } from '../../../../../server/model/metadata'
 import type { TrackerUploadMetadata } from '../../../../../server/services/tracker/tracker'
 import { parseMetadataFromName } from '../../../../../server/services/media-name-parser'
 

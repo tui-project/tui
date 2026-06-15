@@ -1,19 +1,4 @@
 import path from 'node:path'
-import {
-    HDR_TYPES,
-    RATIOS,
-    SERVICES,
-    SOURCE_TYPES,
-    SOURCES,
-    VIDEO_CODECS,
-    type Cut,
-    type HDR,
-    type Ratio,
-    type Service,
-    type Source,
-    type SourceType,
-    type VideoCodec,
-} from '../model/metadata'
 import { logger } from '../utils/logger'
 
 export interface ParsedNameMetadata {

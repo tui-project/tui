@@ -16,9 +16,9 @@ export interface Metadata {
     sourceType?: SourceType
     source?: Source
     service?: Service
-    repack?: number
-    proper?: number
-    rerip?: number
+    repack: number
+    proper: number
+    rerip: number
     cut?: Cut
     ratio?: Ratio
     hybrid?: boolean

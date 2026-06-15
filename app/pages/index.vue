@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import type { TrackerRequest } from '#shared/types/tracker-request'
-import { STATUS, type Status, type UploadStatus } from '~~/shared/types/tracker-request'
-
 const REFRESH_INTERVAL_MS = 2_000
 const FINAL_STATUSES = new Set<string>([STATUS.success, STATUS.partialSuccess, STATUS.fail])
 

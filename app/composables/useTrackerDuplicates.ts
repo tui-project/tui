@@ -1,4 +1,3 @@
-import type { Metadata } from '~/components/upload/upload.types'
 import { computed, ref } from 'vue'
 
 export interface DuplicateEntry {

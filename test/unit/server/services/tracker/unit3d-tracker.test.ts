@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultFindDuplicates, getTorrents, upload } from '../../../../../server/services/tracker/unit3d-tracker'
-import { MEDIA_TYPES, SOURCE_TYPES, SOURCES, RESOLUTIONS } from '../../../../../server/model/metadata'
 import { TrackerError, type TrackerUploadMetadata, type TrackerUploadOptions } from '../../../../../server/services/tracker/tracker'
 import { parseMetadataFromName } from '../../../../../server/services/media-name-parser'
 

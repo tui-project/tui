@@ -7,7 +7,6 @@ import { parseMetadataFromName, type ParsedNameMetadata } from '../services/medi
 import { parseMetadataFromMediainfo, type ParsedMediainfoMetadata } from '../services/mediainfo'
 import { findByExternalID, findByTitle, findLocale, getAlternativeTitles, getDetails, getExternalIDs, ID_TYPES } from '../services/tmdb'
 import { isWithinAnyRoot, resolveMediaFilePath } from '../utils/file-system'
-import { MEDIA_TYPES, RESOLUTIONS, SOURCES, VIDEO_STANDARDS, type Metadata } from '../model/metadata'
 import { parseValidatedQuery } from '../utils/request-validator'
 import { findTvdbSpecial, findTvdbSpecialRange } from '../services/tvdb'
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { StepperItem } from '@nuxt/ui'
-import type { Metadata, Path } from '~/components/upload/upload.types'
+import type { Path } from '~/components/upload/upload.types'
 
 const stepItems: StepperItem[] = [
     {

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { parseMetadataFromName } from '../../../../server/services/media-name-parser'
-import { HDR_TYPES, VIDEO_CODECS } from '../../../../server/model/metadata'
 
 describe('media name parser', () => {
     it.each([

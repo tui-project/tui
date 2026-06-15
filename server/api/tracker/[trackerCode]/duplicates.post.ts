@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { MetadataSchema } from '../../../model/metadata'
 import { parseValidatedBody } from '../../../utils/request-validator'
 import { logger } from '../../../utils/logger'
 import { createTrackerService } from '../../../services/tracker/tracker-factory'

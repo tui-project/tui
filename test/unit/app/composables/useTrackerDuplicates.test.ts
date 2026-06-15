@@ -1,6 +1,5 @@
 import { readonly } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Metadata } from '../../../../app/components/upload/upload.types'
 
 const buildMetadata = (): Metadata => ({
     fileName: 'Movie.2024.1080p.mkv',

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
-import type { Metadata, Path } from './upload.types'
+import type { Path } from './upload.types'
 import StepNavigationButtons from './StepNavigationButtons.vue'
 import { useMetadata } from '~/composables/useMetadata'
 
@@ -329,65 +329,53 @@ const languageOptions: SelectOption[] = [
     { value: 'zh', label: 'Chinese' },
 ]
 
-const requiredString = (message: string) => z.string().trim().min(1, message)
-const requiredNumber = (message: string) =>
-    z
-        .number()
-        .nullable()
-        .refine((value) => value !== null, message)
-
 const schema = z
     .object({
         fileName: z.string(),
-        mediaType: z
-            .string()
-            .trim()
-            .refine((value) => value === 'movie' || value === 'tv', {
-                message: 'Media type is required',
-            }),
-        title: requiredString('Title is required'),
-        originalTitle: z.string(),
-        year: requiredNumber('Year is required'),
-        source: requiredString('Source is required'),
-        sourceType: requiredString('Type is required'),
-        resolution: requiredString('Resolution is required'),
+        mediaType: z.enum(MEDIA_TYPES, { error: 'Media type is required' }),
+        title: z.string().trim().min(1, 'Title is required'),
+        originalTitle: z.string().optional(),
+        year: z.number().int().min(1, 'Year is required'),
+        source: z.enum(SOURCES, { error: 'Source is required' }),
+        sourceType: z.enum(SOURCE_TYPES, { error: 'Type is required' }),
+        resolution: z.enum(RESOLUTIONS, { error: 'Resolution is required' }),
         language: z.array(z.string().trim().min(1)).min(1, 'Language is required'),
-        originalLanguage: requiredString('Original language is required'),
-        videoCodec: requiredString('Video codec is required'),
-        audioCodec: requiredString('Audio codec is required'),
-        audioChannels: requiredString('Audio channels are required'),
-        audioMetadata: z.string(),
-        hasTrueHDCompatibilityTrack: z.boolean().nullable().optional(),
-        tmdbId: requiredNumber('TMDb ID is required'),
-        imdbId: requiredString('IMDb ID is required'),
-        season: z.number().nullable(),
-        episode: z.number().nullable(),
-        episodeEnd: z.number().nullable(),
-        specialName: z.string(),
-        tvdbId: z.number().nullable(),
-        releaseGroup: z.string(),
-        service: z.string(),
-        repack: z.number(),
-        proper: z.number(),
-        rerip: z.number(),
-        cut: z.string(),
-        ratio: z.string(),
+        originalLanguage: z.string().trim().min(1, 'Original language is required'),
+        videoCodec: z.enum(VIDEO_CODECS, { error: 'Video codec is required' }),
+        audioCodec: z.enum(AUDIO_CODECS, { error: 'Audio codec is required' }),
+        audioChannels: z.enum(AUDIO_CHANNELS, { error: 'Audio channels are required' }),
+        audioMetadata: z.enum(AUDIO_METADATA_TYPES).optional(),
+        hasTrueHDCompatibilityTrack: z.boolean().optional(),
+        tmdbId: z.number().int().min(1, 'TMDb ID is required'),
+        imdbId: z.string().trim().min(1, 'IMDb ID is required'),
+        season: z.number().int().optional(),
+        episode: z.number().int().optional(),
+        episodeEnd: z.number().int().optional(),
+        specialName: z.string().optional(),
+        tvdbId: z.number().int().optional(),
+        releaseGroup: z.string().optional(),
+        service: z.enum(SERVICES).optional(),
+        repack: z.number().int().min(0),
+        proper: z.number().int().min(0),
+        rerip: z.number().int().min(0),
+        cut: z.enum(CUTS).optional(),
+        ratio: z.enum(RATIOS).optional(),
         hybrid: z.boolean(),
         hi10p: z.boolean(),
         hasEnglishSubs: z.boolean(),
-        hdr: z.array(z.string()),
-        locale: z.string(),
+        hdr: z.array(z.enum(HDR_TYPES)).optional(),
+        locale: z.string().optional(),
     })
     .superRefine((value, ctx) => {
-        if (value.mediaType === 'tv') {
-            if (value.season === null) {
+        if (value.mediaType === MEDIA_TYPES.TV) {
+            if (value.season === undefined) {
                 ctx.addIssue({ code: 'custom', path: ['season'], message: 'Season is required' })
             }
-            if (value.tvdbId === null) {
+            if (value.tvdbId === undefined) {
                 ctx.addIssue({ code: 'custom', path: ['tvdbId'], message: 'TVDB ID is required' })
             }
-            if (value.episodeEnd !== null) {
-                if (value.episode === null) {
+            if (value.episodeEnd !== undefined) {
+                if (value.episode === undefined) {
                     ctx.addIssue({ code: 'custom', path: ['episode'], message: 'First episode is required for a range' })
                 } else if (value.episodeEnd <= value.episode) {
                     ctx.addIssue({ code: 'custom', path: ['episodeEnd'], message: 'Must be greater than the first episode' })
@@ -398,39 +386,15 @@ const schema = z
 
 const state = reactive<Metadata>({
     fileName: '',
-    releaseGroup: '',
-    mediaType: '',
-    title: '',
-    originalTitle: '',
-    year: null,
-    season: null,
-    episode: null,
-    episodeEnd: null,
-    specialName: '',
-    language: [],
-    originalLanguage: '',
-    sourceType: '',
-    source: '',
-    service: '',
     repack: 0,
     proper: 0,
     rerip: 0,
-    cut: '',
-    ratio: '',
     hybrid: false,
     hi10p: false,
     hasEnglishSubs: false,
-    resolution: '',
-    hdr: [],
-    videoCodec: '',
-    audioCodec: '',
-    audioChannels: '',
-    audioMetadata: '',
-    hasTrueHDCompatibilityTrack: null,
-    tmdbId: null,
+    language: [],
+    originalLanguage: '',
     imdbId: '',
-    tvdbId: null,
-    locale: '',
 })
 
 const { getMetadata, loading, error } = useMetadata()
@@ -453,7 +417,7 @@ onMounted(async () => {
 
     if (metadata.value?.fileName) {
         Object.assign(state, metadata.value)
-        showMultiEpisode.value = state.episodeEnd !== null
+        showMultiEpisode.value = state.episodeEnd !== undefined
 
         return
     }
@@ -461,7 +425,7 @@ onMounted(async () => {
     const data = await getMetadata(path)
     Object.assign(state, data)
 
-    showMultiEpisode.value = state.episodeEnd !== null
+    showMultiEpisode.value = state.episodeEnd !== undefined
     metadata.value = state
 })
 
@@ -477,7 +441,7 @@ function onToggleMultiEpisode(value: boolean) {
 }
 
 function onSubmit(event: FormSubmitEvent<Schema>) {
-    if (!showMultiEpisode.value) event.data.episodeEnd = null
+    if (!showMultiEpisode.value) event.data.episodeEnd = undefined
     metadata.value = event.data
     emit('next')
 }
@@ -732,7 +696,7 @@ function onSubmit(event: FormSubmitEvent<Schema>) {
                                     label="TrueHD Compatibility Track"
                                     color="neutral"
                                     aria-label="TrueHD Compatibility Track"
-                                    @update:model-value="(v) => (state.hasTrueHDCompatibilityTrack = v === true || v === false ? v : null)"
+                                    @update:model-value="(v) => (state.hasTrueHDCompatibilityTrack = v === true)"
                                 />
                             </div>
                         </UFormField>

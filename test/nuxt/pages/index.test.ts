@@ -3,7 +3,6 @@ import { renderSuspended, mountSuspended, mockNuxtImport } from '@nuxt/test-util
 import { screen } from '@testing-library/vue'
 import { ref } from 'vue'
 import IndexPage from '../../../app/pages/index.vue'
-import type { TrackerRequest } from '#shared/types/tracker-request'
 
 const useFetchData = ref<TrackerRequest[] | null>(null)
 const useFetchError = ref<Error | null>(null)

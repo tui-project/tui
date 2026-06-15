@@ -1,5 +1,3 @@
-import { HDR_TYPES, SOURCE_TYPES } from '../../../model/metadata'
-
 // Within a web slot, higher rank trumps lower — HDTV < WEBRip < WEB-DL
 export const WEB_SOURCE_RANK: Partial<Record<string, number>> = {
     [SOURCE_TYPES.HDTV]: 1,

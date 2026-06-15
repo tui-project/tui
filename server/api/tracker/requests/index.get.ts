@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import type { TrackerRequest } from '#shared/types/tracker-request'
 import { findAllTrackerUploadRequests } from '../../../repositories/tracker-request-repository'
 import { logger } from '../../../utils/logger'
 import { parseValidatedQuery } from '../../../utils/request-validator'

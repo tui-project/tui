@@ -1,4 +1,3 @@
-import { SOURCES, SOURCE_TYPES, type SourceType } from '../../../model/metadata'
 import { getTvdbSeries } from '../../tvdb'
 import type { TrackerUploadMetadata } from '../tracker'
 

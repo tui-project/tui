@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { athTrackerService } from '../../../../../server/services/tracker/trackers/ath'
-import { AUDIO_CHANNELS, AUDIO_CODECS, CUTS, HDR_TYPES, MEDIA_TYPES, RATIOS, RESOLUTIONS, SOURCE_TYPES, SOURCES, VIDEO_CODECS } from '../../../../../server/model/metadata'
 import { getLanguageDisplayName } from '../../../../../server/repositories/language-repository'
 import type { TrackerUploadMetadata } from '../../../../../server/services/tracker/tracker'
 import { parseMetadataFromName } from '../../../../../server/services/media-name-parser'

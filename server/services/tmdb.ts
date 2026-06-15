@@ -1,4 +1,3 @@
-import { MEDIA_TYPES, type MediaType } from '../model/metadata'
 import { getSettings } from '../repositories/settings-repository'
 import { logger } from '../utils/logger'
 

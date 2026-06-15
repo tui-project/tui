@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import StepMetadata from '~/components/upload/StepMetadata.vue'
-import type { Metadata, Path } from '~/components/upload/upload.types'
+import type { Path } from '~/components/upload/upload.types'
 
 const selectedPath: Path = {
     label: '/media/nas/movie.mkv',
@@ -21,10 +21,6 @@ function createMetadata(overrides: Partial<Metadata> = {}): Metadata {
         title: 'Dune',
         originalTitle: 'No Idea',
         year: 2021,
-        season: null,
-        episode: null,
-        episodeEnd: null,
-        specialName: '',
         language: ['en'],
         originalLanguage: 'en',
         sourceType: 'WEB-DL',
@@ -33,8 +29,7 @@ function createMetadata(overrides: Partial<Metadata> = {}): Metadata {
         repack: 1,
         proper: 1,
         rerip: 0,
-        cut: 'Extened',
-        ratio: '',
+        cut: 'Extended',
         hybrid: true,
         hi10p: false,
         hasEnglishSubs: false,
@@ -46,8 +41,6 @@ function createMetadata(overrides: Partial<Metadata> = {}): Metadata {
         audioMetadata: 'Atmos',
         tmdbId: 438631,
         imdbId: 'tt1160419',
-        tvdbId: null,
-        locale: '',
         ...overrides,
     }
 }
@@ -129,7 +122,7 @@ describe('StepMetadata', () => {
         expect(screen.getByRole('combobox', { name: 'HDR' }).textContent).toBe('HDR10+')
         expect(screen.getByRole('combobox', { name: 'Language' }).textContent).toBe('English')
         expect(screen.getByRole('combobox', { name: 'Original Language' }).textContent).toBe('English')
-        expect(screen.getByRole('combobox', { name: 'Cut' }).textContent).toBe('Extened')
+        expect(screen.getByRole('combobox', { name: 'Cut' }).textContent).toBe('Extended')
         expect(screen.getByRole('checkbox', { name: 'Repack' }).getAttribute('data-state')).toBe('checked')
         expect(screen.getByRole('checkbox', { name: 'Proper' }).getAttribute('data-state')).toBe('checked')
         expect(screen.getByRole('checkbox', { name: 'Hybrid' }).getAttribute('data-state')).toBe('checked')
@@ -252,7 +245,7 @@ describe('StepMetadata', () => {
         expect(screen.getByRole('combobox', { name: 'HDR' }).textContent).toBe('HDR10+')
         expect(screen.getByRole('combobox', { name: 'Language' }).textContent).toBe('English')
         expect(screen.getByRole('combobox', { name: 'Original Language' }).textContent).toBe('English')
-        expect(screen.getByRole('combobox', { name: 'Cut' }).textContent).toBe('Extened')
+        expect(screen.getByRole('combobox', { name: 'Cut' }).textContent).toBe('Extended')
         expect(screen.getByRole('checkbox', { name: 'Repack' }).getAttribute('data-state')).toBe('checked')
         expect(screen.getByRole('checkbox', { name: 'Proper' }).getAttribute('data-state')).toBe('checked')
         expect(screen.getByRole('checkbox', { name: 'Hybrid' }).getAttribute('data-state')).toBe('checked')
@@ -271,7 +264,7 @@ describe('StepMetadata', () => {
             vi.fn().mockResolvedValue(
                 createMetadata({
                     source: 'BluRay',
-                    service: '',
+                    service: undefined,
                 })
             )
         )
@@ -456,7 +449,7 @@ describe('StepMetadata', () => {
                 createMetadata({
                     mediaType: 'tv',
                     season: 3,
-                    tvdbId: null,
+                    tvdbId: undefined,
                     repack: 0,
                     proper: 0,
                     hybrid: false,
@@ -505,8 +498,8 @@ describe('StepMetadata', () => {
                 createMetadata({
                     mediaType: 'tv',
                     originalLanguage: '',
-                    season: null,
-                    tvdbId: null,
+                    season: undefined,
+                    tvdbId: undefined,
                 })
             )
         )
@@ -652,10 +645,10 @@ describe('StepMetadata', () => {
             vi.fn().mockResolvedValue(
                 createMetadata({
                     mediaType: 'tv',
-                    season: null,
-                    episode: null,
-                    tvdbId: null,
-                    tmdbId: null,
+                    season: undefined,
+                    episode: undefined,
+                    tvdbId: undefined,
+                    tmdbId: undefined,
                 })
             )
         )
@@ -773,7 +766,7 @@ describe('StepMetadata', () => {
     })
 
     it('updates tmdb input for movie media type', async () => {
-        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ tmdbId: null })))
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ tmdbId: undefined })))
 
         await renderSuspended(StepMetadata, {
             props: { selectedPath },
@@ -790,7 +783,7 @@ describe('StepMetadata', () => {
         })
     })
 
-    it('toggles rerip checkbox', async () => {
+    it('toggles rerip checkbox on and off', async () => {
         const user = userEvent.setup()
 
         vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ rerip: 0 })))
@@ -806,14 +799,18 @@ describe('StepMetadata', () => {
         expect(reripCheckbox.getAttribute('data-state')).toBe('unchecked')
 
         await user.click(reripCheckbox)
-
         await waitFor(() => {
             expect(screen.getByRole('checkbox', { name: 'ReRip' }).getAttribute('data-state')).toBe('checked')
+        })
+
+        await user.click(reripCheckbox)
+        await waitFor(() => {
+            expect(screen.getByRole('checkbox', { name: 'ReRip' }).getAttribute('data-state')).toBe('unchecked')
         })
     })
 
     it('shows validation error when episodeEnd is set but episode is null', async () => {
-        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 1, episode: null, episodeEnd: 5, tvdbId: 999 })))
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 1, episode: undefined, episodeEnd: 5, tvdbId: 999 })))
 
         await renderSuspended(StepMetadata, { props: { selectedPath } })
         await screen.findByDisplayValue('Dune')
@@ -838,6 +835,20 @@ describe('StepMetadata', () => {
         })
     })
 
+    it('preserves episodeEnd on submit when multi-episode toggle is on', async () => {
+        const onUpdateModelValue = vi.fn()
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 1, episode: 3, episodeEnd: 8, tvdbId: 311711 })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath, 'onUpdate:modelValue': onUpdateModelValue } })
+        await screen.findByDisplayValue('Dune')
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+        await waitFor(() => {
+            expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ episodeEnd: 8 }))
+        })
+    })
+
     it('clears episodeEnd on submit when multi-episode toggle is off', async () => {
         const onUpdateModelValue = vi.fn()
         vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 0, episode: 3, episodeEnd: 8, tvdbId: 311711 })))
@@ -850,7 +861,82 @@ describe('StepMetadata', () => {
         await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
 
         await waitFor(() => {
-            expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ episodeEnd: null }))
+            expect(onUpdateModelValue).toHaveBeenCalledWith(expect.not.objectContaining({ episodeEnd: expect.anything() }))
         })
+    })
+
+    it('shows English Subs checkbox when original language is not English', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ originalLanguage: 'ko' })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.getByRole('checkbox', { name: 'English Subs' })).toBeDefined()
+    })
+
+    it('hides English Subs checkbox when original language is English', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ originalLanguage: 'en' })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.queryByRole('checkbox', { name: 'English Subs' })).toBeNull()
+    })
+
+    it('shows TrueHD Compatibility Track checkbox when audio codec is TrueHD and toggles it', async () => {
+        const user = userEvent.setup()
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ audioCodec: 'TrueHD' })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+        await screen.findByDisplayValue('Dune')
+
+        const checkbox = screen.getByRole('checkbox', { name: 'TrueHD Compatibility Track' })
+        expect(checkbox).toBeDefined()
+        expect(checkbox.getAttribute('data-state')).toBe('unchecked')
+
+        await user.click(checkbox)
+        expect(checkbox.getAttribute('data-state')).toBe('checked')
+    })
+
+    it('hides TrueHD Compatibility Track checkbox when audio codec is not TrueHD', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ audioCodec: 'DD+' })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.queryByRole('checkbox', { name: 'TrueHD Compatibility Track' })).toBeNull()
+    })
+
+    it('shows Hi10P checkbox when video codec is AVC, H.264, or x264', async () => {
+        for (const videoCodec of ['AVC', 'H.264', 'x264'] as const) {
+            vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ videoCodec })))
+
+            await renderSuspended(StepMetadata, { props: { selectedPath } })
+            await screen.findByDisplayValue('Dune')
+
+            expect(screen.getByRole('checkbox', { name: 'Hi10P' }), `expected Hi10P for codec ${videoCodec}`).toBeDefined()
+        }
+    })
+
+    it('hides Hi10P checkbox when video codec is not AVC, H.264, or x264', async () => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ videoCodec: 'HEVC' })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.queryByRole('checkbox', { name: 'Hi10P' })).toBeNull()
+    })
+
+    it('shows rerip count input when rerip is checked', async () => {
+        const user = userEvent.setup()
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ rerip: 0 })))
+
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
+        await screen.findByDisplayValue('Dune')
+
+        expect(screen.queryByRole('spinbutton', { name: 'ReRip number' })).toBeNull()
+
+        await user.click(screen.getByRole('checkbox', { name: 'ReRip' }))
+        expect(screen.getByRole('spinbutton', { name: 'ReRip number' })).toBeDefined()
     })
 })

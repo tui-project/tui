@@ -1,5 +1,3 @@
-import type { Metadata } from '../../model/metadata'
-
 export class TrackerError extends Error {
     constructor(
         public readonly reason: string,

@@ -4,7 +4,6 @@ import { TRACKER_UPLOAD_STATUSES, type TrackerItem } from '../../model/tracker-u
 import { saveTrackerUploadRequest } from '../../repositories/tracker-request-repository'
 import { logger } from '../../utils/logger'
 import { parseValidatedBody } from '../../utils/request-validator'
-import { MetadataSchema } from '../../model/metadata'
 import { upload as trackerUpload } from '../../services/tracker-upload'
 
 const trackerItemSchema = z.object({

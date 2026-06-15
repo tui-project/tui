@@ -1,15 +1,3 @@
-import {
-    AUDIO_CODECS,
-    HDR_TYPES,
-    MEDIA_TYPES,
-    type Resolution,
-    RESOLUTIONS,
-    SD_RESOLUTIONS,
-    SOURCE_TYPES,
-    type VideoCodec,
-    WEB_SOURCE_TYPES,
-    type SourceType,
-} from '../../../model/metadata'
 import { hasEnglishAudio, isForeignContent, isRemux, isSDResolution, isWebSource } from '../util/metadata-util'
 import { type HdrTier, type TorrentContext, type TorrentRule, SLOT_TIERS, HDR_TIER_TRUMPS, getHdrTier, getCodecFamily, WEB_SOURCE_RANK } from '../util/tracker-util'
 import { getLanguageDisplayName } from '../../../repositories/language-repository'

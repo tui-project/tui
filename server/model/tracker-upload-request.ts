@@ -1,5 +1,3 @@
-import type { Metadata } from './metadata'
-
 export const TRACKER_UPLOAD_STATUSES = {
     PENDING: 'pending',
     TORRENT_CREATION: 'torrent_creation',
