@@ -2,7 +2,6 @@ import { readonly } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const buildMetadata = (): Metadata => ({
-    fileName: 'Movie.2024.1080p.mkv',
     title: 'Movie',
     originalTitle: 'Movie',
     releaseGroup: 'GROUP',
@@ -68,24 +67,6 @@ describe('useTrackerDuplicates composable', () => {
         await getDuplicates('ATH', buildMetadata())
 
         expect(fetchMock).toHaveBeenCalledWith('/api/tracker/ATH/duplicates', expect.objectContaining({ method: 'POST' }))
-    })
-
-    it('strips null and empty-string fields from metadata before sending', async () => {
-        const fetchMock = vi.fn().mockResolvedValue({ duplicates: [] })
-        vi.stubGlobal('$fetch', fetchMock)
-
-        const { useTrackerDuplicates } = await import('../../../../app/composables/useTrackerDuplicates')
-        const { getDuplicates } = useTrackerDuplicates()
-
-        await getDuplicates('ATH', buildMetadata())
-
-        const body = fetchMock.mock.calls[0][1].body
-        expect(body.metadata).not.toHaveProperty('service')
-        expect(body.metadata).not.toHaveProperty('cut')
-        expect(body.metadata).not.toHaveProperty('audioMetadata')
-        expect(body.metadata).not.toHaveProperty('season')
-        expect(body.metadata).not.toHaveProperty('episode')
-        expect(body.metadata).not.toHaveProperty('tvdbId')
     })
 
     it('returns empty array and sets error flag when fetch fails', async () => {

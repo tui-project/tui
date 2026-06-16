@@ -34,7 +34,8 @@ const stepper = useTemplateRef('stepper')
 const currentStep = ref(0)
 const selectedPath = ref<Path>()
 const selectedTrackers = ref<string[]>([])
-const reviewedMetadata = ref<Metadata>()
+const reviewedMetadata = ref<{ filename: string; metadata: Metadata }>()
+const prefetchedMetadata = ref<{ filename: string; metadata: PartialMetadata }>()
 const description = ref('')
 
 watch(
@@ -44,6 +45,7 @@ watch(
             return
         }
         reviewedMetadata.value = undefined
+        prefetchedMetadata.value = undefined
     }
 )
 
@@ -64,14 +66,14 @@ function goToPrevStep() {
                 <UploadStepSelectMedia v-model="selectedPath" @next="goToNextStep" />
             </template>
             <template #metadata>
-                <UploadStepMetadata v-model="reviewedMetadata" :selected-path="selectedPath" @back="goToPrevStep" @next="goToNextStep" />
+                <UploadStepMetadata v-model="reviewedMetadata" v-model:prefetched="prefetchedMetadata" :selected-path="selectedPath" @back="goToPrevStep" @next="goToNextStep" />
             </template>
             <template #description>
                 <UploadStepDescription
                     v-model="description"
                     :selected-path="selectedPath"
-                    :is-hdr="Boolean(reviewedMetadata?.hdr?.length)"
-                    :is-tv="reviewedMetadata?.mediaType === 'tv'"
+                    :is-hdr="Boolean(reviewedMetadata?.metadata.hdr.length)"
+                    :is-tv="reviewedMetadata?.metadata.mediaType === 'tv'"
                     @back="goToPrevStep"
                     @next="goToNextStep"
                 />
@@ -82,7 +84,7 @@ function goToPrevStep() {
             <template #review>
                 <UploadStepReview
                     :selected-trackers="selectedTrackers"
-                    :metadata="reviewedMetadata"
+                    :metadata="reviewedMetadata?.metadata"
                     :source-path="selectedPath?.value"
                     :description="description"
                     @back="goToPrevStep"

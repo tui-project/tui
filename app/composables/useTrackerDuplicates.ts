@@ -19,7 +19,7 @@ export function useTrackerDuplicates() {
         try {
             const { duplicates } = await $fetch<{ duplicates: DuplicateEntry[] }>(`/api/tracker/${trackerCode}/duplicates`, {
                 method: 'POST',
-                body: { metadata: sanitizeMetadataForUpload(metadata) },
+                body: { metadata },
             })
             return duplicates
         } catch {
@@ -35,8 +35,4 @@ export function useTrackerDuplicates() {
         loading,
         error: readonly(error),
     }
-}
-
-function sanitizeMetadataForUpload(metadata: Metadata): Partial<Metadata> {
-    return Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== null && value !== '')) as Partial<Metadata>
 }

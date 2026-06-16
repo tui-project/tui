@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { athTrackerService } from '../../../../../server/services/tracker/trackers/ath'
 import { getLanguageDisplayName } from '../../../../../server/repositories/language-repository'
-import type { TrackerUploadMetadata } from '../../../../../server/services/tracker/tracker'
 import { parseMetadataFromName } from '../../../../../server/services/media-name-parser'
 
 vi.mock('../../../../../server/utils/logger', () => ({
@@ -23,7 +22,7 @@ vi.mock('node:fs/promises', () => ({
 const fetchMock = vi.fn().mockResolvedValue({ data: 'http://aither.cc/torrents/1' })
 vi.stubGlobal('$fetch', fetchMock)
 
-const baseMetadata: TrackerUploadMetadata = {
+const baseMetadata: Metadata = {
     title: 'Movie',
     originalTitle: 'Movie',
     releaseGroup: 'GROUP',
@@ -39,6 +38,7 @@ const baseMetadata: TrackerUploadMetadata = {
     hybrid: false,
     hi10p: false,
     resolution: RESOLUTIONS['1080p'],
+    hdr: [],
     videoCodec: VIDEO_CODECS.X264,
     audioCodec: AUDIO_CODECS.DTS_HD_MA,
     audioChannels: AUDIO_CHANNELS['5.1'],
@@ -46,7 +46,7 @@ const baseMetadata: TrackerUploadMetadata = {
     imdbId: 'tt1234567',
 }
 
-const tvBaseMetadata: TrackerUploadMetadata = {
+const tvBaseMetadata: Metadata = {
     ...baseMetadata,
     mediaType: MEDIA_TYPES.TV,
     tvdbId: 12345,
@@ -62,7 +62,7 @@ describe('athTrackerService — checkRules', () => {
 
     it('returns no violations when releaseGroup is absent', () => {
         const { releaseGroup: _, ...meta } = baseMetadata
-        expect(service.checkRules(meta as TrackerUploadMetadata)).toEqual([])
+        expect(service.checkRules(meta as Metadata)).toEqual([])
     })
 
     it('bans a group that is banned for ALL source types regardless of sourceType', () => {
@@ -596,7 +596,7 @@ describe('athTrackerService — getTitle', () => {
 
 describe('athTrackerService — upload extra fields', () => {
     const service = athTrackerService('https://aither.cc', 'apikey')
-    async function getFormData(metadata: TrackerUploadMetadata): Promise<FormData> {
+    async function getFormData(metadata: Metadata): Promise<FormData> {
         fetchMock.mockClear()
         fetchMock.mockResolvedValue({ data: 'http://aither.cc/torrents/1' })
         await service.upload('/fake.torrent', metadata, 'desc', 'mediainfo', 'Movie 2024', { anonymous: false, modQueueOptIn: false })
@@ -683,7 +683,7 @@ describe('athTrackerService — findDuplicates', () => {
 
     it('returns no dupe when upload is SDR and existing is HDR', async () => {
         mockParsedDefault({ hdr: [HDR_TYPES.HDR10] })
-        expect(await service.findDuplicates({ ...baseMetadata, hdr: undefined })).toHaveLength(0)
+        expect(await service.findDuplicates({ ...baseMetadata, hdr: [] })).toHaveLength(0)
     })
 
     it('returns no dupe when upload is DV-only and existing is HDR (different slots)', async () => {

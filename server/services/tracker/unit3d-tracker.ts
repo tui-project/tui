@@ -3,7 +3,7 @@ import { basename } from 'node:path'
 import { logger } from '../../utils/logger'
 import { BiMap } from '../../utils/bi-map'
 import { parseMetadataFromName } from '../media-name-parser'
-import { TrackerError, type DuplicateEntry, type TrackerUploadMetadata, type TrackerUploadOptions } from './tracker'
+import { TrackerError, type DuplicateEntry, type TrackerUploadOptions } from './tracker'
 
 export type TorrentResult = {
     name: string
@@ -62,7 +62,7 @@ export async function upload(
     url: string,
     apiKey: string,
     torrentPath: string,
-    metadata: TrackerUploadMetadata,
+    metadata: Metadata,
     description: string,
     mediainfoText: string,
     title: string,
@@ -181,8 +181,8 @@ function mapTorrentAttributes(attrs: Attributes): TorrentResult {
     }
 }
 
-export function defaultFindDuplicates(candidates: TorrentResult[], metadata: TrackerUploadMetadata): DuplicateEntry[] {
-    const hasHdr = (metadata.hdr?.length ?? 0) > 0
+export function defaultFindDuplicates(candidates: TorrentResult[], metadata: Metadata): DuplicateEntry[] {
+    const hasHdr = metadata.hdr.length > 0
 
     return candidates
         .filter((t) => {

@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ulcxTrackerService } from '../../../../../server/services/tracker/trackers/ulcx'
-import type { TrackerUploadMetadata } from '../../../../../server/services/tracker/tracker'
 import { parseMetadataFromName } from '../../../../../server/services/media-name-parser'
 
 vi.mock('../../../../../server/utils/logger', () => ({
@@ -18,7 +17,7 @@ vi.mock('node:fs/promises', () => ({
 const fetchMock = vi.fn()
 vi.stubGlobal('$fetch', fetchMock)
 
-const baseMetadata: TrackerUploadMetadata = {
+const baseMetadata: Metadata = {
     title: 'Movie',
     originalTitle: 'Movie',
     releaseGroup: 'GROUP',
@@ -34,6 +33,7 @@ const baseMetadata: TrackerUploadMetadata = {
     hybrid: false,
     hi10p: false,
     resolution: RESOLUTIONS['1080p'],
+    hdr: [],
     videoCodec: VIDEO_CODECS.X264,
     audioCodec: AUDIO_CODECS.DTS_HD_MA,
     audioChannels: AUDIO_CHANNELS['5.1'],
@@ -41,7 +41,7 @@ const baseMetadata: TrackerUploadMetadata = {
     imdbId: 'tt1234567',
 }
 
-const tvBaseMetadata: TrackerUploadMetadata = {
+const tvBaseMetadata: Metadata = {
     ...baseMetadata,
     mediaType: MEDIA_TYPES.TV,
     tvdbId: 12345,
@@ -575,7 +575,7 @@ describe('ulcxTrackerService — checkRules', () => {
     })
 
     describe('foreign content rules', () => {
-        const foreignBase: TrackerUploadMetadata = { ...baseMetadata, originalLanguage: 'fr', language: ['fr'] }
+        const foreignBase: Metadata = { ...baseMetadata, originalLanguage: 'fr', language: ['fr'] }
 
         it('returns no violation for English content with English audio', () => {
             expect(service.checkRules({ ...baseMetadata, originalLanguage: 'en', language: ['en'] })).toHaveLength(0)
@@ -717,7 +717,7 @@ describe('ulcxTrackerService — findDuplicates', () => {
 
     it('filters out entries where HDR tier differs (upload SDR, existing HDR)', async () => {
         mockParsed({ hdr: [HDR_TYPES.HDR10] })
-        expect(await service.findDuplicates({ ...baseMetadata, hdr: undefined })).toHaveLength(0)
+        expect(await service.findDuplicates({ ...baseMetadata, hdr: [] })).toHaveLength(0)
     })
 
     it('filters out entries where HDR tier differs (upload HDR, existing SDR)', async () => {

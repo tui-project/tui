@@ -42,16 +42,15 @@ export default defineEventHandler(async (event) => {
     const metadataFromMediainfo = await parseMetadataFromMediainfo(mediaFilePath, metadataFromFilename.sourceType)
     logger.trace('Parsed mediainfo metadata.', { metadataFromMediainfo })
 
-    const metadata = await buildMetadata(filename, metadataFromFilename, metadataFromMediainfo)
-    logger.debug('Metadata response.', { metadata })
+    const metadata = await buildMetadata(metadataFromFilename, metadataFromMediainfo)
+    logger.debug('Metadata response.', { filename, metadata })
 
-    return metadata
+    return { filename, metadata }
 })
 
-async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameMetadata, metadataFromMediainfo: ParsedMediainfoMetadata): Promise<Metadata> {
+async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataFromMediainfo: ParsedMediainfoMetadata): Promise<PartialMetadata> {
     const { videoStandard, frameRate, ...mediainfoFields } = metadataFromMediainfo
-    const metadata: Metadata = {
-        fileName,
+    const metadata: PartialMetadata = {
         ...metadataFromFilename,
         ...mediainfoFields,
     }
@@ -175,10 +174,10 @@ async function buildMetadata(fileName: string, metadataFromFilename: ParsedNameM
     return metadata
 }
 
-function isForeignMediaWithoutOriginalTitle(metadata: Metadata): boolean {
+function isForeignMediaWithoutOriginalTitle(metadata: PartialMetadata): boolean {
     return !!metadata.originalLanguage && metadata.originalLanguage !== 'en' && !metadata.originalTitle
 }
 
-function isSpecialEpisode(metadata: Metadata): boolean {
+function isSpecialEpisode(metadata: PartialMetadata): boolean {
     return metadata.season === 0 || metadata.episode === 0
 }

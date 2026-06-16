@@ -47,6 +47,7 @@ const validMetadata = {
     hybrid: false,
     hi10p: false,
     resolution: '1080p',
+    hdr: [],
     videoCodec: 'H.264',
     audioCodec: 'DTS-HD MA',
     audioChannels: '5.1',

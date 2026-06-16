@@ -1,43 +1,5 @@
 import { z } from 'zod'
 
-export interface Metadata {
-    fileName: string
-    releaseGroup?: string
-    mediaType?: MediaType
-    title?: string
-    originalTitle?: string
-    year?: number
-    season?: number
-    episode?: number
-    episodeEnd?: number
-    specialName?: string
-    language?: string[]
-    originalLanguage?: string
-    sourceType?: SourceType
-    source?: Source
-    service?: Service
-    repack: number
-    proper: number
-    rerip: number
-    cut?: Cut
-    ratio?: Ratio
-    hybrid?: boolean
-    hi10p?: boolean
-    resolution?: Resolution
-    hdr?: HDR[]
-    videoCodec?: VideoCodec
-    audioCodec?: AudioCodec
-    audioChannels?: AudioChannels
-    audioMetadata?: AudioMetadata
-    hasTrueHDCompatibilityTrack?: boolean
-    hasEnglishSubs?: boolean
-    tmdbId?: number
-    imdbId?: string
-    tvdbId?: number
-    locale?: string
-    originCountry?: string
-}
-
 export const MEDIA_TYPES = {
     MOVIE: 'movie',
     TV: 'tv',
@@ -344,6 +306,43 @@ export const AUDIO_METADATA_TYPES = {
 } as const
 export type AudioMetadata = (typeof AUDIO_METADATA_TYPES)[keyof typeof AUDIO_METADATA_TYPES] | undefined
 
+export type PartialMetadata = {
+    releaseGroup?: string
+    mediaType?: MediaType
+    title?: string
+    originalTitle?: string
+    year?: number
+    season?: number
+    episode?: number
+    episodeEnd?: number
+    specialName?: string
+    language: string[]
+    originalLanguage?: string
+    sourceType?: SourceType
+    source?: Source
+    service?: Service
+    repack: number
+    proper: number
+    rerip: number
+    cut?: Cut
+    ratio?: Ratio
+    hybrid?: boolean
+    hi10p?: boolean
+    resolution?: Resolution
+    hdr: HDR[]
+    videoCodec?: VideoCodec
+    audioCodec?: AudioCodec
+    audioChannels?: AudioChannels
+    audioMetadata?: AudioMetadata
+    hasTrueHDCompatibilityTrack?: boolean
+    hasEnglishSubs?: boolean
+    tmdbId?: number
+    imdbId?: string
+    tvdbId?: number
+    locale?: string
+    originCountry?: string
+}
+
 export const MetadataSchema = z
     .object({
         title: z.string().trim().min(1),
@@ -371,7 +370,7 @@ export const MetadataSchema = z
         hybrid: z.boolean(),
         hi10p: z.boolean(),
         resolution: z.enum(RESOLUTIONS),
-        hdr: z.array(z.enum(HDR_TYPES)).optional(),
+        hdr: z.array(z.enum(HDR_TYPES)),
         videoCodec: z.enum(VIDEO_CODECS),
         audioCodec: z.enum(AUDIO_CODECS),
         audioChannels: z.enum(AUDIO_CHANNELS),
@@ -394,3 +393,37 @@ export const MetadataSchema = z
             ctx.addIssue({ code: 'custom', path: ['service'], message: 'Service is required for Web sources' })
         }
     })
+
+export type Metadata = z.infer<typeof MetadataSchema>
+
+export function isDvd(metadata: Metadata): boolean {
+    return metadata.source === SOURCES.DVD || metadata.source === SOURCES.NTSC_DVD || metadata.source === SOURCES.PAL_DVD || metadata.source === SOURCES.HD_DVD
+}
+
+export function isRemux(metadata: Metadata): boolean {
+    return metadata.sourceType === SOURCE_TYPES.REMUX
+}
+
+export function isHdtv(metadata: Metadata): boolean {
+    return metadata.sourceType === SOURCE_TYPES.HDTV
+}
+
+export function isEncode(metadata: Metadata): boolean {
+    return metadata.sourceType === SOURCE_TYPES.ENCODE
+}
+
+export function isForeignContent(metadata: Metadata): boolean {
+    return metadata.originalLanguage !== 'en'
+}
+
+export function hasEnglishAudio(metadata: Metadata): boolean {
+    return metadata.language.includes('en')
+}
+
+export function isWebSource(sourceType: SourceType) {
+    return (WEB_SOURCE_TYPES as string[]).includes(sourceType)
+}
+
+export function isSDResolution(resolution: Resolution) {
+    return (SD_RESOLUTIONS as string[]).includes(resolution)
+}

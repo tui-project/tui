@@ -3,7 +3,6 @@ import { getTrackerRequest, resetTrackerRequest } from '../../../repositories/tr
 import { logger } from '../../../utils/logger'
 import { parseValidatedBody } from '../../../utils/request-validator'
 import { upload as trackerUpload } from '../../../services/tracker-upload'
-import type { TrackerUploadMetadata } from '../../../services/tracker/tracker'
 
 const patchBodySchema = z.object({
     action: z.literal('retry'),
@@ -40,7 +39,7 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 500, message: 'reset_failed' })
     }
 
-    event.waitUntil(trackerUpload(id, existing.filepath, trackersToRetry, existing.metadata as TrackerUploadMetadata, existing.description))
+    event.waitUntil(trackerUpload(id, existing.filepath, trackersToRetry, existing.metadata, existing.description))
 
     return { id: reset.id, status: reset.status }
 })

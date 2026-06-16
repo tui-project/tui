@@ -112,13 +112,15 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         await expect(handler({} as never)).resolves.toMatchObject({
-            tmdbId: 100,
-            title: 'Detail Title',
-            originalTitle: 'Original',
-            originalLanguage: 'en',
-            year: 2024,
-            imdbId: 'tt123',
-            tvdbId: 456,
+            metadata: {
+                tmdbId: 100,
+                title: 'Detail Title',
+                originalTitle: 'Original',
+                originalLanguage: 'en',
+                year: 2024,
+                imdbId: 'tt123',
+                tvdbId: 456,
+            },
         })
         expect(getExternalIDs).not.toHaveBeenCalled()
     })
@@ -142,7 +144,7 @@ describe('GET /api/metadata route handler', () => {
         findLocale.mockResolvedValue('US')
 
         const handler = await loadHandler()
-        await expect(handler({} as never)).resolves.toMatchObject({ locale: 'US' })
+        await expect(handler({} as never)).resolves.toMatchObject({ metadata: { locale: 'US' } })
         expect(findLocale).toHaveBeenCalledWith('The Office', 100, 'tv')
     })
 
@@ -153,12 +155,14 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         await expect(handler({} as never)).resolves.toMatchObject({
-            tmdbId: 11,
-            title: 'From IMDb',
-            originalTitle: 'Orig IMDb',
-            originalLanguage: 'fr',
-            year: 2001,
-            imdbId: 'tt999',
+            metadata: {
+                tmdbId: 11,
+                title: 'From IMDb',
+                originalTitle: 'Orig IMDb',
+                originalLanguage: 'fr',
+                year: 2001,
+                imdbId: 'tt999',
+            },
         })
         expect(getExternalIDs).not.toHaveBeenCalled()
     })
@@ -169,7 +173,9 @@ describe('GET /api/metadata route handler', () => {
         findByExternalID.mockResolvedValue({ id: 12, title: 'From TVDB', original_title: 'Orig TVDB', original_language: 'es', year: 2010, external_ids: { tvdb_id: 222 } })
 
         const handler = await loadHandler()
-        await expect(handler({} as never)).resolves.toMatchObject({ tmdbId: 12, title: 'From TVDB', originalTitle: 'Orig TVDB', originalLanguage: 'es', year: 2010, tvdbId: 222 })
+        await expect(handler({} as never)).resolves.toMatchObject({
+            metadata: { tmdbId: 12, title: 'From TVDB', originalTitle: 'Orig TVDB', originalLanguage: 'es', year: 2010, tvdbId: 222 },
+        })
         expect(getExternalIDs).not.toHaveBeenCalled()
     })
 
@@ -192,7 +198,7 @@ describe('GET /api/metadata route handler', () => {
         findLocale.mockResolvedValue('US')
 
         const handler = await loadHandler()
-        await expect(handler({} as never)).resolves.toMatchObject({ locale: 'US' })
+        await expect(handler({} as never)).resolves.toMatchObject({ metadata: { locale: 'US' } })
         expect(findLocale).toHaveBeenCalledWith('The Office', 11, 'tv')
     })
 
@@ -202,7 +208,9 @@ describe('GET /api/metadata route handler', () => {
         findByTitle.mockResolvedValue({ id: 13, title: 'Title Match', original_title: 'Original Match', original_language: 'de', year: 2020 })
 
         const handler = await loadHandler()
-        await expect(handler({} as never)).resolves.toMatchObject({ tmdbId: 13, title: 'Title Match', originalTitle: 'Original Match', originalLanguage: 'de', year: 2020 })
+        await expect(handler({} as never)).resolves.toMatchObject({
+            metadata: { tmdbId: 13, title: 'Title Match', originalTitle: 'Original Match', originalLanguage: 'de', year: 2020 },
+        })
     })
 
     it('uses tv media type when season exists and queries tmdb with tv', async () => {
@@ -224,7 +232,7 @@ describe('GET /api/metadata route handler', () => {
         findByTitle.mockResolvedValue({ id: 20, title: 'Show Title', original_title: 'Show Title', original_language: 'en', year: 2021 })
 
         const handler = await loadHandler()
-        await expect(handler({} as never)).resolves.toMatchObject({ mediaType: 'tv', tmdbId: 20 })
+        await expect(handler({} as never)).resolves.toMatchObject({ metadata: { mediaType: 'tv', tmdbId: 20 } })
         expect(findByTitle).toHaveBeenCalledWith('The Show', 'tv')
     })
 
@@ -235,7 +243,7 @@ describe('GET /api/metadata route handler', () => {
         getExternalIDs.mockResolvedValue({ imdb_id: 'tt000', tvdb_id: undefined })
 
         const handler = await loadHandler()
-        await expect(handler({} as never)).resolves.toMatchObject({ imdbId: 'tt000', tvdbId: undefined })
+        await expect(handler({} as never)).resolves.toMatchObject({ metadata: { imdbId: 'tt000', tvdbId: undefined } })
         expect(getExternalIDs).toHaveBeenCalledWith('42', 'movie')
     })
 
@@ -246,7 +254,7 @@ describe('GET /api/metadata route handler', () => {
         findByTitle.mockResolvedValue({ id: 1, title: 'T', original_title: 'OT', original_language: 'en', year: 2024 })
 
         const handler = await loadHandler()
-        await expect(handler({} as never)).resolves.toMatchObject({ tmdbId: 1 })
+        await expect(handler({} as never)).resolves.toMatchObject({ metadata: { tmdbId: 1 } })
         expect(parseMetadataFromMediainfo).toHaveBeenCalledWith('/media/dir/a.mkv', 'WEB-DL')
     })
 
@@ -283,7 +291,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.imdbId).toBe('tt999')
+        expect(result.metadata.imdbId).toBe('tt999')
     })
 
     it('skips enrichment when getDetails returns null', async () => {
@@ -293,7 +301,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.title).toBe('Parsed Title')
+        expect(result.metadata.title).toBe('Parsed Title')
         expect(findLocale).not.toHaveBeenCalled()
     })
 
@@ -304,7 +312,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.title).toBe('Parsed Title')
+        expect(result.metadata.title).toBe('Parsed Title')
         expect(findLocale).not.toHaveBeenCalled()
     })
 
@@ -337,7 +345,7 @@ describe('GET /api/metadata route handler', () => {
         findLocale.mockResolvedValue('US')
 
         const handler = await loadHandler()
-        await expect(handler({} as never)).resolves.toMatchObject({ locale: 'US' })
+        await expect(handler({} as never)).resolves.toMatchObject({ metadata: { locale: 'US' } })
         expect(findLocale).toHaveBeenCalledWith('The Office', 12, 'tv')
     })
 
@@ -348,7 +356,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.title).toBe('Parsed Title')
+        expect(result.metadata.title).toBe('Parsed Title')
         expect(findLocale).not.toHaveBeenCalled()
     })
 
@@ -370,8 +378,8 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.imdbId).toBeUndefined()
-        expect(result.tvdbId).toBeUndefined()
+        expect(result.metadata.imdbId).toBeUndefined()
+        expect(result.metadata.tvdbId).toBeUndefined()
     })
 
     it('enriches special when season=0 and tvdbId and specialName are present', async () => {
@@ -396,9 +404,9 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.season).toBe(0)
-        expect(result.episode).toBe(2)
-        expect(result.specialName).toBe('Polar Challenge')
+        expect(result.metadata.season).toBe(0)
+        expect(result.metadata.episode).toBe(2)
+        expect(result.metadata.specialName).toBe('Polar Challenge')
         expect(findTvdbSpecial).toHaveBeenCalledWith(74608, 12, 'Polar Challenge')
     })
 
@@ -424,9 +432,9 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.season).toBe(27)
-        expect(result.episode).toBe(0)
-        expect(result.specialName).toBe('Nepal Special')
+        expect(result.metadata.season).toBe(27)
+        expect(result.metadata.episode).toBe(0)
+        expect(result.metadata.specialName).toBe('Nepal Special')
     })
 
     it('calls findTvdbSpecialRange when episodeEnd is set and updates season, episode range and specialName', async () => {
@@ -459,10 +467,10 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.season).toBe(0)
-        expect(result.episode).toBe(3)
-        expect(result.episodeEnd).toBe(8)
-        expect(result.specialName).toBe('The Selection')
+        expect(result.metadata.season).toBe(0)
+        expect(result.metadata.episode).toBe(3)
+        expect(result.metadata.episodeEnd).toBe(8)
+        expect(result.metadata.specialName).toBe('The Selection')
         expect(findTvdbSpecialRange).toHaveBeenCalledWith(311711, 3, 8)
         expect(findTvdbSpecial).not.toHaveBeenCalled()
     })
@@ -490,10 +498,10 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.season).toBe(0)
-        expect(result.episode).toBe(3)
-        expect(result.episodeEnd).toBe(8)
-        expect(result.specialName).toBe('Some Title')
+        expect(result.metadata.season).toBe(0)
+        expect(result.metadata.episode).toBe(3)
+        expect(result.metadata.episodeEnd).toBe(8)
+        expect(result.metadata.specialName).toBe('Some Title')
     })
 
     it('skips range lookup and falls back to findTvdbSpecial when episodeEnd is absent', async () => {
@@ -578,7 +586,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.originalTitle).toBe('Film')
+        expect(result.metadata.originalTitle).toBe('Film')
         expect(getAlternativeTitles).toHaveBeenCalledWith(100, 'movie')
     })
 
@@ -599,7 +607,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.originalTitle).toBe('Фильм')
+        expect(result.metadata.originalTitle).toBe('Фильм')
         expect(getAlternativeTitles).not.toHaveBeenCalled()
     })
 
@@ -625,7 +633,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.originalTitle).toBe('Film RU')
+        expect(result.metadata.originalTitle).toBe('Film RU')
         expect(findLocale).not.toHaveBeenCalled()
     })
 
@@ -640,7 +648,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.originalTitle).toBe('Film RU')
+        expect(result.metadata.originalTitle).toBe('Film RU')
         expect(findLocale).not.toHaveBeenCalled()
         expect(getDetails).toHaveBeenCalledWith('100', 'movie')
     })
@@ -653,7 +661,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.originalTitle).toBeUndefined()
+        expect(result.metadata.originalTitle).toBeUndefined()
     })
 
     it('upgrades BluRay source to UHD BluRay when resolution is 2160p', async () => {
@@ -663,7 +671,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.source).toBe('UHD BluRay')
+        expect(result.metadata.source).toBe('UHD BluRay')
     })
 
     it('does not upgrade BluRay source when resolution is not 2160p', async () => {
@@ -673,7 +681,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.source).toBe('BluRay')
+        expect(result.metadata.source).toBe('BluRay')
     })
 
     it('calls findByTitle with undefined when parsed title is undefined', async () => {
@@ -704,7 +712,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.source).toBe('PAL DVD')
+        expect(result.metadata.source).toBe('PAL DVD')
     })
 
     it('upgrades DVD source to PAL DVD when frameRate is 25', async () => {
@@ -714,7 +722,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.source).toBe('PAL DVD')
+        expect(result.metadata.source).toBe('PAL DVD')
     })
 
     it('upgrades DVD source to PAL DVD when frameRate is 50', async () => {
@@ -724,7 +732,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.source).toBe('PAL DVD')
+        expect(result.metadata.source).toBe('PAL DVD')
     })
 
     it('upgrades DVD source to NTSC DVD when videoStandard is NTSC', async () => {
@@ -734,7 +742,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.source).toBe('NTSC DVD')
+        expect(result.metadata.source).toBe('NTSC DVD')
     })
 
     it('upgrades DVD source to NTSC DVD when frameRate is present and not a PAL rate', async () => {
@@ -744,7 +752,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.source).toBe('NTSC DVD')
+        expect(result.metadata.source).toBe('NTSC DVD')
     })
 
     it('does not upgrade source when source is not DVD', async () => {
@@ -754,7 +762,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.source).toBe('BluRay')
+        expect(result.metadata.source).toBe('BluRay')
     })
 
     it('leaves DVD source unchanged when no videoStandard or frameRate is available', async () => {
@@ -764,6 +772,6 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.source).toBe('DVD')
+        expect(result.metadata.source).toBe('DVD')
     })
 })

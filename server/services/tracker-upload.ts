@@ -6,11 +6,11 @@ import { createGenericTorrent, createTrackerTorrent } from './torrent'
 import { analyzeMediaFileAsText } from './mediainfo'
 import { resolveMediaFilePath } from '../utils/file-system'
 import { createTrackerService } from './tracker/tracker-factory'
-import { TrackerError, type TrackerUploadMetadata } from './tracker/tracker'
+import { TrackerError } from './tracker/tracker'
 import { logger } from '../utils/logger'
 import { injectTorrent } from './torrent-client'
 
-export async function upload(uploadRequestId: string, filepath: string, trackers: TrackerItem[], metadata: TrackerUploadMetadata, description: string) {
+export async function upload(uploadRequestId: string, filepath: string, trackers: TrackerItem[], metadata: Metadata, description: string) {
     const trackerCodes = trackers.map((t) => t.code)
     let trackerTorrentPaths: Record<string, string> = {}
 
@@ -77,7 +77,7 @@ async function uploadToTrackers(
     uploadRequestId: string,
     trackerTorrentPaths: Record<string, string>,
     trackers: TrackerItem[],
-    metadata: TrackerUploadMetadata,
+    metadata: Metadata,
     description: string,
     mediainfoText: string
 ) {

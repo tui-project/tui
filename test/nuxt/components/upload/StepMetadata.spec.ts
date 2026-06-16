@@ -13,35 +13,37 @@ const selectedPath: Path = {
     folder: false,
 }
 
-function createMetadata(overrides: Partial<Metadata> = {}): Metadata {
+function createMetadata(overrides: Partial<Metadata> = {}, filename = 'movie.mkv'): { filename: string; metadata: Metadata } {
     return {
-        fileName: 'movie.mkv',
-        releaseGroup: 'FLUX',
-        mediaType: 'movie',
-        title: 'Dune',
-        originalTitle: 'No Idea',
-        year: 2021,
-        language: ['en'],
-        originalLanguage: 'en',
-        sourceType: 'WEB-DL',
-        source: 'Web',
-        service: 'NF',
-        repack: 1,
-        proper: 1,
-        rerip: 0,
-        cut: 'Extended',
-        hybrid: true,
-        hi10p: false,
-        hasEnglishSubs: false,
-        resolution: '2160p',
-        hdr: ['HDR10+'],
-        videoCodec: 'HEVC',
-        audioCodec: 'DD+',
-        audioChannels: '5.1',
-        audioMetadata: 'Atmos',
-        tmdbId: 438631,
-        imdbId: 'tt1160419',
-        ...overrides,
+        filename,
+        metadata: {
+            releaseGroup: 'FLUX',
+            mediaType: 'movie',
+            title: 'Dune',
+            originalTitle: 'No Idea',
+            year: 2021,
+            language: ['en'],
+            originalLanguage: 'en',
+            sourceType: 'WEB-DL',
+            source: 'Web',
+            service: 'NF',
+            repack: 1,
+            proper: 1,
+            rerip: 0,
+            cut: 'Extended',
+            hybrid: true,
+            hi10p: false,
+            hasEnglishSubs: false,
+            resolution: '2160p',
+            hdr: ['HDR10+'],
+            videoCodec: 'HEVC',
+            audioCodec: 'DD+',
+            audioChannels: '5.1',
+            audioMetadata: 'Atmos',
+            tmdbId: 438631,
+            imdbId: 'tt1160419',
+            ...overrides,
+        },
     }
 }
 
@@ -303,10 +305,7 @@ describe('StepMetadata', () => {
     })
 
     it('uses existing model metadata without refetching and updates model when path changes', async () => {
-        const model = createMetadata({
-            fileName: 'existing.mkv',
-            title: 'Existing Title',
-        })
+        const model = createMetadata({ title: 'Existing Title' })
         const onUpdateModelValue = vi.fn()
         const nextPath: Path = {
             label: '/media/nas/next.mkv',
@@ -324,7 +323,7 @@ describe('StepMetadata', () => {
         })
 
         expect($fetch).not.toHaveBeenCalled()
-        expect(screen.getByLabelText('selected-file-or-folder').textContent).toBe('File: existing.mkv')
+        expect(screen.getByLabelText('selected-file-or-folder').textContent).toBe('File: movie.mkv')
         expect(screen.getByRole('textbox', { name: 'Title' }).getAttribute('value')).toBe('Existing Title')
 
         await rerender({
@@ -589,7 +588,7 @@ describe('StepMetadata', () => {
         await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
 
         await waitFor(() => {
-            expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ title: 'Dune' }))
+            expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ title: 'Dune' }) }))
         })
     })
 
@@ -707,8 +706,7 @@ describe('StepMetadata', () => {
         const user = userEvent.setup()
         vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(createMetadata({ mediaType: 'tv', season: 0, episode: 3, episodeEnd: 8, tvdbId: 311711 })))
 
-        const modelRef = ref<Metadata | undefined>()
-        await renderSuspended(StepMetadata, { props: { selectedPath }, attrs: { modelValue: modelRef } })
+        await renderSuspended(StepMetadata, { props: { selectedPath } })
         await screen.findByDisplayValue('Dune')
 
         // toggle off — input should hide but state.episodeEnd not yet cleared
@@ -845,7 +843,7 @@ describe('StepMetadata', () => {
         await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
 
         await waitFor(() => {
-            expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ episodeEnd: 8 }))
+            expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ episodeEnd: 8 }) }))
         })
     })
 
@@ -861,7 +859,7 @@ describe('StepMetadata', () => {
         await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
 
         await waitFor(() => {
-            expect(onUpdateModelValue).toHaveBeenCalledWith(expect.not.objectContaining({ episodeEnd: expect.anything() }))
+            expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.not.objectContaining({ episodeEnd: expect.anything() }) }))
         })
     })
 

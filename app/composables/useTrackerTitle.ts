@@ -13,7 +13,7 @@ export function useTrackerTitle() {
         try {
             const { title } = await $fetch<{ title: string }>(`/api/tracker/${trackerCode}/title`, {
                 method: 'POST',
-                body: { metadata: sanitizeMetadataForUpload(metadata) },
+                body: { metadata },
             })
             return title
         } catch {
@@ -29,8 +29,4 @@ export function useTrackerTitle() {
         loading,
         error: readonly(error),
     }
-}
-
-function sanitizeMetadataForUpload(metadata: Metadata): Partial<Metadata> {
-    return Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== null && value !== '')) as Partial<Metadata>
 }

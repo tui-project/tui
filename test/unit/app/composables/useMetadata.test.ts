@@ -9,36 +9,38 @@ describe('useMetadata composable', () => {
     })
 
     it('fetches metadata and updates loading state on success', async () => {
-        const metadata = {
-            fileName: 'movie.mkv',
-            releaseGroup: 'RG',
-            mediaType: 'movie',
-            title: 'My Movie',
-            originalTitle: 'My Movie',
-            year: 2020,
-            season: null,
-            episode: null,
-            language: ['en'],
-            originalLanguage: 'en',
-            sourceType: 'bluray',
-            source: 'BD',
-            service: 'local',
-            repack: 0,
-            proper: 0,
-            cut: '',
-            hybrid: false,
-            resolution: '1080p',
-            hdr: [],
-            videoCodec: 'h264',
-            audioCodec: 'aac',
-            audioChannels: '2.0',
-            audioMetadata: '',
-            tmdbId: null,
-            imdbId: '',
-            tvdbId: null,
+        const response = {
+            filename: 'movie.mkv',
+            metadata: {
+                releaseGroup: 'RG',
+                mediaType: 'movie',
+                title: 'My Movie',
+                originalTitle: 'My Movie',
+                year: 2020,
+                season: null,
+                episode: null,
+                language: ['en'],
+                originalLanguage: 'en',
+                sourceType: 'bluray',
+                source: 'BD',
+                service: 'local',
+                repack: 0,
+                proper: 0,
+                cut: '',
+                hybrid: false,
+                resolution: '1080p',
+                hdr: [],
+                videoCodec: 'h264',
+                audioCodec: 'aac',
+                audioChannels: '2.0',
+                audioMetadata: '',
+                tmdbId: null,
+                imdbId: '',
+                tvdbId: null,
+            },
         }
 
-        const fetchMock = vi.fn().mockResolvedValue(metadata)
+        const fetchMock = vi.fn().mockResolvedValue(response)
         vi.stubGlobal('$fetch', fetchMock)
 
         const { useMetadata } = await import('../../../../app/composables/useMetadata')
@@ -50,7 +52,7 @@ describe('useMetadata composable', () => {
             method: 'GET',
             query: { path: '/some/path' },
         })
-        expect(result).toEqual(metadata)
+        expect(result).toEqual(response)
         expect(error.value).toBe(false)
         expect(loading.value).toBe(false)
     })
@@ -89,7 +91,7 @@ describe('useMetadata composable', () => {
         expect(second).toBeUndefined()
         expect(fetchMock).toHaveBeenCalledTimes(1)
 
-        resolveFetch?.({ fileName: 'x' })
+        resolveFetch?.({ filename: 'x', metadata: {} })
         await first
 
         expect(loading.value).toBe(false)

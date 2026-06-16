@@ -11,7 +11,7 @@ export function useMetadata() {
         error.value = false
 
         try {
-            return await $fetch<Metadata>('/api/metadata', {
+            return await $fetch<{ filename: string; metadata: PartialMetadata }>('/api/metadata', {
                 method: 'GET',
                 query: { path },
             })

@@ -28,7 +28,7 @@ export interface TrackerItem {
 export interface TrackerRequest {
     id: string
     filepath: string
-    metadata: Omit<Metadata, 'fileName'>
+    metadata: Metadata
     description: string
     status: Status
     trackers: TrackerItem[]

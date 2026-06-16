@@ -1,11 +1,10 @@
 import { getTvdbSeries } from '../../tvdb'
-import type { TrackerUploadMetadata } from '../tracker'
 
 export function hasYearQualifier(title: string): boolean {
     return /\(\d{4}\)$/.test(title.trim())
 }
 
-export async function shouldIncludeTvYear(metadata: TrackerUploadMetadata): Promise<boolean> {
+export async function shouldIncludeTvYear(metadata: Metadata): Promise<boolean> {
     if (!metadata.tvdbId) return false
     const series = await getTvdbSeries(metadata.tvdbId)
     return series != null && hasYearQualifier(series.title)
@@ -20,7 +19,7 @@ export function buildSeasonEpisodeString(season?: number, episode?: number, epis
     return se
 }
 
-export function buildSourceString(metadata: TrackerUploadMetadata): string {
+export function buildSourceString(metadata: Metadata): string {
     switch (metadata.source) {
         case SOURCES.WEB:
             return metadata.service ?? ''

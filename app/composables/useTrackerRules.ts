@@ -18,7 +18,7 @@ export function useTrackerRules() {
         try {
             const { violations } = await $fetch<{ violations: RuleViolation[] }>(`/api/tracker/${trackerCode}/rules`, {
                 method: 'POST',
-                body: { metadata: sanitizeMetadataForUpload(metadata) },
+                body: { metadata },
             })
             return violations
         } catch {
@@ -34,8 +34,4 @@ export function useTrackerRules() {
         loading,
         error: readonly(error),
     }
-}
-
-function sanitizeMetadataForUpload(metadata: Metadata): Partial<Metadata> {
-    return Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== null && value !== '')) as Partial<Metadata>
 }

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultFindDuplicates, getTorrents, upload } from '../../../../../server/services/tracker/unit3d-tracker'
-import { TrackerError, type TrackerUploadMetadata, type TrackerUploadOptions } from '../../../../../server/services/tracker/tracker'
+import { TrackerError, type TrackerUploadOptions } from '../../../../../server/services/tracker/tracker'
 import { parseMetadataFromName } from '../../../../../server/services/media-name-parser'
 
 vi.mock('node:fs/promises', () => ({ readFile: vi.fn() }))
@@ -14,7 +14,7 @@ vi.mock('../../../../../server/services/media-name-parser', () => ({
 
 const readFileMock = vi.mocked(readFile)
 
-const baseMetadata: TrackerUploadMetadata = {
+const baseMetadata: Metadata = {
     title: 'Movie',
     originalTitle: 'Movie',
     releaseGroup: 'GROUP',
@@ -30,6 +30,7 @@ const baseMetadata: TrackerUploadMetadata = {
     threeD: false,
     hybrid: false,
     resolution: RESOLUTIONS['1080p'],
+    hdr: [],
     videoCodec: 'H.264',
     audioCodec: 'DTS-HD MA',
     audioChannels: '5.1',
@@ -341,7 +342,7 @@ describe('defaultFindDuplicates', () => {
     })
 
     it('filters out entries where HDR status differs (SDR upload vs HDR result)', () => {
-        expect(defaultFindDuplicates([makeTorrentResult({ hdr: ['HDR'] })], { ...baseMetadata, hdr: undefined })).toHaveLength(0)
+        expect(defaultFindDuplicates([makeTorrentResult({ hdr: ['HDR'] })], { ...baseMetadata, hdr: [] })).toHaveLength(0)
     })
 
     it('filters out entries where HDR status differs (HDR upload vs SDR result)', () => {

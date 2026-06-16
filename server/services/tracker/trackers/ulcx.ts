@@ -1,4 +1,3 @@
-import { isDvd, isRemux, isHdtv, isEncode, isForeignContent, hasEnglishAudio, isWebSource } from '../util/metadata-util'
 import {
     type HdrTier,
     type TorrentContext as BaseTorrentContext,
@@ -9,7 +8,7 @@ import {
     getCodecFamily,
     WEB_SOURCE_RANK,
 } from '../util/tracker-util'
-import type { RuleViolation, TrackerService, TrackerUploadMetadata, TrackerUploadOptions } from '../tracker'
+import type { RuleViolation, TrackerService, TrackerUploadOptions } from '../tracker'
 import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
 import { getTorrents, upload } from '../unit3d-tracker'
 import { logger } from '../../../utils/logger'
@@ -76,7 +75,7 @@ export function ulcxTrackerService(url: string, apiKey: string): TrackerService 
         checkRules,
         upload: (torrentPath, metadata, description, mediainfoText, title: string, options: TrackerUploadOptions) =>
             upload(url, apiKey, torrentPath, metadata, description, mediainfoText, title, options),
-        findDuplicates: (metadata: TrackerUploadMetadata) => findDuplicates(url, apiKey, metadata),
+        findDuplicates: (metadata: Metadata) => findDuplicates(url, apiKey, metadata),
     }
 }
 
@@ -84,7 +83,7 @@ export function ulcxTrackerService(url: string, apiKey: string): TrackerService 
  * Full Disc, Remux Template            : Name AKA Original LOCALE Year S##E## Cut Ratio Hybrid REPACK PROPER RERip Resolution Edition Region 3D SOURCE TYPE Hi10P HDR Vcodec Dub Acodec Channels Object-Tag
  * Encode, WEB-DL, WEBRip, HDTV Template: Name AKA Original LOCALE Year S##E## Cut Ratio Hybrid REPACK PROPER RERip Resolution Edition 3D SOURCE TYPE Dub Acodec Channels Object Hi10P HDR Vcodec-Tag
  */
-async function buildTitle(metadata: TrackerUploadMetadata) {
+async function buildTitle(metadata: Metadata) {
     const parts: string[] = [metadata.title]
 
     if (metadata.originalTitle && metadata.originalTitle !== metadata.title) parts.push(`AKA ${metadata.originalTitle}`)
@@ -107,7 +106,7 @@ async function buildTitle(metadata: TrackerUploadMetadata) {
 
     if (isRemux(metadata)) {
         if (metadata.hi10p) parts.push('Hi10P')
-        if (metadata.hdr?.length) parts.push(metadata.hdr.join(' '))
+        if (metadata.hdr.length) parts.push(metadata.hdr.join(' '))
         if (!isDvd(metadata)) parts.push(metadata.videoCodec)
         parts.push(buildDubString(metadata.language, metadata.originalLanguage))
         parts.push(metadata.audioCodec)
@@ -119,14 +118,14 @@ async function buildTitle(metadata: TrackerUploadMetadata) {
         parts.push(metadata.audioChannels)
         if (metadata.audioMetadata) parts.push(metadata.audioMetadata)
         if (metadata.hi10p) parts.push('Hi10P')
-        if (metadata.hdr?.length) parts.push(metadata.hdr.join(' '))
+        if (metadata.hdr.length) parts.push(metadata.hdr.join(' '))
         if (!isDvd(metadata)) parts.push(metadata.videoCodec)
     }
 
     return `${parts.filter(Boolean).join(' ')}-${metadata.releaseGroup ?? 'NOGROUP'}`
 }
 
-function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
+function checkRules(metadata: Metadata): RuleViolation[] {
     const violations: RuleViolation[] = []
 
     if (metadata.releaseGroup && BANNED_GROUPS.has(metadata.releaseGroup.toLowerCase())) {
@@ -228,7 +227,7 @@ type TorrentContext = BaseTorrentContext & { isNoGrp: boolean }
  *  - rules    : https://upload.cx/pages/1
  *  - API spec : https://upload.cx/wikis/38
  */
-async function findDuplicates(url: string, apiKey: string, metadata: TrackerUploadMetadata) {
+async function findDuplicates(url: string, apiKey: string, metadata: Metadata) {
     const sourceTypes = isWebSource(metadata.sourceType) ? WEB_SOURCE_TYPES : [metadata.sourceType]
 
     const candidates = await getTorrents(url, apiKey, {
@@ -240,7 +239,7 @@ async function findDuplicates(url: string, apiKey: string, metadata: TrackerUplo
         episodeNumber: metadata.mediaType === MEDIA_TYPES.TV ? (metadata.episode ?? 0) : undefined,
     })
 
-    const uploadHdrTier = getHdrTier(metadata.hdr ?? [])
+    const uploadHdrTier = getHdrTier(metadata.hdr)
     const uploadContext: TorrentContext = {
         slot: getSlot(metadata.sourceType, uploadHdrTier, metadata.videoCodec, metadata.service, metadata.cut, metadata.ratio),
         hdrTier: uploadHdrTier,

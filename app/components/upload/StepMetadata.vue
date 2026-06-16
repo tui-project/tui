@@ -13,7 +13,8 @@ type SelectOption = {
 type Schema = z.output<typeof schema>
 
 const props = defineProps<{ selectedPath?: Path }>()
-const metadata = defineModel<Metadata | undefined>()
+const metadata = defineModel<{ filename: string; metadata: Metadata } | undefined>()
+const prefetched = defineModel<{ filename: string; metadata: PartialMetadata } | undefined>('prefetched')
 const emit = defineEmits<{
     back: []
     next: []
@@ -331,7 +332,6 @@ const languageOptions: SelectOption[] = [
 
 const schema = z
     .object({
-        fileName: z.string(),
         mediaType: z.enum(MEDIA_TYPES, { error: 'Media type is required' }),
         title: z.string().trim().min(1, 'Title is required'),
         originalTitle: z.string().optional(),
@@ -363,7 +363,7 @@ const schema = z
         hybrid: z.boolean(),
         hi10p: z.boolean(),
         hasEnglishSubs: z.boolean(),
-        hdr: z.array(z.enum(HDR_TYPES)).optional(),
+        hdr: z.array(z.enum(HDR_TYPES)),
         locale: z.string().optional(),
     })
     .superRefine((value, ctx) => {
@@ -384,8 +384,8 @@ const schema = z
         }
     })
 
-const state = reactive<Metadata>({
-    fileName: '',
+const filename = ref('')
+const state = reactive<PartialMetadata>({
     repack: 0,
     proper: 0,
     rerip: 0,
@@ -393,6 +393,7 @@ const state = reactive<Metadata>({
     hi10p: false,
     hasEnglishSubs: false,
     language: [],
+    hdr: [],
     originalLanguage: '',
     imdbId: '',
 })
@@ -415,18 +416,28 @@ onMounted(async () => {
         return
     }
 
-    if (metadata.value?.fileName) {
-        Object.assign(state, metadata.value)
+    if (metadata.value) {
+        filename.value = metadata.value.filename
+        Object.assign(state, metadata.value.metadata)
         showMultiEpisode.value = state.episodeEnd !== undefined
+        return
+    }
 
+    if (prefetched.value) {
+        filename.value = prefetched.value.filename
+        Object.assign(state, prefetched.value.metadata)
+        showMultiEpisode.value = state.episodeEnd !== undefined
         return
     }
 
     const data = await getMetadata(path)
-    Object.assign(state, data)
+    if (data) {
+        Object.assign(state, data.metadata)
+        filename.value = data.filename
+        prefetched.value = data
+    }
 
     showMultiEpisode.value = state.episodeEnd !== undefined
-    metadata.value = state
 })
 
 watch(
@@ -442,7 +453,7 @@ function onToggleMultiEpisode(value: boolean) {
 
 function onSubmit(event: FormSubmitEvent<Schema>) {
     if (!showMultiEpisode.value) event.data.episodeEnd = undefined
-    metadata.value = event.data
+    metadata.value = { filename: filename.value, metadata: event.data }
     emit('next')
 }
 </script>
@@ -458,7 +469,7 @@ function onSubmit(event: FormSubmitEvent<Schema>) {
                     </div>
                 </div>
                 <p v-if="selectedPathValue && !loading && !error" class="text-xs text-muted" aria-label="selected-file-or-folder">
-                    {{ selectedPathLabel }}: <span class="font-medium">{{ state?.fileName || 'Unknown file' }}</span>
+                    {{ selectedPathLabel }}: <span class="font-medium">{{ metadata?.filename ?? filename ?? 'Unknown file' }}</span>
                 </p>
             </div>
         </template>

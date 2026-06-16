@@ -9,31 +9,6 @@ export class TrackerError extends Error {
     }
 }
 
-export type TrackerUploadMetadata = Omit<Metadata, 'fileName'> &
-    Required<
-        Pick<
-            Metadata,
-            | 'title'
-            | 'mediaType'
-            | 'year'
-            | 'language'
-            | 'originalLanguage'
-            | 'source'
-            | 'sourceType'
-            | 'repack'
-            | 'proper'
-            | 'rerip'
-            | 'hybrid'
-            | 'hi10p'
-            | 'resolution'
-            | 'videoCodec'
-            | 'audioCodec'
-            | 'audioChannels'
-            | 'tmdbId'
-            | 'imdbId'
-        >
-    >
-
 export interface TrackerUploadOptions {
     anonymous: boolean
     modQueueOptIn: boolean
@@ -51,8 +26,8 @@ export interface DuplicateEntry {
 }
 
 export interface TrackerService {
-    getTitle(metadata: TrackerUploadMetadata): Promise<string>
-    upload(torrentPath: string, metadata: TrackerUploadMetadata, description: string, mediainfoText: string, title: string, options: TrackerUploadOptions): Promise<string>
-    checkRules(metadata: TrackerUploadMetadata): RuleViolation[]
-    findDuplicates(metadata: TrackerUploadMetadata): Promise<DuplicateEntry[]>
+    getTitle(metadata: Metadata): Promise<string>
+    upload(torrentPath: string, metadata: Metadata, description: string, mediainfoText: string, title: string, options: TrackerUploadOptions): Promise<string>
+    checkRules(metadata: Metadata): RuleViolation[]
+    findDuplicates(metadata: Metadata): Promise<DuplicateEntry[]>
 }

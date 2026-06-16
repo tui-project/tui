@@ -1,7 +1,6 @@
-import { hasEnglishAudio, isForeignContent, isRemux, isSDResolution, isWebSource } from '../util/metadata-util'
 import { type HdrTier, type TorrentContext, type TorrentRule, SLOT_TIERS, HDR_TIER_TRUMPS, getHdrTier, getCodecFamily, WEB_SOURCE_RANK } from '../util/tracker-util'
 import { getLanguageDisplayName } from '../../../repositories/language-repository'
-import type { DuplicateEntry, RuleViolation, TrackerService, TrackerUploadMetadata, TrackerUploadOptions } from '../tracker'
+import type { DuplicateEntry, RuleViolation, TrackerService, TrackerUploadOptions } from '../tracker'
 import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
 import { getTorrents, upload } from '../unit3d-tracker'
 import { logger } from '../../../utils/logger'
@@ -117,9 +116,9 @@ export function athTrackerService(url: string, apiKey: string): TrackerService {
     return {
         getTitle,
         checkRules,
-        upload: (torrentPath: string, metadata: TrackerUploadMetadata, description: string, mediainfoText: string, title: string, options: TrackerUploadOptions) =>
+        upload: (torrentPath: string, metadata: Metadata, description: string, mediainfoText: string, title: string, options: TrackerUploadOptions) =>
             upload(url, apiKey, torrentPath, metadata, description, mediainfoText, title, options, getExtraFields(metadata)),
-        findDuplicates: (metadata: TrackerUploadMetadata) => findDuplicates(url, apiKey, metadata),
+        findDuplicates: (metadata: Metadata) => findDuplicates(url, apiKey, metadata),
     }
 }
 
@@ -127,7 +126,7 @@ export function athTrackerService(url: string, apiKey: string): TrackerService {
  * WEB-DL / WEBRip / Encode: Title [AKA Original] LOCALE Year S##E## [Cut] [Ratio] [Hybrid] [REPACK] [PROPER] [RERIP] [Language] Resolution [Service] Source Type [Dub] AudioCodec Channels [Metadata] [HDR] VideoCodec-Tag
  * Remux                   : Title [AKA Original] LOCALE Year S##E## [Cut] [Ratio] [Hybrid] [REPACK] [PROPER] [RERIP] [Language] Resolution Source REMUX [HDR] VideoCodec [Dub] AudioCodec Channels [Metadata]-Tag
  */
-async function getTitle(metadata: TrackerUploadMetadata): Promise<string> {
+async function getTitle(metadata: Metadata): Promise<string> {
     const parts: string[] = [metadata.title]
 
     if (metadata.originalTitle && metadata.originalTitle !== metadata.title) parts.push(`AKA ${metadata.originalTitle}`)
@@ -150,7 +149,7 @@ async function getTitle(metadata: TrackerUploadMetadata): Promise<string> {
     parts.push(buildTypeString(metadata.sourceType))
 
     if (isRemux(metadata)) {
-        if (metadata.hdr?.length) parts.push(metadata.hdr.join(' '))
+        if (metadata.hdr.length) parts.push(metadata.hdr.join(' '))
         parts.push(metadata.videoCodec)
         parts.push(buildDubString(metadata.language, metadata.originalLanguage))
         parts.push(metadata.audioCodec)
@@ -161,7 +160,7 @@ async function getTitle(metadata: TrackerUploadMetadata): Promise<string> {
         parts.push(metadata.audioCodec)
         parts.push(metadata.audioChannels)
         if (metadata.audioMetadata) parts.push(metadata.audioMetadata)
-        if (metadata.hdr?.length) parts.push(metadata.hdr.join(' '))
+        if (metadata.hdr.length) parts.push(metadata.hdr.join(' '))
         parts.push(metadata.videoCodec)
     }
 
@@ -178,7 +177,7 @@ async function buildLanguageString(languages: string[]): Promise<string> {
     return displayName ? displayName.toUpperCase() : ''
 }
 
-function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
+function checkRules(metadata: Metadata): RuleViolation[] {
     const violations: RuleViolation[] = []
 
     if (metadata.releaseGroup) {
@@ -232,13 +231,11 @@ function checkRules(metadata: TrackerUploadMetadata): RuleViolation[] {
     return violations
 }
 
-function getExtraFields(metadata: TrackerUploadMetadata): Record<string, string> {
-    const hdr = metadata.hdr ?? []
-
+function getExtraFields(metadata: Metadata): Record<string, string> {
     return {
-        dv: hdr.includes(HDR_TYPES.DV) ? '1' : '0',
-        hdr: hdr.includes(HDR_TYPES.HDR10) ? '1' : '0',
-        hdr10p: hdr.includes(HDR_TYPES.HDR10_PLUS) ? '1' : '0',
+        dv: metadata.hdr.includes(HDR_TYPES.DV) ? '1' : '0',
+        hdr: metadata.hdr.includes(HDR_TYPES.HDR10) ? '1' : '0',
+        hdr10p: metadata.hdr.includes(HDR_TYPES.HDR10_PLUS) ? '1' : '0',
         sd: isSDResolution(metadata.resolution) ? '1' : '0',
     }
 }
@@ -256,7 +253,7 @@ const SD_SOURCE_TRUMP_ORDER: Record<string, number> = {
  *                   : https://aither.cc/wikis/82
  *  - API spec       : https://aither.cc/pages/api
  */
-async function findDuplicates(url: string, apiKey: string, metadata: TrackerUploadMetadata): Promise<DuplicateEntry[]> {
+async function findDuplicates(url: string, apiKey: string, metadata: Metadata): Promise<DuplicateEntry[]> {
     const resolutions = isSDResolution(metadata.resolution) ? SD_RESOLUTIONS : [metadata.resolution]
     const isWebFamily = isWebSource(metadata.sourceType)
 
@@ -269,8 +266,7 @@ async function findDuplicates(url: string, apiKey: string, metadata: TrackerUplo
         episodeNumber: metadata.mediaType === MEDIA_TYPES.TV ? (metadata.episode ?? 0) : undefined,
     })
 
-    const hdr = metadata.hdr ?? []
-    const uploadHdrTier = getHdrTier(hdr)
+    const uploadHdrTier = getHdrTier(metadata.hdr)
     const sourceTrumpOrder = isSDResolution(metadata.resolution) ? SD_SOURCE_TRUMP_ORDER : WEB_SOURCE_RANK
 
     const uploadContext: TorrentContext = {

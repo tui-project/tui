@@ -19,23 +19,6 @@ const emit = defineEmits<{
 const toast = useToast()
 const { getSettings, loading: settingsLoading } = useSettings()
 const { getTitle, loading: titlesLoading } = useTrackerTitle()
-
-const {
-    pending: uploadPending,
-    error: uploadError,
-    execute: executeUpload,
-} = useFetch('/api/tracker/requests', {
-    immediate: false,
-    method: 'POST',
-    body: computed(() => ({
-        filepath: props.sourcePath,
-        metadata: props.metadata,
-        description: props.description,
-        trackers: uploadableTrackers.value,
-    })),
-    watch: false,
-})
-
 const { getViolations, loading: rulesLoading } = useTrackerRules()
 const { getDuplicates, loading: duplicatesLoading } = useTrackerDuplicates()
 
@@ -64,6 +47,22 @@ const uploadableTrackers = computed(() =>
 const canSubmit = computed(() => {
     if (props.selectedTrackers.length === 0 || !props.sourcePath?.trim() || !props.metadata) return false
     return uploadableTrackers.value.length > 0
+})
+
+const {
+    pending: uploadPending,
+    error: uploadError,
+    execute: executeUpload,
+} = useFetch('/api/tracker/requests', {
+    immediate: false,
+    method: 'POST',
+    body: computed(() => ({
+        filepath: props.sourcePath,
+        metadata: props.metadata,
+        description: props.description,
+        trackers: uploadableTrackers.value,
+    })),
+    watch: false,
 })
 
 onMounted(async () => {
