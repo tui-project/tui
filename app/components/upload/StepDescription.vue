@@ -2,7 +2,6 @@
 import { useBbcodeRender } from '~/composables/useBbcodeRender'
 import { usePreviewImageLoadingState } from '~/composables/usePreviewImageLoadingState'
 import { useScreenshots } from '~/composables/useScreenshots'
-import type { Path } from './upload.types'
 import StepNavigationButtons from './StepNavigationButtons.vue'
 
 const description = defineModel<string>({ default: '' })

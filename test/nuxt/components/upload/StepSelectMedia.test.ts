@@ -1,130 +1,139 @@
 import { renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { nextTick, ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Path } from '~/composables/useGetPaths'
 import StepSelectMedia from '~/components/upload/StepSelectMedia.vue'
 
-const fetchMock = vi.fn()
+const FILE: Path = { label: '/media/movie.mkv', value: '/media/movie.mkv', icon: 'i-lucide-file', folder: false }
+const FOLDER: Path = { label: '/media', value: '/media', icon: 'i-lucide-folder', folder: true }
+const ROOT_PATHS: Path[] = [FOLDER]
+
+let capturedParent: Ref<string> | null = null
+const mockPending = ref(false)
+const mockData = ref<Path[] | null>(null)
+const mockError = ref<Error | null>(null)
+const mockRefresh = vi.fn()
+
+vi.mock('~/composables/useGetPaths', () => ({
+    useGetPaths: (parent: Ref<string>) => {
+        capturedParent = parent
+        return { pending: mockPending, data: mockData, error: mockError, refresh: mockRefresh }
+    },
+}))
 
 beforeEach(() => {
     vi.clearAllMocks()
-    fetchMock.mockResolvedValue([{ path: '/media', folder: true }])
-    vi.stubGlobal('$fetch', fetchMock)
+    capturedParent = null
+    mockPending.value = false
+    mockData.value = ROOT_PATHS
+    mockError.value = null
 })
 
-function mockFolderNavigation() {
-    fetchMock.mockImplementation(async (_url, options?: { query?: { parent?: string } }) =>
-        options?.query?.parent === '/media' ? [{ path: '/media/movie.mkv', folder: false }] : [{ path: '/media', folder: true }]
-    )
+async function selectFolder() {
+    const user = userEvent.setup()
+    await renderSuspended(StepSelectMedia)
+    await user.click(await screen.findByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: '/media' }))
+    await screen.findByText('Selected folder')
+    return user
 }
 
 describe('StepSelectMedia', () => {
-    describe('initial fetch', () => {
+    describe('initial parent derivation', () => {
         it.each([
-            { desc: 'no initial selection fetches root', modelValue: undefined, expectedQuery: undefined },
-            {
-                desc: 'pre-selected file fetches parent directory',
-                modelValue: { label: '/media/movie.mkv', value: '/media/movie.mkv', icon: 'i-lucide-file', folder: false },
-                expectedQuery: { parent: '/media' },
-            },
-        ])('$desc', async ({ modelValue, expectedQuery }) => {
-            await renderSuspended(StepSelectMedia, { props: modelValue ? { modelValue } : {} })
-
-            await waitFor(() => {
-                expect(fetchMock).toHaveBeenCalledWith('/api/paths', expect.objectContaining({ query: expectedQuery }))
-            })
+            ['no selection', undefined, ''],
+            ['pre-selected file', FILE, '/media'],
+            ['pre-selected file at root level (no directory)', { ...FILE, value: 'movie.mkv', label: 'movie.mkv' }, 'movie.mkv'],
+            ['pre-selected folder', FOLDER, '/media'],
+        ])('%s', async (_, modelValue, expectedParent) => {
+            await renderSuspended(StepSelectMedia, { props: { modelValue } })
+            expect(capturedParent!.value).toBe(expectedParent)
         })
     })
 
     describe('search term parent derivation', () => {
         it.each([
-            ['/media/a/file.mkv', { parent: '/media/a' }],
-            ['/media/a/sub/', { parent: '/media/a/sub' }],
-        ])('fetches correct parent when search is "%s"', async (input, expectedQuery) => {
+            ['/media/a/file.mkv', '/media/a'],
+            ['/media/a/sub/', '/media/a/sub'],
+        ])('updates parent from "%s"', async (input, expectedParent) => {
             const user = userEvent.setup()
             await renderSuspended(StepSelectMedia)
-            vi.clearAllMocks()
-
-            const sourceInput = await screen.findByRole('combobox')
-            await user.clear(sourceInput)
-            await user.type(sourceInput, input)
-
-            await waitFor(() => {
-                expect(fetchMock).toHaveBeenCalledWith('/api/paths', expect.objectContaining({ query: expectedQuery }))
-            })
+            await user.type(await screen.findByRole('combobox'), input)
+            await waitFor(() => expect(capturedParent!.value).toBe(expectedParent))
         })
 
-        it('does not re-fetch when search has no directory separator', async () => {
+        it('does not update parent when input has no directory separator', async () => {
             const user = userEvent.setup()
             await renderSuspended(StepSelectMedia)
-            vi.clearAllMocks()
+            await user.type(await screen.findByRole('combobox'), 'movie')
+            expect(capturedParent!.value).toBe('')
+        })
+    })
 
-            const sourceInput = await screen.findByRole('combobox')
-            await user.clear(sourceInput)
-            await user.type(sourceInput, 'movie')
+    describe('loading state', () => {
+        it('opens menu when loading ends while a selection exists', async () => {
+            mockPending.value = true
+            await renderSuspended(StepSelectMedia, { props: { modelValue: FOLDER } })
+            expect(screen.queryAllByRole('option')).toHaveLength(0)
 
-            expect(fetchMock).not.toHaveBeenCalled()
+            mockPending.value = false
+            await waitFor(() => expect(screen.queryAllByRole('option')).not.toHaveLength(0))
+        })
+
+        it('closes menu when loading starts', async () => {
+            const user = userEvent.setup()
+            await renderSuspended(StepSelectMedia, { props: { modelValue: FOLDER } })
+            await user.click(await screen.findByRole('combobox'))
+            await screen.findByRole('option', { name: '/media' })
+
+            mockPending.value = true
+            await waitFor(() => expect(screen.queryByRole('option')).toBeNull())
         })
     })
 
     describe('folder selection', () => {
-        it('loads children, shows selected folder, and does not re-fetch on search term echo', async () => {
-            const user = userEvent.setup()
-            mockFolderNavigation()
-
-            await renderSuspended(StepSelectMedia)
-            vi.clearAllMocks()
-
-            const sourceInput = await screen.findByRole('combobox')
-            await user.click(sourceInput)
-            await user.click(await screen.findByRole('option', { name: '/media' }))
-
-            await waitFor(async () => {
-                expect(fetchMock).toHaveBeenCalledWith('/api/paths', expect.objectContaining({ query: { parent: '/media' } }))
-                expect(await screen.findByText('Selected folder')).toBeTruthy()
-            })
-            expect(fetchMock).toHaveBeenCalledTimes(1)
+        it('sets parent and shows selected folder label', async () => {
+            await selectFolder()
+            expect(capturedParent!.value).toBe('/media')
+            expect(screen.getByText('Selected folder')).toBeTruthy()
         })
 
-        it('falls back to root when parent fetch fails', async () => {
+        it('does not update parent when search term echoes the selected folder', async () => {
+            await selectFolder()
+            // UInputMenu automatically emits update:search-term with the selected value after selection;
+            // the guard in onSearchTermUpdate prevents that echo from overriding parent
+            expect(capturedParent!.value).toBe('/media')
+        })
+    })
+
+    describe('file selection', () => {
+        it('shows selected file label without changing parent', async () => {
+            mockData.value = [FILE]
             const user = userEvent.setup()
-            fetchMock.mockImplementation(async (_url, options?: { query?: { parent?: string } }) => {
-                if (options?.query?.parent === '/media') throw new Error('network')
-                return [{ path: '/media', folder: true }]
-            })
-
             await renderSuspended(StepSelectMedia)
+            await user.click(await screen.findByRole('combobox'))
+            await user.click(await screen.findByRole('option', { name: FILE.label }))
+            expect(await screen.findByText('Selected file')).toBeTruthy()
+            expect(capturedParent!.value).toBe('')
+        })
+    })
 
-            const sourceInput = await screen.findByRole('combobox')
-            await user.click(sourceInput)
-            await user.click(await screen.findByRole('option', { name: '/media' }))
-
-            await waitFor(() => {
-                expect(fetchMock).toHaveBeenCalledWith('/api/paths', expect.objectContaining({ query: { parent: '/media' } }))
-                expect(fetchMock).toHaveBeenCalledWith('/api/paths', expect.objectContaining({ query: undefined }))
-            })
+    describe('reset behaviour', () => {
+        it('resets parent when an error occurs after navigation', async () => {
+            await selectFolder()
+            mockError.value = new Error('network')
+            await nextTick()
+            await waitFor(() => expect(capturedParent!.value).toBe(''))
         })
 
-        it('clears selection and reloads root paths', async () => {
-            const user = userEvent.setup()
-            mockFolderNavigation()
-
-            await renderSuspended(StepSelectMedia)
-
-            const sourceInput = await screen.findByRole('combobox')
-            await user.click(sourceInput)
-            await user.click(await screen.findByRole('option', { name: '/media' }))
-            await screen.findByText('Selected folder')
-
-            const clearButton = document.querySelector('[data-slot="trailing"]')
+        it('resets parent and clears selection when the clear button is clicked', async () => {
+            await selectFolder()
+            const clearButton = document.querySelector('[data-slot="trailing"] [data-slot="base"]')
             if (!clearButton) throw new Error('Clear button not found')
-            await user.click(clearButton)
-            await user.clear(sourceInput)
-            await user.tab()
-
-            await waitFor(() => {
-                expect(fetchMock).toHaveBeenCalledWith('/api/paths', expect.objectContaining({ query: undefined }))
-            })
+            await userEvent.setup().click(clearButton)
+            await waitFor(() => expect(capturedParent!.value).toBe(''))
         })
     })
 
@@ -132,39 +141,44 @@ describe('StepSelectMedia', () => {
         it('shows validation error when next is clicked without a selection', async () => {
             const user = userEvent.setup()
             await renderSuspended(StepSelectMedia)
-
             await user.click(await screen.findByRole('button', { name: 'Next' }))
-
             expect(await screen.findByText('Select a file or folder before continuing to the next step.')).toBeTruthy()
         })
 
         it('emits next when a selection exists', async () => {
             const user = userEvent.setup()
             const { emitted } = await renderSuspended(StepSelectMedia)
-
-            const sourceInput = await screen.findByRole('combobox')
-            await user.click(sourceInput)
+            await user.click(await screen.findByRole('combobox'))
             await user.click(await screen.findByRole('option', { name: '/media' }))
-
             await user.click(await screen.findByRole('button', { name: 'Next' }))
-
             expect(emitted()?.next).toHaveLength(1)
         })
     })
 
-    describe('error handling', () => {
-        it('shows error alert with retry button and re-fetches when retry is clicked', async () => {
+    describe('empty data', () => {
+        it('renders no options when data is null', async () => {
+            mockData.value = null
             const user = userEvent.setup()
-            fetchMock.mockRejectedValueOnce(new Error('network')).mockResolvedValue([{ path: '/media', folder: true }])
             await renderSuspended(StepSelectMedia)
+            await user.click(await screen.findByRole('combobox'))
+            expect(screen.queryAllByRole('option')).toHaveLength(0)
+        })
+    })
 
+    describe('error display', () => {
+        it('shows error alert when error is set', async () => {
+            mockError.value = new Error('network')
+            await renderSuspended(StepSelectMedia)
             expect(await screen.findByText('Failed to load paths.')).toBeTruthy()
+        })
 
+        it('calls refresh when the retry button is clicked', async () => {
+            const user = userEvent.setup()
+            mockError.value = new Error('network')
+            await renderSuspended(StepSelectMedia)
+            await screen.findByText('Failed to load paths.')
             await user.click(await screen.findByRole('button', { name: 'Retry' }))
-
-            await waitFor(() => {
-                expect(fetchMock).toHaveBeenCalledTimes(2)
-            })
+            expect(mockRefresh).toHaveBeenCalledTimes(1)
         })
     })
 })

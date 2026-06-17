@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
-import type { Path } from './upload.types'
 import StepNavigationButtons from './StepNavigationButtons.vue'
 import { useMetadata } from '~/composables/useMetadata'
 

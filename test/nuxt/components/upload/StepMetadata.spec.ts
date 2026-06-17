@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event'
 import { ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import StepMetadata from '~/components/upload/StepMetadata.vue'
-import type { Path } from '~/components/upload/upload.types'
 
 const selectedPath: Path = {
     label: '/media/nas/movie.mkv',

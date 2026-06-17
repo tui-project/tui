@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { Path, PathResponse } from './upload.types'
 import StepNavigationButtons from './StepNavigationButtons.vue'
 
 const emit = defineEmits<{
@@ -14,22 +13,7 @@ const searchTerm = ref('')
 const showError = ref(false)
 const menuOpen = ref(false)
 
-const {
-    pending: loading,
-    data: pathData,
-    error,
-    refresh,
-} = useFetch('/api/paths', {
-    query: computed(() => (parent.value ? { parent: parent.value } : undefined)),
-    lazy: true,
-    transform: (paths: PathResponse[]): Path[] =>
-        paths.map((path) => ({
-            label: path.path,
-            value: path.path,
-            icon: path.folder ? 'i-lucide-folder' : 'i-lucide-file',
-            folder: path.folder,
-        })),
-})
+const { pending: loading, data: pathData, error, refresh } = useGetPaths(parent)
 
 const menuItems = computed(() => pathData.value ?? [])
 const shouldVirtualize = computed(() => menuItems.value.length > 50)
@@ -37,6 +21,14 @@ const shouldVirtualize = computed(() => menuItems.value.length > 50)
 watch(error, (err) => {
     if (err && parent.value) {
         parent.value = ''
+    }
+})
+
+watch(loading, (loading) => {
+    if (!loading && selection.value) {
+        menuOpen.value = true
+    } else {
+        menuOpen.value = false
     }
 })
 
@@ -53,7 +45,6 @@ function onSelect(value: Path | null) {
 
     if (value.folder) {
         parent.value = value.value
-        menuOpen.value = true
     }
 }
 
