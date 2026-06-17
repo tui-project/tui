@@ -110,6 +110,7 @@ function buildRequest(overrides: Partial<Record<string, unknown>> = {}) {
             tmdbId: 1,
             imdbId: 'tt1234567',
             tvdbId: undefined,
+            hasEnglishSubs: false,
         },
         description: 'Release description',
         trackers: [{ code: 'ULCX', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP', titleModified: false, anonymous: false, modQueueOptIn: false }],

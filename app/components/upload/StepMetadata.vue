@@ -1,15 +1,7 @@
 <script setup lang="ts">
-import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import StepNavigationButtons from './StepNavigationButtons.vue'
 import { useMetadata } from '~/composables/useMetadata'
-
-type SelectOption = {
-    label: string
-    value: string
-}
-
-type Schema = z.output<typeof schema>
 
 const props = defineProps<{ selectedPath?: Path }>()
 const metadata = defineModel<{ filename: string; metadata: Metadata } | undefined>()
@@ -18,370 +10,6 @@ const emit = defineEmits<{
     back: []
     next: []
 }>()
-
-const mediaTypeOptions: SelectOption[] = [
-    { label: 'Movie', value: 'movie' },
-    { label: 'TV', value: 'tv' },
-]
-
-const sourceOptions: SelectOption[] = [
-    { label: 'Web', value: 'Web' },
-    { label: 'DVD', value: 'DVD' },
-    { label: 'NTSC DVD', value: 'NTSC DVD' },
-    { label: 'PAL DVD', value: 'PAL DVD' },
-    { label: 'HDDVD', value: 'HDDVD' },
-    { label: '3D BluRay', value: '3D BluRay' },
-    { label: 'BluRay', value: 'BluRay' },
-    { label: 'UHD BluRay', value: 'UHD BluRay' },
-    { label: 'HDTV', value: 'HDTV' },
-    { label: 'UHDTV', value: 'UHDTV' },
-]
-
-const sourceTypeOptions: SelectOption[] = [
-    { label: 'Remux', value: 'REMUX' },
-    { label: 'Encode', value: 'ENCODE' },
-    { label: 'Web-DL', value: 'WEB-DL' },
-    { label: 'WebRip', value: 'WEBRIP' },
-    { label: 'HDTV', value: 'HDTV' },
-]
-
-const serviceOptions: SelectOption[] = [
-    { label: '9Now', value: '9NOW' },
-    { label: 'A&E', value: 'AE' },
-    { label: 'ABC (AU) iView', value: 'AUBC' },
-    { label: 'ABC (US)', value: 'AMBC' },
-    { label: 'Adult Swim', value: 'AS' },
-    { label: 'Al Jazeera English', value: 'AJAZ' },
-    { label: 'All4 (Channel 4)', value: 'ALL4' },
-    { label: 'Amazon Prime Video', value: 'AMZN' },
-    { label: 'AMC', value: 'AMC' },
-    { label: `America's Test Kitchen`, value: 'ATK' },
-    { label: 'Animal Planet', value: 'ANPL' },
-    { label: 'AnimeLab', value: 'ANLB' },
-    { label: 'AOL', value: 'AOL' },
-    { label: 'Apple TV+', value: 'ATVP' },
-    { label: 'ARD', value: 'ARD' },
-    { label: 'BBC iPlayer', value: 'iP' },
-    { label: 'Binge', value: 'BNGE' },
-    { label: 'Blackpills', value: 'BKPL' },
-    { label: 'Boomerang', value: 'BOOM' },
-    { label: 'BravoTV', value: 'BRAV' },
-    { label: 'Bravia Core', value: 'BCORE' },
-    { label: 'C More', value: 'CMOR' },
-    { label: 'Canal+', value: 'CNLP' },
-    { label: 'Cartoon Network', value: 'CN' },
-    { label: 'CBC', value: 'CBC' },
-    { label: 'CBS', value: 'CBS' },
-    { label: 'CHRGD', value: 'CHGD' },
-    { label: 'Cinemax', value: 'CMAX' },
-    { label: 'Club illico', value: 'CLBI' },
-    { label: 'CNBC', value: 'CNBC' },
-    { label: 'Comedians in Cars Getting Coffee', value: 'CCGC' },
-    { label: 'Comedy Central', value: 'CC' },
-    { label: 'Cooking Channel', value: 'COOK' },
-    { label: 'Country Music Television', value: 'CMT' },
-    { label: 'Crackle', value: 'CRKL' },
-    { label: 'Crave', value: 'CRAV' },
-    { label: 'Criterion Channel', value: 'CRIT' },
-    { label: 'Crunchyroll', value: 'CR' },
-    { label: 'CSpan', value: 'CSPN' },
-    { label: 'CTV', value: 'CTV' },
-    { label: 'CuriosityStream', value: 'CUR' },
-    { label: 'The CW', value: 'CW' },
-    { label: 'CWSeed', value: 'CWS' },
-    { label: 'Daisuki', value: 'DSKI' },
-    { label: 'DC Universe', value: 'DCU' },
-    { label: 'Deadhouse Films', value: 'DHF' },
-    { label: 'Destination America', value: 'DEST' },
-    { label: 'Digiturk Dilediğin Yerde', value: 'DDY' },
-    { label: 'DirecTV Now', value: 'DTV' },
-    { label: 'Discovery Channel', value: 'DISC' },
-    { label: 'Discovery+', value: 'DSCP' },
-    { label: 'Disney', value: 'DSNY' },
-    { label: 'Disney+', value: 'DSNP' },
-    { label: 'DIY Network', value: 'DIY' },
-    { label: 'Doc Club', value: 'DOCC' },
-    { label: 'DPlay', value: 'DPLY' },
-    { label: 'DramaFever', value: 'DF' },
-    { label: 'Dropout', value: 'DRPO' },
-    { label: 'DRTV', value: 'DRTV' },
-    { label: 'E!', value: 'ETV' },
-    { label: 'El Trece', value: 'ETTV' },
-    { label: 'EPIX', value: 'EPIX' },
-    { label: 'ESPN', value: 'ESPN' },
-    { label: 'Esquire', value: 'ESQ' },
-    { label: 'Family', value: 'FAM' },
-    { label: 'Family Jr', value: 'FJR' },
-    { label: 'Food Network', value: 'FOOD' },
-    { label: 'Fox', value: 'FOX' },
-    { label: 'Foxtel Now', value: 'FXTL' },
-    { label: 'FPT Play', value: 'FPT' },
-    { label: 'France.tv', value: 'FTV' },
-    { label: 'Freeform', value: 'FREE' },
-    { label: 'Funimation', value: 'FUNI' },
-    { label: 'FYI Network', value: 'FYI' },
-    { label: 'Global', value: 'GLBL' },
-    { label: 'GloboSat Play', value: 'GLOB' },
-    { label: 'go90', value: 'GO90' },
-    { label: 'Google Play', value: 'PLAY' },
-    { label: 'Hallmark', value: 'HLMK' },
-    { label: 'HBO', value: 'HBO' },
-    { label: 'HBO Max', value: 'HMAX' },
-    { label: 'HGTV', value: 'HGTV' },
-    { label: 'HIDIVE', value: 'HIDI' },
-    { label: 'History Channel', value: 'HIST' },
-    { label: 'Hotstar', value: 'HTSR' },
-    { label: 'Hulu', value: 'HULU' },
-    { label: 'Ici TOU.TV', value: 'TOU' },
-    { label: 'IFC', value: 'IFC' },
-    { label: 'Investigation Discovery', value: 'ID' },
-    { label: 'iTunes', value: 'iT' },
-    { label: 'ITV', value: 'ITV' },
-    { label: 'Kanopy', value: 'KNPY' },
-    { label: 'Kayo Sports', value: 'KAYO' },
-    { label: 'Knowledge Network', value: 'KNOW' },
-    { label: 'Lifetime', value: 'LIFE' },
-    { label: 'Loving Nature', value: 'LN' },
-    { label: 'Max', value: 'MAX' },
-    { label: 'MBC', value: 'MBC' },
-    { label: 'Motor Trend OnDemand', value: 'MTOD' },
-    { label: 'MSNBC', value: 'MNBC' },
-    { label: 'Mubi', value: 'MUBI' },
-    { label: 'MTV', value: 'MTV' },
-    { label: 'National Geographic', value: 'NATG' },
-    { label: 'NBA League Pass', value: 'NBA' },
-    { label: 'NBC', value: 'NBC' },
-    { label: 'Netflix', value: 'NF' },
-    { label: 'NFL Network', value: 'NFL' },
-    { label: 'NFL Now', value: 'NFLN' },
-    { label: 'NHL GameCenter', value: 'GC' },
-    { label: 'Nickelodeon', value: 'NICK' },
-    { label: 'Norsk Rikskringkasting', value: 'NRK' },
-    { label: 'Now (Sky)', value: 'NOW' },
-    { label: 'OnDemandKorea', value: 'ODK' },
-    { label: 'Oxygen', value: 'OXGN' },
-    { label: 'Paramount Network', value: 'PMNT' },
-    { label: 'Paramount+', value: 'PMTP' },
-    { label: 'PBS', value: 'PBS' },
-    { label: 'PBS Kids', value: 'PBSK' },
-    { label: 'Peacock', value: 'PCOK' },
-    { label: 'Playstation Network', value: 'PSN' },
-    { label: 'Pluzz', value: 'PLUZ' },
-    { label: 'PokerGo', value: 'POGO' },
-    { label: 'Project Alpha', value: 'PA' },
-    { label: 'puhutv', value: 'PUHU' },
-    { label: 'Quibi', value: 'QIBI' },
-    { label: 'Rakuten TV', value: 'RKTN' },
-    { label: 'The Roku Channel', value: 'ROKU' },
-    { label: 'Rooster Teeth', value: 'RSTR' },
-    { label: 'RTÉ', value: 'RTE' },
-    { label: 'SBS (AU)', value: 'SBS' },
-    { label: 'Seeso', value: 'SESO' },
-    { label: 'Shomi', value: 'SHMI' },
-    { label: 'Showtime', value: 'SHO' },
-    { label: 'Shudder', value: 'SHDR' },
-    { label: 'SkyShowtime', value: 'SKST' },
-    { label: 'Spike', value: 'SPIK' },
-    { label: 'Sportsnet', value: 'SNET' },
-    { label: 'Sprout', value: 'SPRT' },
-    { label: 'Stan', value: 'STAN' },
-    { label: 'Star+', value: 'STRP' },
-    { label: 'Starz', value: 'STZ' },
-    { label: 'Sveriges Television', value: 'SVT' },
-    { label: 'SwearNet', value: 'SWER' },
-    { label: 'SyFy', value: 'SYFY' },
-    { label: 'TBS', value: 'TBS' },
-    { label: 'TenPlay', value: 'TEN' },
-    { label: 'TFOU', value: 'TFOU' },
-    { label: 'TIMvision', value: 'TIMV' },
-    { label: 'TLC', value: 'TLC' },
-    { label: 'Travel Channel', value: 'TRVL' },
-    { label: 'TubiTV', value: 'TUBI' },
-    { label: 'TV3 (IE)', value: 'TV3' },
-    { label: 'TV4 (SE)', value: 'TV4' },
-    { label: 'TVING', value: 'TVING' },
-    { label: 'TVLand', value: 'TVL' },
-    { label: 'UFC', value: 'UFC' },
-    { label: 'UKTV', value: 'UKTV' },
-    { label: 'Univision', value: 'UNIV' },
-    { label: 'USA Network', value: 'USAN' },
-    { label: 'Velocity', value: 'VLCT' },
-    { label: 'VET Tv', value: 'VTRN' },
-    { label: 'VH1', value: 'VH1' },
-    { label: 'Viaplay', value: 'VIAP' },
-    { label: 'Viceland', value: 'VICE' },
-    { label: 'Viki', value: 'VIKI' },
-    { label: 'Vimeo', value: 'VMEO' },
-    { label: 'VRV', value: 'VRV' },
-    { label: 'W Network', value: 'WNET' },
-    { label: 'WatchMe', value: 'WME' },
-    { label: 'WWE Network', value: 'WWEN' },
-    { label: 'Xbox Video', value: 'XBOX' },
-    { label: 'Yahoo', value: 'YHOO' },
-    { label: 'YouTube Movies', value: 'YT' },
-    { label: 'YouTube Red', value: 'RED' },
-    { label: 'ZDF', value: 'ZDF' },
-    { label: 'Hotstar', value: 'HS' },
-    { label: 'Viu', value: 'VIU' },
-    { label: 'WeTV', value: 'WETV' },
-    { label: 'Wavve', value: 'WAVVE' },
-    { label: 'Watcha', value: 'WATCHA' },
-    { label: 'Coupang Play', value: 'CPNG' },
-    { label: 'KBS', value: 'KBS' },
-    { label: 'iMBC', value: 'IMBC' },
-    { label: 'Kocowa', value: 'KCW' },
-]
-
-const resolutionOptions: SelectOption[] = [
-    { label: '480i', value: '480i' },
-    { label: '480p', value: '480p' },
-    { label: '576i', value: '576i' },
-    { label: '576p', value: '576p' },
-    { label: '720p', value: '720p' },
-    { label: '1080i', value: '1080i' },
-    { label: '1080p', value: '1080p' },
-    { label: '2160p', value: '2160p' },
-]
-
-const hdrOptions: SelectOption[] = [
-    { label: 'DV', value: 'DV' },
-    { label: 'HDR10+', value: 'HDR10+' },
-    { label: 'HDR', value: 'HDR' },
-    { label: 'HLG', value: 'HLG' },
-]
-
-const cutOptions: SelectOption[] = [
-    { label: `Director's Cut`, value: `Director's Cut` },
-    { label: 'Extended', value: 'Extended' },
-    { label: 'Special Edition', value: 'Special Edition' },
-    { label: 'Unrated', value: 'Unrated' },
-    { label: 'Super Duper Cut', value: 'Super Duper Cut' },
-]
-
-const ratioOptions: SelectOption[] = [
-    { label: 'IMAX', value: 'IMAX' },
-    { label: 'Open Matte', value: 'Open Matte' },
-    { label: 'MAR', value: 'MAR' },
-]
-
-const videoCodecOptions: SelectOption[] = [
-    { label: 'MPEG-2', value: 'MPEG-2' },
-    { label: 'VC-1', value: 'VC-1' },
-    { label: 'AVC', value: 'AVC' },
-    { label: 'H.264', value: 'H.264' },
-    { label: 'HEVC', value: 'HEVC' },
-    { label: 'x264', value: 'x264' },
-    { label: 'x265', value: 'x265' },
-]
-
-const audioCodecOptions: SelectOption[] = [
-    { label: 'AAC', value: 'AAC' },
-    { label: 'Opus', value: 'Opus' },
-    { label: 'DD', value: 'DD' },
-    { label: 'DD+', value: 'DD+' },
-    { label: 'TrueHD', value: 'TrueHD' },
-    { label: 'DTS', value: 'DTS' },
-    { label: 'DTS-HD MA', value: 'DTS-HD MA' },
-    { label: 'DTS:X', value: 'DTS:X' },
-    { label: 'FLAC', value: 'FLAC' },
-]
-
-const audioChannelOptions: SelectOption[] = [
-    { label: '1.0', value: '1.0' },
-    { label: '2.0', value: '2.0' },
-    { label: '2.1', value: '2.1' },
-    { label: '3.0', value: '3.0' },
-    { label: '3.1', value: '3.1' },
-    { label: '4.0', value: '4.0' },
-    { label: '4.1', value: '4.1' },
-    { label: '5.0', value: '5.0' },
-    { label: '5.1', value: '5.1' },
-    { label: '6.1', value: '6.1' },
-    { label: '7.1', value: '7.1' },
-]
-
-const audioMetadataOptions: SelectOption[] = [
-    { label: 'Atmos', value: 'Atmos' },
-    { label: 'Auro3D', value: 'Auro3D' },
-]
-
-const languageOptions: SelectOption[] = [
-    { value: 'ar', label: 'Arabic' },
-    { value: 'da', label: 'Danish' },
-    { value: 'de', label: 'German' },
-    { value: 'en', label: 'English' },
-    { value: 'es', label: 'Spanish' },
-    { value: 'fi', label: 'Finnish' },
-    { value: 'fr', label: 'French' },
-    { value: 'hi', label: 'Hindi' },
-    { value: 'it', label: 'Italian' },
-    { value: 'ja', label: 'Japanese' },
-    { value: 'ko', label: 'Korean' },
-    { value: 'nl', label: 'Dutch' },
-    { value: 'no', label: 'Norwegian' },
-    { value: 'pl', label: 'Polish' },
-    { value: 'pt', label: 'Portuguese' },
-    { value: 'ru', label: 'Russian' },
-    { value: 'sv', label: 'Swedish' },
-    { value: 'ta', label: 'Tamil' },
-    { value: 'th', label: 'Thai' },
-    { value: 'tr', label: 'Turkish' },
-    { value: 'zh', label: 'Chinese' },
-]
-
-const schema = z
-    .object({
-        mediaType: z.enum(MEDIA_TYPES, { error: 'Media type is required' }),
-        title: z.string().trim().min(1, 'Title is required'),
-        originalTitle: z.string().optional(),
-        year: z.number().int().min(1, 'Year is required'),
-        source: z.enum(SOURCES, { error: 'Source is required' }),
-        sourceType: z.enum(SOURCE_TYPES, { error: 'Type is required' }),
-        resolution: z.enum(RESOLUTIONS, { error: 'Resolution is required' }),
-        language: z.array(z.string().trim().min(1)).min(1, 'Language is required'),
-        originalLanguage: z.string().trim().min(1, 'Original language is required'),
-        videoCodec: z.enum(VIDEO_CODECS, { error: 'Video codec is required' }),
-        audioCodec: z.enum(AUDIO_CODECS, { error: 'Audio codec is required' }),
-        audioChannels: z.enum(AUDIO_CHANNELS, { error: 'Audio channels are required' }),
-        audioMetadata: z.enum(AUDIO_METADATA_TYPES).optional(),
-        hasTrueHDCompatibilityTrack: z.boolean().optional(),
-        tmdbId: z.number().int().min(1, 'TMDb ID is required'),
-        imdbId: z.string().trim().min(1, 'IMDb ID is required'),
-        season: z.number().int().optional(),
-        episode: z.number().int().optional(),
-        episodeEnd: z.number().int().optional(),
-        specialName: z.string().optional(),
-        tvdbId: z.number().int().optional(),
-        releaseGroup: z.string().optional(),
-        service: z.enum(SERVICES).optional(),
-        repack: z.number().int().min(0),
-        proper: z.number().int().min(0),
-        rerip: z.number().int().min(0),
-        cut: z.enum(CUTS).optional(),
-        ratio: z.enum(RATIOS).optional(),
-        hybrid: z.boolean(),
-        hi10p: z.boolean(),
-        hasEnglishSubs: z.boolean(),
-        hdr: z.array(z.enum(HDR_TYPES)),
-        locale: z.string().optional(),
-    })
-    .superRefine((value, ctx) => {
-        if (value.mediaType === MEDIA_TYPES.TV) {
-            if (value.season === undefined) {
-                ctx.addIssue({ code: 'custom', path: ['season'], message: 'Season is required' })
-            }
-            if (value.tvdbId === undefined) {
-                ctx.addIssue({ code: 'custom', path: ['tvdbId'], message: 'TVDB ID is required' })
-            }
-            if (value.episodeEnd !== undefined) {
-                if (value.episode === undefined) {
-                    ctx.addIssue({ code: 'custom', path: ['episode'], message: 'First episode is required for a range' })
-                } else if (value.episodeEnd <= value.episode) {
-                    ctx.addIssue({ code: 'custom', path: ['episodeEnd'], message: 'Must be greater than the first episode' })
-                }
-            }
-        }
-    })
 
 const filename = ref('')
 const state = reactive<PartialMetadata>({
@@ -400,11 +28,10 @@ const state = reactive<PartialMetadata>({
 const { getMetadata, loading, error } = useMetadata()
 
 const showMultiEpisode = ref(false)
-
-const isTV = computed(() => state?.mediaType === 'tv')
+const isTV = computed(() => state?.mediaType === MEDIA_TYPES.TV)
 const isSpecial = computed(() => isTV.value && (state.season === 0 || state.episode === 0))
 const isMultiEpisode = computed(() => showMultiEpisode.value)
-const isWebSource = computed(() => state?.source === 'Web')
+const isWebSource = computed(() => state?.source === SOURCES.WEB)
 const selectedPathLabel = computed(() => (props.selectedPath?.folder ? 'Folder' : 'File'))
 const selectedPathValue = computed(() => props.selectedPath?.value)
 
@@ -450,7 +77,7 @@ function onToggleMultiEpisode(value: boolean) {
     showMultiEpisode.value = value
 }
 
-function onSubmit(event: FormSubmitEvent<Schema>) {
+function onSubmit(event: FormSubmitEvent<Metadata>) {
     if (!showMultiEpisode.value) event.data.episodeEnd = undefined
     metadata.value = { filename: filename.value, metadata: event.data }
     emit('next')
@@ -490,12 +117,12 @@ function onSubmit(event: FormSubmitEvent<Schema>) {
                 <USkeleton class="h-20 w-full" />
             </div>
 
-            <UForm v-else :schema="schema" :state="state" class="space-y-5 metadata-form" @submit="onSubmit">
+            <UForm v-else :schema="MetadataSchema" :state="state" class="space-y-5 metadata-form" @submit="onSubmit">
                 <section class="rounded-xl border border-default/70 bg-elevated/30 p-4 space-y-4 shadow-xs">
                     <h3 class="text-sm font-semibold text-default">Basic Details</h3>
                     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         <UFormField label="Media Type" name="mediaType" required>
-                            <USelect v-model="state.mediaType" size="xl" class="w-full" placeholder="Select media type" :items="mediaTypeOptions" />
+                            <USelect v-model="state.mediaType" size="xl" class="w-full" placeholder="Select media type" :items="MEDIA_TYPE_OPTIONS" />
                         </UFormField>
 
                         <UFormField label="Title" name="title" required>
@@ -578,15 +205,15 @@ function onSubmit(event: FormSubmitEvent<Schema>) {
                     <h3 class="text-sm font-semibold text-default">Source And Release</h3>
                     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         <UFormField label="Source" name="source" required>
-                            <USelect v-model="state.source" size="xl" class="w-full" placeholder="Select source" :items="sourceOptions" />
+                            <USelect v-model="state.source" size="xl" class="w-full" placeholder="Select source" :items="SOURCE_OPTIONS" />
                         </UFormField>
 
                         <UFormField label="Type" name="sourceType" required>
-                            <USelect v-model="state.sourceType" size="xl" class="w-full" placeholder="Select type" :items="sourceTypeOptions" />
+                            <USelect v-model="state.sourceType" size="xl" class="w-full" placeholder="Select type" :items="SOURCE_TYPE_OPTIONS" />
                         </UFormField>
 
                         <UFormField v-if="isWebSource" label="Service" required>
-                            <USelect v-model="state.service" size="xl" class="w-full" placeholder="Select service" :items="serviceOptions" />
+                            <USelect v-model="state.service" size="xl" class="w-full" placeholder="Select service" :items="SERVICE_OPTIONS" />
                         </UFormField>
 
                         <UFormField label="Release Group">
@@ -594,27 +221,27 @@ function onSubmit(event: FormSubmitEvent<Schema>) {
                         </UFormField>
 
                         <UFormField label="Resolution" name="resolution" required>
-                            <USelect v-model="state.resolution" size="xl" class="w-full" placeholder="Select resolution" :items="resolutionOptions" />
+                            <USelect v-model="state.resolution" size="xl" class="w-full" placeholder="Select resolution" :items="RESOLUTION_OPTIONS" />
                         </UFormField>
 
                         <UFormField label="HDR">
-                            <USelect v-model="state.hdr" size="xl" class="w-full" placeholder="Select HDR" :items="hdrOptions" multiple />
+                            <USelect v-model="state.hdr" size="xl" class="w-full" placeholder="Select HDR" :items="HDR_OPTIONS" multiple />
                         </UFormField>
 
                         <UFormField label="Language" name="language" required>
-                            <USelect v-model="state.language" size="xl" class="w-full" placeholder="Select language" :items="languageOptions" multiple />
+                            <USelect v-model="state.language" size="xl" class="w-full" placeholder="Select language" :items="LANGUAGE_OPTIONS" multiple />
                         </UFormField>
 
                         <UFormField label="Original Language" name="originalLanguage">
-                            <USelect v-model="state.originalLanguage" size="xl" class="w-full" :items="languageOptions" placeholder="Select original language" />
+                            <USelect v-model="state.originalLanguage" size="xl" class="w-full" :items="LANGUAGE_OPTIONS" placeholder="Select original language" />
                         </UFormField>
 
                         <UFormField label="Cut">
-                            <USelect v-model="state.cut" size="xl" class="w-full" placeholder="Select cut" :items="cutOptions" />
+                            <USelect v-model="state.cut" size="xl" class="w-full" placeholder="Select cut" :items="CUT_OPTIONS" />
                         </UFormField>
 
                         <UFormField label="Ratio">
-                            <USelect v-model="state.ratio" size="xl" class="w-full" placeholder="Select ratio" :items="ratioOptions" />
+                            <USelect v-model="state.ratio" size="xl" class="w-full" placeholder="Select ratio" :items="RATIO_OPTIONS" />
                         </UFormField>
 
                         <UFormField label="Locale">
@@ -658,7 +285,7 @@ function onSubmit(event: FormSubmitEvent<Schema>) {
                                 </div>
                                 <UCheckbox v-model="state.hybrid" size="xl" label="Hybrid" color="neutral" aria-label="Hybrid" />
                                 <UCheckbox
-                                    v-if="state.videoCodec === 'AVC' || state.videoCodec === 'H.264' || state.videoCodec === 'x264'"
+                                    v-if="state.videoCodec === VIDEO_CODECS.AVC || state.videoCodec === VIDEO_CODECS.H264 || state.videoCodec === VIDEO_CODECS.X264"
                                     v-model="state.hi10p"
                                     size="xl"
                                     label="Hi10P"
@@ -674,25 +301,25 @@ function onSubmit(event: FormSubmitEvent<Schema>) {
                     <h3 class="text-sm font-semibold text-default">Technical</h3>
                     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         <UFormField label="Video Codec" name="videoCodec" required>
-                            <USelect v-model="state.videoCodec" size="xl" class="w-full" placeholder="Select video codec" :items="videoCodecOptions" />
+                            <USelect v-model="state.videoCodec" size="xl" class="w-full" placeholder="Select video codec" :items="VIDEO_CODEC_OPTIONS" />
                         </UFormField>
 
                         <UFormField label="Audio Codec" name="audioCodec" required>
-                            <USelect v-model="state.audioCodec" size="xl" class="w-full" placeholder="Select audio codec" :items="audioCodecOptions" />
+                            <USelect v-model="state.audioCodec" size="xl" class="w-full" placeholder="Select audio codec" :items="AUDIO_CODEC_OPTIONS" />
                         </UFormField>
 
                         <UFormField label="Audio Channels" name="audioChannels" required>
-                            <USelect v-model="state.audioChannels" size="xl" class="w-full" placeholder="Select audio channels" :items="audioChannelOptions" />
+                            <USelect v-model="state.audioChannels" size="xl" class="w-full" placeholder="Select audio channels" :items="AUDIO_CHANNEL_OPTIONS" />
                         </UFormField>
 
                         <UFormField label="Audio Metadata">
-                            <USelect v-model="state.audioMetadata" size="xl" class="w-full" placeholder="Select audio metadata" :items="audioMetadataOptions" />
+                            <USelect v-model="state.audioMetadata" size="xl" class="w-full" placeholder="Select audio metadata" :items="AUDIO_METADATA_OPTIONS" />
                         </UFormField>
 
                         <UFormField label="Flags" class="md:col-span-2 lg:col-span-3">
                             <div class="flex flex-wrap items-center gap-4 py-2">
                                 <UCheckbox
-                                    v-if="state.originalLanguage !== 'en'"
+                                    v-if="state.originalLanguage !== LANGUAGES.EN"
                                     v-model="state.hasEnglishSubs"
                                     size="xl"
                                     label="English Subs"
@@ -700,7 +327,7 @@ function onSubmit(event: FormSubmitEvent<Schema>) {
                                     aria-label="English Subs"
                                 />
                                 <UCheckbox
-                                    v-if="state.audioCodec === 'TrueHD'"
+                                    v-if="state.audioCodec === AUDIO_CODECS.TRUEHD"
                                     :model-value="state.hasTrueHDCompatibilityTrack === true"
                                     size="xl"
                                     label="TrueHD Compatibility Track"

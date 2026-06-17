@@ -53,6 +53,7 @@ const validMetadata = {
     audioChannels: '5.1',
     tmdbId: 1,
     imdbId: 'tt1234567',
+    hasEnglishSubs: false,
 }
 
 describe('POST /api/tracker/[trackerCode]/title route handler', () => {
