@@ -4,3 +4,8 @@ export type Path = {
     icon: string
     folder: boolean
 }
+
+export type PathResponse = {
+    path: string
+    folder: boolean
+}

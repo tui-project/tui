@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Path } from './upload.types'
+import type { Path, PathResponse } from './upload.types'
 import StepNavigationButtons from './StepNavigationButtons.vue'
 
 const emit = defineEmits<{
@@ -9,73 +9,62 @@ const selection = defineModel<Path | undefined>({
     default: undefined,
 })
 
-const { getPaths, loading, error } = usePath()
-
-const menuItems = ref<Path[]>([])
+const parent = ref(selection.value?.folder ? selection.value.value.trim().replace(/\/+$/, '') : getParentDirectory(selection.value?.value))
 const searchTerm = ref('')
 const showError = ref(false)
 const menuOpen = ref(false)
-const shouldVirtualize = computed(() => menuItems.value.length > 50)
 
-onMounted(() => {
-    const parent = selection.value?.folder ? selection.value.value.trim().replace(/\/+$/, '') : getParentDirectory(selection.value?.value)
-    void loadPaths(parent)
+const {
+    pending: loading,
+    data: pathData,
+    error,
+    refresh,
+} = useFetch('/api/paths', {
+    query: computed(() => (parent.value ? { parent: parent.value } : undefined)),
+    lazy: true,
+    transform: (paths: PathResponse[]): Path[] =>
+        paths.map((path) => ({
+            label: path.path,
+            value: path.path,
+            icon: path.folder ? 'i-lucide-folder' : 'i-lucide-file',
+            folder: path.folder,
+        })),
 })
 
-watch(
-    () => selection.value?.value,
-    () => (showError.value = false)
-)
+const menuItems = computed(() => pathData.value ?? [])
+const shouldVirtualize = computed(() => menuItems.value.length > 50)
 
-function toMenuItems(paths: PathResponse[]) {
-    return paths.map((path) => ({
-        label: path.path,
-        value: path.path,
-        icon: path.folder ? 'i-lucide-folder' : 'i-lucide-file',
-        folder: path.folder,
-    }))
-}
+watch(error, (err) => {
+    if (err && parent.value) {
+        parent.value = ''
+    }
+})
 
-async function onSelect(value: Path | null) {
+function onSelect(value: Path | null) {
+    showError.value = false
+
     if (!value) {
         selection.value = undefined
-        await loadPaths()
+        parent.value = ''
         return
     }
 
     selection.value = value
 
     if (value.folder) {
-        await loadPaths(value.value)
+        parent.value = value.value
         menuOpen.value = true
     }
 }
 
-async function loadPaths(parent = '') {
-    const paths = await getPaths(parent)
-
-    if (paths) {
-        menuItems.value = toMenuItems(paths)
-    }
-
-    if (error.value) {
-        if (parent && error) {
-            const paths = await getPaths()
-            menuItems.value = toMenuItems(paths)
-        }
-    }
-}
-
-async function onSearchTermUpdate(value: string) {
+function onSearchTermUpdate(value: string) {
     const trimmedValue = value.trim()
-    if (!trimmedValue) {
-        return
+    if (!trimmedValue || trimmedValue === selection.value?.value) return
+
+    const browseParent = getBrowseParent(trimmedValue)
+    if (browseParent !== parent.value) {
+        parent.value = browseParent
     }
-
-    searchTerm.value = trimmedValue
-    const parent = getBrowseParent(trimmedValue)
-
-    await loadPaths(parent)
 }
 
 function getBrowseParent(value: string) {
@@ -152,7 +141,13 @@ function onNextButtonClick() {
                 />
             </div>
 
-            <UAlert v-if="error" color="error" variant="soft" title="Failed to load paths. Please try again." />
+            <UAlert v-if="error" color="error" variant="soft">
+                <template #title>
+                    <span class="flex items-center gap-2">
+                        Failed to load paths. <UButton color="error" variant="ghost" size="xs" icon="i-lucide-refresh-cw" @click="() => refresh()">Retry</UButton>
+                    </span>
+                </template>
+            </UAlert>
             <UAlert v-if="selection?.value" color="neutral" variant="soft" :title="selection.folder ? 'Selected folder' : 'Selected file'" :description="selection.value" />
             <UAlert v-if="showError" color="error" variant="soft" title="Select a file or folder before continuing to the next step." />
 
