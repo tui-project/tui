@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
 import StepNavigationButtons from './StepNavigationButtons.vue'
-import { useMetadata } from '~/composables/useMetadata'
+import { useGetMetadata } from '~/composables/useGetMetadata'
 
 const props = defineProps<{ selectedPath?: Path }>()
 const metadata = defineModel<{ filename: string; metadata: Metadata } | undefined>()
@@ -25,8 +25,6 @@ const state = reactive<PartialMetadata>({
     imdbId: '',
 })
 
-const { getMetadata, loading, error } = useMetadata()
-
 const showMultiEpisode = ref(false)
 const isTV = computed(() => state?.mediaType === MEDIA_TYPES.TV)
 const isSpecial = computed(() => isTV.value && (state.season === 0 || state.episode === 0))
@@ -35,50 +33,43 @@ const isWebSource = computed(() => state?.source === SOURCES.WEB)
 const selectedPathLabel = computed(() => (props.selectedPath?.folder ? 'Folder' : 'File'))
 const selectedPathValue = computed(() => props.selectedPath?.value)
 
+const { pending, data, error, execute } = useGetMetadata(selectedPathValue)
+
 onMounted(async () => {
-    const path = selectedPathValue.value
-
-    if (!path) {
-        return
-    }
-
     if (metadata.value) {
         filename.value = metadata.value.filename
         Object.assign(state, metadata.value.metadata)
         showMultiEpisode.value = state.episodeEnd !== undefined
-        return
-    }
-
-    if (prefetched.value) {
+    } else if (prefetched.value) {
         filename.value = prefetched.value.filename
         Object.assign(state, prefetched.value.metadata)
         showMultiEpisode.value = state.episodeEnd !== undefined
-        return
-    }
+    } else if (selectedPathValue.value) {
+        await execute()
 
-    const data = await getMetadata(path)
-    if (data) {
-        Object.assign(state, data.metadata)
-        filename.value = data.filename
-        prefetched.value = data
+        if (data.value) {
+            Object.assign(state, data.value.metadata)
+            filename.value = data.value.filename
+            prefetched.value = data.value
+            showMultiEpisode.value = state.episodeEnd !== undefined
+        }
     }
-
-    showMultiEpisode.value = state.episodeEnd !== undefined
 })
 
-watch(
-    () => selectedPathValue.value,
-    () => {
-        metadata.value = undefined
-    }
-)
+watch(selectedPathValue, () => {
+    metadata.value = undefined
+    prefetched.value = undefined
+})
 
 function onToggleMultiEpisode(value: boolean) {
     showMultiEpisode.value = value
 }
 
 function onSubmit(event: FormSubmitEvent<Metadata>) {
-    if (!showMultiEpisode.value) event.data.episodeEnd = undefined
+    if (!showMultiEpisode.value) {
+        event.data.episodeEnd = undefined
+    }
+
     metadata.value = { filename: filename.value, metadata: event.data }
     emit('next')
 }
@@ -94,7 +85,7 @@ function onSubmit(event: FormSubmitEvent<Metadata>) {
                         <p class="text-sm text-muted">Detected metadata is editable. Update anything before continuing.</p>
                     </div>
                 </div>
-                <p v-if="selectedPathValue && !loading && !error" class="text-xs text-muted" aria-label="selected-file-or-folder">
+                <p v-if="selectedPathValue && !pending && !error" class="text-xs text-muted" aria-label="selected-file-or-folder">
                     {{ selectedPathLabel }}: <span class="font-medium">{{ metadata?.filename ?? filename ?? 'Unknown file' }}</span>
                 </p>
             </div>
@@ -111,7 +102,7 @@ function onSubmit(event: FormSubmitEvent<Metadata>) {
                 description="Please check the selected path or fill metadata manually."
             />
 
-            <div v-else-if="loading" class="space-y-2">
+            <div v-else-if="pending" class="space-y-2">
                 <USkeleton class="h-20 w-full" />
                 <USkeleton class="h-20 w-full" />
                 <USkeleton class="h-20 w-full" />
