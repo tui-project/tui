@@ -300,6 +300,8 @@ function parseHdr(hdrFormat: string, hdrCompatibility: string): HDR[] {
 }
 
 function parseAudioCodec(audioFormat: string, formatCommercialIfAny: string): AudioCodec | undefined {
+    logger.debug('Parse audio codec', { audioFormat, formatCommercialIfAny })
+
     switch (true) {
         case audioFormat === 'E-AC-3':
         case audioFormat === 'EAC3':
@@ -313,6 +315,8 @@ function parseAudioCodec(audioFormat: string, formatCommercialIfAny: string): Au
             return AUDIO_CODECS.AAC
         case audioFormat === 'DTS' && formatCommercialIfAny === 'DTS-HD Master Audio':
             return AUDIO_CODECS.DTS_HD_MA
+        case audioFormat === 'DTS' && formatCommercialIfAny === 'DTS-HD MA + DTS:X':
+            return AUDIO_CODECS.DTS_X
         case audioFormat === 'DTS':
             return AUDIO_CODECS.DTS
         case audioFormat === 'FLAC':
@@ -326,6 +330,8 @@ function parseAudioCodec(audioFormat: string, formatCommercialIfAny: string): Au
 }
 
 function parseAudioChannels(channels: string, channelLayout: string): AudioChannels | undefined {
+    logger.debug('Parse audio channels', { channels, channelLayout })
+
     switch (true) {
         case channels === '1':
             return AUDIO_CHANNELS['1.0']
@@ -337,7 +343,11 @@ function parseAudioChannels(channels: string, channelLayout: string): AudioChann
             return AUDIO_CHANNELS['5.1']
         case channels === '7' && channelLayout === 'C L R Ls Rs LFE Cb':
             return AUDIO_CHANNELS['6.1']
-        case channels === '8' && (channelLayout === 'C L R Ls Rs Lb Rb LFE' || channelLayout === 'L R C LFE Ls Rs Lb Rb' || channelLayout === 'C L R Ls Rs LFE Lw Rw'):
+        case channels === '8' &&
+            (channelLayout === 'C L R Ls Rs Lb Rb LFE' ||
+                channelLayout === 'L R C LFE Ls Rs Lb Rb' ||
+                channelLayout === 'C L R Ls Rs LFE Lw Rw' ||
+                channelLayout === 'C L R LFE Lb Rb Lss Rss Objects'):
             return AUDIO_CHANNELS['7.1']
         default:
             logger.warn('Unable to detect audio channels from mediainfo.', { channels, channelLayout })

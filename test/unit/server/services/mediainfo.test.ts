@@ -7,7 +7,6 @@ describe('mediainfo service', () => {
     beforeEach(() => {
         vi.resetModules()
         vi.clearAllMocks()
-
         getSettingsMock.mockResolvedValue({ mediainfoPath: '/usr/bin/mediainfo' })
         runCommandMock.mockResolvedValue({ stdout: JSON.stringify({ media: { track: [] } }) })
     })
@@ -15,980 +14,459 @@ describe('mediainfo service', () => {
     async function loadService() {
         vi.doMock('../../../../server/repositories/settings-repository', () => ({ getSettings: getSettingsMock }))
         vi.doMock('../../../../server/utils/process', () => ({ runCommand: runCommandMock }))
-
         return import('../../../../server/services/mediainfo')
     }
 
-    it('returns parsed metadata output', async () => {
-        const { parseMetadataFromMediainfo } = await loadService()
+    function videoTrack(overrides: Record<string, unknown> = {}) {
+        return { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', HDR_Format: '', HDR_Format_Compatibility: '', ...overrides }
+    }
 
-        await expect(parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')).resolves.toEqual({
-            resolution: undefined,
-            videoCodec: undefined,
-            hi10p: false,
-            hdr: [],
-            language: [],
-            audioCodec: undefined,
-            audioChannels: undefined,
-            audioMetadata: undefined,
-            hasTrueHDCompatibilityTrack: undefined,
-            hasEnglishSubs: false,
-            tmdbId: undefined,
-            imdbId: '',
-            tvdbId: undefined,
+    function audioTrack(overrides: Record<string, unknown> = {}) {
+        return { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en', Title: 'Main', ...overrides }
+    }
+
+    function textTrack(language: string) {
+        return { '@type': 'Text', Language: language }
+    }
+
+    function generalTrack(extra?: unknown) {
+        return { '@type': 'General', ...(extra !== undefined ? { extra } : {}) }
+    }
+
+    function mockTracks(...tracks: unknown[]) {
+        runCommandMock.mockResolvedValueOnce({ stdout: JSON.stringify({ media: { track: tracks } }) })
+    }
+
+    describe('analyzeMediaFileAsText', () => {
+        it('returns text from mediainfo', async () => {
+            runCommandMock.mockResolvedValue({ stdout: 'General\nComplete name                            : movie.mkv' })
+            const { analyzeMediaFileAsText } = await loadService()
+
+            await expect(analyzeMediaFileAsText('/tmp/movie.mkv')).resolves.toContain('Complete name')
+            expect(runCommandMock).toHaveBeenCalledWith('/usr/bin/mediainfo', ['/tmp/movie.mkv'])
         })
-        expect(runCommandMock).toHaveBeenCalledWith('/usr/bin/mediainfo', ['--Output=JSON', '/tmp/movie.mkv'])
-    })
 
-    it('returns text output', async () => {
-        runCommandMock.mockResolvedValue({ stdout: 'General\nComplete name                            : movie.mkv' })
-        const { analyzeMediaFileAsText } = await loadService()
+        it('returns empty string when the command fails', async () => {
+            runCommandMock.mockRejectedValueOnce(new Error('text analysis failed'))
+            const { analyzeMediaFileAsText } = await loadService()
 
-        await expect(analyzeMediaFileAsText('/tmp/movie.mkv')).resolves.toContain('Complete name')
-        expect(runCommandMock).toHaveBeenCalledWith('/usr/bin/mediainfo', ['/tmp/movie.mkv'])
-    })
-
-    it('returns empty text when text analysis fails', async () => {
-        runCommandMock.mockRejectedValueOnce(new Error('text analysis failed'))
-        const { analyzeMediaFileAsText } = await loadService()
-
-        await expect(analyzeMediaFileAsText('/tmp/movie.mkv')).resolves.toBe('')
-    })
-
-    it('returns empty object and does not throw when analysis fails', async () => {
-        runCommandMock.mockRejectedValueOnce(new Error('analysis failed'))
-        const { parseMetadataFromMediainfo } = await loadService()
-
-        await expect(parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')).rejects.toThrow(TypeError)
-    })
-
-    it.each([
-        {
-            name: 'web-dl h264 hdr10+ atmos with ids and languages',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'General', extra: { IMDB: 'tt123', TMDB: 'tmdb://55', TVDB: 'tvdb-66' } },
-                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', HDR_Format: 'HDR10+', HDR_Format_Compatibility: 'HDR10' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'E-AC-3',
-                            Format_Commercial_IfAny: 'Dolby Digital Plus with Atmos',
-                            Channels: '6',
-                            ChannelLayout: 'C L R Ls Rs LFE',
-                            Language: 'en-US',
-                            Title: 'Main Atmos',
-                        },
-                        { '@type': 'Audio', Default: 'No', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'fr-CA', Title: 'French' },
-                        { '@type': 'Audio', Default: 'No', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Commentary Track' },
-                    ],
-                },
-            },
-            expected: {
-                resolution: '1080p',
-                videoCodec: 'H.264',
-                hdr: ['HDR', 'HDR10+'],
-                audioCodec: 'DD+',
-                audioChannels: '5.1',
-                audioMetadata: 'Atmos',
-                language: ['en', 'fr'],
-                imdbId: 'tt123',
-                tmdbId: 55,
-                tvdbId: 66,
-            },
-        },
-        {
-            name: 'webrip x265 with dolby vision + hlg and auro3d',
-            sourceType: 'WEBRIP' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'General', extra: { IMDB: 'tt124', TMDB: '12', TVDB: '13' } },
-                        { '@type': 'Video', Height: '2160', ScanType: 'Progressive', Format: 'HEVC', HDR_Format: 'Dolby Vision HLG', HDR_Format_Compatibility: '' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'No',
-                            Format: 'MLP FBA',
-                            Format_Commercial_IfAny: 'Auro3D',
-                            Channels: '8',
-                            ChannelLayout: 'L R C LFE Ls Rs Lb Rb',
-                            Language: 'es-ES',
-                            Title: 'Main Auro3D',
-                        },
-                    ],
-                },
-            },
-            expected: {
-                resolution: '2160p',
-                videoCodec: 'x265',
-                hdr: ['DV', 'HLG'],
-                audioCodec: 'TrueHD',
-                audioChannels: '7.1',
-                audioMetadata: 'Auro3D',
-                language: ['es'],
-                imdbId: 'tt124',
-                tmdbId: 12,
-                tvdbId: 13,
-            },
-        },
-        {
-            name: 'remux vc-1 with dts-hd ma and 6.1',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'General', extra: { IMDB: 'tt125', TMDB: '14', TVDB: '15' } },
-                        { '@type': 'Video', Height: '1080', ScanType: 'Interlaced', Format: 'VC-1' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'DTS',
-                            Format_Commercial_IfAny: 'DTS-HD Master Audio',
-                            Channels: '7',
-                            ChannelLayout: 'C L R Ls Rs LFE Cb',
-                            Language: 'de-DE',
-                            Title: 'German',
-                        },
-                    ],
-                },
-            },
-            expected: {
-                resolution: '1080i',
-                videoCodec: 'VC-1',
-                hdr: [],
-                audioCodec: 'DTS-HD MA',
-                audioChannels: '6.1',
-                audioMetadata: undefined,
-                language: ['de'],
-                imdbId: 'tt125',
-                tmdbId: 14,
-                tvdbId: 15,
-            },
-        },
-        {
-            name: 'codec/resolution/channel matrix',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '4320', ScanType: 'Progressive', Format: 'AV1', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
-                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '1', ChannelLayout: 'C', Format_Commercial_IfAny: 'Atmos', Language: 'pt-BR', Title: 'Main' },
-                    ],
-                },
-            },
-            expected: { resolution: '4320p', videoCodec: 'AV1', audioChannels: '1.0', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: 'remaining matrix mpeg1 + dd+',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        {
-                            '@type': 'Video',
-                            Height: '720',
-                            ScanType: 'Progressive',
-                            Format: 'MPEG Video',
-                            Format_Version: '1',
-                            HDR_Format: 'SMPTE ST 2086',
-                            HDR_Format_Compatibility: 'HDR10',
-                        },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'EAC3',
-                            Channels: '6',
-                            ChannelLayout: 'L R C LFE Ls Rs',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '720p', videoCodec: 'MPEG-1', audioChannels: '5.1', audioCodec: 'DD+', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: 'remaining matrix avc generic + dd literal',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'DD',
-                            Channels: '6',
-                            ChannelLayout: 'L R C LFE Ls Rs',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '1080p', videoCodec: 'AVC', audioChannels: '5.1', audioCodec: 'DD', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: 'remaining matrix mpeg2 + ac-3 literal',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        {
-                            '@type': 'Video',
-                            Height: '576',
-                            ScanType: 'Interlaced',
-                            Format: 'MPEG Video',
-                            Format_Version: '2',
-                            HDR_Format: 'SMPTE ST 2086',
-                            HDR_Format_Compatibility: 'HDR10',
-                        },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'AC-3',
-                            Channels: '3',
-                            ChannelLayout: 'L R C',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '576i', videoCodec: 'MPEG-2', audioChannels: '3.0', audioCodec: 'DD', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: '576 progressive resolution branch',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '576', ScanType: 'Progressive', Format: 'AVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'AAC',
-                            Channels: '2',
-                            ChannelLayout: 'L R',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '576p', videoCodec: 'AVC', audioChannels: '2.0', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: '480 interlaced resolution branch',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '480', ScanType: 'Interlaced', Format: 'AVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'AAC',
-                            Channels: '2',
-                            ChannelLayout: 'L R',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '480i', videoCodec: 'AVC', audioChannels: '2.0', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: 'remaining matrix x265 + truehd',
-            sourceType: 'WEBRIP' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '2160', ScanType: 'Progressive', Format: 'HEVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'MLP FBA',
-                            Channels: '8',
-                            ChannelLayout: 'L R C LFE Ls Rs Lb Rb',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '2160p', videoCodec: 'x265', audioChannels: '7.1', audioCodec: 'TrueHD', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: 'generic hevc and dts branch',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'HEVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'DTS',
-                            Channels: '6',
-                            ChannelLayout: 'L R C LFE Ls Rs',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '1080p', videoCodec: 'HEVC', audioChannels: '5.1', audioCodec: 'DTS', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: 'generic vp9 and flac branch',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '2160', ScanType: 'Progressive', Format: 'VP9', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'FLAC',
-                            Channels: '2',
-                            ChannelLayout: 'L R',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '2160p', videoCodec: 'VP9', audioChannels: '2.0', audioCodec: 'FLAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: '480 progressive resolution branch',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '480', ScanType: 'Progressive', Format: 'AVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'AAC',
-                            Channels: '2',
-                            ChannelLayout: 'L R',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '480p', videoCodec: 'AVC', audioChannels: '2.0', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: '1036 progressive and 7.1 Lw/Rw layout branch',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1036', ScanType: 'Progressive', Format: 'AVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'AAC',
-                            Channels: '8',
-                            ChannelLayout: 'C L R Ls Rs LFE Lw Rw',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '1080p', videoCodec: 'AVC', audioChannels: '7.1', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: '1072 progressive resolution branch',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1072', ScanType: 'Progressive', Format: 'AVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'AAC',
-                            Channels: '2',
-                            ChannelLayout: 'L R',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '1080p', videoCodec: 'AVC', audioChannels: '2.0', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: '1072 interlaced resolution branch',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1072', ScanType: 'Interlaced', Format: 'AVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'AAC',
-                            Channels: '2',
-                            ChannelLayout: 'L R',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '1080i', videoCodec: 'AVC', audioChannels: '2.0', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: '1036 interlaced resolution branch',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1036', ScanType: 'Interlaced', Format: 'AVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'AAC',
-                            Channels: '2',
-                            ChannelLayout: 'L R',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '1080i', videoCodec: 'AVC', audioChannels: '2.0', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: '1040 progressive resolution branch',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1040', ScanType: 'Progressive', Format: 'AVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'AAC',
-                            Channels: '2',
-                            ChannelLayout: 'L R',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '1080p', videoCodec: 'AVC', audioChannels: '2.0', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: '1040 interlaced resolution branch',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1040', ScanType: 'Interlaced', Format: 'AVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'AAC',
-                            Channels: '2',
-                            ChannelLayout: 'L R',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '1080i', videoCodec: 'AVC', audioChannels: '2.0', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: '1080 MBAFF scan type treated as interlaced',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1080', ScanType: 'MBAFF', Format: 'AVC', HDR_Format: 'SMPTE ST 2086', HDR_Format_Compatibility: 'HDR10' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'AAC',
-                            Channels: '2',
-                            ChannelLayout: 'L R',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'pt-BR',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { resolution: '1080i', videoCodec: 'AVC', audioChannels: '2.0', audioCodec: 'AAC', hdr: ['HDR'], audioMetadata: 'Atmos', language: ['pt'] },
-        },
-        {
-            name: 'final codec and hdr edge branches',
-            sourceType: 'WEBRIP' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', HDR_Format: '', HDR_Format_Compatibility: '' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'AAC',
-                            Channels: '2',
-                            ChannelLayout: 'L R',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'en-US',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { videoCodec: 'x264' },
-        },
-        {
-            name: 'web-dl hevc maps to h265',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'HEVC', HDR_Format: '', HDR_Format_Compatibility: '' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'AAC',
-                            Channels: '2',
-                            ChannelLayout: 'L R',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'en-US',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { videoCodec: 'H.265' },
-        },
-        {
-            name: 'hdr compatibility adds hdr10+',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', HDR_Format: 'Unknown HDR', HDR_Format_Compatibility: 'HDR10+' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'AAC',
-                            Channels: '2',
-                            ChannelLayout: 'L R',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'en-US',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { hdr: ['HDR', 'HDR10+'] },
-        },
-        {
-            name: 'unknown hdr yields empty hdr array',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', HDR_Format: 'GammaTone', HDR_Format_Compatibility: 'CompatX' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'AAC',
-                            Channels: '2',
-                            ChannelLayout: 'L R',
-                            Format_Commercial_IfAny: 'Atmos',
-                            Language: 'en-US',
-                            Title: 'Main',
-                        },
-                    ],
-                },
-            },
-            expected: { hdr: [] },
-        },
-        {
-            name: 'language without dash and non-numeric ids',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'General', extra: { IMDB: 'tt999', TMDB: 'abc', TVDB: 'xyz' } },
-                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'JA', Title: 'Main' },
-                    ],
-                },
-            },
-            expected: { language: ['ja'], tmdbId: undefined, tvdbId: undefined, imdbId: 'tt999' },
-        },
-        {
-            name: 'commentary skip and empty language normalization',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Audio', Default: 'No', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Commentary by Director' },
-                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: '   ', Title: 'Main' },
-                        { '@type': 'Audio', Default: 'No', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'FR', Title: 'Secondary' },
-                    ],
-                },
-            },
-            expected: { language: ['fr'] },
-        },
-        {
-            name: 'nil-string sanitization and nested non-object traversal',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'General', extra: '<nil>' },
-                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', HDR_Format: '<nil>', HDR_Format_Compatibility: '<nil>' },
-                        {
-                            '@type': 'Audio',
-                            Default: '<nil>',
-                            Format: 'AAC',
-                            Channels: '2',
-                            ChannelLayout: 'L R',
-                            Language: '<nil>',
-                            Title: '<nil>',
-                            Format_Commercial_IfAny: '<nil>',
-                        },
-                    ],
-                },
-            },
-            expected: {
-                resolution: '1080p',
-                videoCodec: 'H.264',
-                hdr: [],
-                audioCodec: 'AAC',
-                audioChannels: '2.0',
-                audioMetadata: undefined,
-                language: [],
-                imdbId: '',
-                tmdbId: undefined,
-                tvdbId: undefined,
-            },
-        },
-        {
-            name: 'plain dolby digital plus does not imply atmos metadata',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', HDR_Format: '', HDR_Format_Compatibility: '' },
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'E-AC-3',
-                            Channels: '6',
-                            ChannelLayout: 'L R C LFE Ls Rs',
-                            Language: 'en-US',
-                            Title: 'Main',
-                            Format_Commercial_IfAny: 'Dolby Digital Plus',
-                        },
-                    ],
-                },
-            },
-            expected: {
-                resolution: '1080p',
-                videoCodec: 'H.264',
-                hdr: [],
-                audioCodec: 'DD+',
-                audioChannels: '5.1',
-                audioMetadata: undefined,
-                language: ['en'],
-            },
-        },
-        {
-            name: 'hi10p true when AVC with High 10 profile',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', Format_Profile: 'High 10@L4.1', HDR_Format: '', HDR_Format_Compatibility: '' },
-                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
-                    ],
-                },
-            },
-            expected: { hi10p: true, videoCodec: 'H.264' },
-        },
-        {
-            name: 'hi10p false when AVC without High 10 profile',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', Format_Profile: 'High@L4.1', HDR_Format: '', HDR_Format_Compatibility: '' },
-                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
-                    ],
-                },
-            },
-            expected: { hi10p: false, videoCodec: 'H.264' },
-        },
-        {
-            name: 'parses decimal FrameRate value',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', FrameRate: '23.976', HDR_Format: '', HDR_Format_Compatibility: '' },
-                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
-                    ],
-                },
-            },
-            expected: { resolution: '1080p' },
-        },
-        {
-            name: 'parses integer prefix from TMDB and TVDB ids and ignores decimal part',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'General', extra: { IMDB: 'tt123', TMDB: 'tmdb://55.9', TVDB: 'tvdb-66.9' } },
-                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
-                    ],
-                },
-            },
-            expected: { tmdbId: 55, tvdbId: 66 },
-        },
-        {
-            name: 'hi10p false when non-AVC codec with High 10 profile',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'HEVC', Format_Profile: 'High 10@L4.1', HDR_Format: '', HDR_Format_Compatibility: '' },
-                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
-                    ],
-                },
-            },
-            expected: { hi10p: false },
-        },
-        {
-            name: 'parses NTSC video standard',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        {
-                            '@type': 'Video',
-                            Height: '480',
-                            ScanType: 'Interlaced',
-                            Format: 'MPEG Video',
-                            Format_Version: '2',
-                            Standard: 'NTSC',
-                            HDR_Format: '',
-                            HDR_Format_Compatibility: '',
-                        },
-                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
-                    ],
-                },
-            },
-            expected: { videoStandard: 'NTSC' },
-        },
-        {
-            name: 'parses PAL video standard',
-            sourceType: 'REMUX' as const,
-            result: {
-                media: {
-                    track: [
-                        {
-                            '@type': 'Video',
-                            Height: '576',
-                            ScanType: 'Interlaced',
-                            Format: 'MPEG Video',
-                            Format_Version: '2',
-                            Standard: 'PAL',
-                            HDR_Format: '',
-                            HDR_Format_Compatibility: '',
-                        },
-                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
-                    ],
-                },
-            },
-            expected: { videoStandard: 'PAL' },
-        },
-        {
-            name: 'returns undefined frameRate when value has no digits',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Video', Height: '1080', ScanType: 'Progressive', Format: 'AVC', FrameRate: 'N/A', HDR_Format: '', HDR_Format_Compatibility: '' },
-                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
-                    ],
-                },
-            },
-            expected: { frameRate: undefined },
-        },
-        {
-            name: 'hasEnglishSubs true when Text track has language en',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' },
-                        { '@type': 'Text', Language: 'en' },
-                    ],
-                },
-            },
-            expected: { hasEnglishSubs: true },
-        },
-        {
-            name: 'hasEnglishSubs true when Text track has language en-US',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'ja', Title: 'Main' },
-                        { '@type': 'Text', Language: 'en-US' },
-                        { '@type': 'Text', Language: 'fr' },
-                    ],
-                },
-            },
-            expected: { hasEnglishSubs: true },
-        },
-        {
-            name: 'hasEnglishSubs false when no Text tracks exist',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [{ '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'en-US', Title: 'Main' }],
-                },
-            },
-            expected: { hasEnglishSubs: false },
-        },
-        {
-            name: 'hasEnglishSubs false when Text tracks exist but none are English',
-            sourceType: 'WEB-DL' as const,
-            result: {
-                media: {
-                    track: [
-                        { '@type': 'Audio', Default: 'Yes', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Language: 'ja', Title: 'Main' },
-                        { '@type': 'Text', Language: 'fr' },
-                        { '@type': 'Text', Language: 'de' },
-                    ],
-                },
-            },
-            expected: { hasEnglishSubs: false },
-        },
-    ])('parses mediainfo metadata across branches: $name', async ({ sourceType, result, expected }) => {
-        const { parseMetadataFromMediainfo } = await loadService()
-        runCommandMock.mockResolvedValueOnce({ stdout: JSON.stringify(result) })
-
-        const parsed = await parseMetadataFromMediainfo('/tmp/movie.mkv', sourceType)
-        expect(parsed).toMatchObject(expected)
-    })
-
-    it('sets hasTrueHDCompatibilityTrack to true when TrueHD has an AC-3 track', async () => {
-        const { parseMetadataFromMediainfo } = await loadService()
-        runCommandMock.mockResolvedValueOnce({
-            stdout: JSON.stringify({
-                media: {
-                    track: [
-                        { '@type': 'Audio', Default: 'Yes', Format: 'MLP FBA', Channels: '8', ChannelLayout: 'L R C LFE Ls Rs Lb Rb', Language: 'en' },
-                        { '@type': 'Audio', Default: 'No', Format: 'AC-3', Channels: '6', ChannelLayout: 'L R C LFE Ls Rs', Language: 'en' },
-                    ],
-                },
-            }),
+            await expect(analyzeMediaFileAsText('/tmp/movie.mkv')).resolves.toBe('')
         })
-        const parsed = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
-        expect(parsed.hasTrueHDCompatibilityTrack).toBe(true)
     })
 
-    it('sets hasTrueHDCompatibilityTrack to true when TrueHD has an E-AC-3 track', async () => {
-        const { parseMetadataFromMediainfo } = await loadService()
-        runCommandMock.mockResolvedValueOnce({
-            stdout: JSON.stringify({
-                media: {
-                    track: [
-                        { '@type': 'Audio', Default: 'Yes', Format: 'MLP FBA', Channels: '8', ChannelLayout: 'L R C LFE Ls Rs Lb Rb', Language: 'en' },
-                        { '@type': 'Audio', Default: 'No', Format: 'E-AC-3', Channels: '6', ChannelLayout: 'L R C LFE Ls Rs', Language: 'en' },
-                    ],
-                },
-            }),
-        })
-        const parsed = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
-        expect(parsed.hasTrueHDCompatibilityTrack).toBe(true)
-    })
+    describe('parseMetadataFromMediainfo', () => {
+        it('falls back to the first audio track when none is marked Default', async () => {
+            mockTracks(
+                videoTrack(),
+                audioTrack({ Default: 'No', Format: 'DTS', Channels: '6', ChannelLayout: 'L R C LFE Ls Rs', Title: 'First' }),
+                audioTrack({ Default: 'No', Format: 'AAC', Channels: '2', ChannelLayout: 'L R', Title: 'Second' })
+            )
+            const { parseMetadataFromMediainfo } = await loadService()
 
-    it('sets hasTrueHDCompatibilityTrack to false when TrueHD has no compatibility track', async () => {
-        const { parseMetadataFromMediainfo } = await loadService()
-        runCommandMock.mockResolvedValueOnce({
-            stdout: JSON.stringify({
-                media: {
-                    track: [{ '@type': 'Audio', Default: 'Yes', Format: 'MLP FBA', Channels: '8', ChannelLayout: 'L R C LFE Ls Rs Lb Rb', Language: 'en' }],
-                },
-            }),
+            const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+            expect(result.audioCodec).toBe('DTS')
         })
-        const parsed = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
-        expect(parsed.hasTrueHDCompatibilityTrack).toBe(false)
-    })
 
-    it('sets hasTrueHDCompatibilityTrack to false when only AC-3 track is a commentary', async () => {
-        const { parseMetadataFromMediainfo } = await loadService()
-        runCommandMock.mockResolvedValueOnce({
-            stdout: JSON.stringify({
-                media: {
-                    track: [
-                        { '@type': 'Audio', Default: 'Yes', Format: 'MLP FBA', Channels: '8', ChannelLayout: 'L R C LFE Ls Rs Lb Rb', Language: 'en' },
-                        { '@type': 'Audio', Default: 'No', Format: 'AC-3', Channels: '2', ChannelLayout: 'L R', Language: 'en', Title: 'Commentary Track' },
-                    ],
-                },
-            }),
-        })
-        const parsed = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
-        expect(parsed.hasTrueHDCompatibilityTrack).toBe(false)
-    })
+        it('calls mediainfo with --Output=JSON flag', async () => {
+            mockTracks(videoTrack(), audioTrack())
+            const { parseMetadataFromMediainfo } = await loadService()
 
-    it('leaves hasTrueHDCompatibilityTrack undefined when primary codec is not TrueHD', async () => {
-        const { parseMetadataFromMediainfo } = await loadService()
-        runCommandMock.mockResolvedValueOnce({
-            stdout: JSON.stringify({
-                media: {
-                    track: [
-                        {
-                            '@type': 'Audio',
-                            Default: 'Yes',
-                            Format: 'DTS',
-                            Format_Commercial_IfAny: 'DTS-HD Master Audio',
-                            Channels: '6',
-                            ChannelLayout: 'L R C LFE Ls Rs',
-                            Language: 'en',
-                        },
-                    ],
-                },
-            }),
+            await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+            expect(runCommandMock).toHaveBeenCalledWith('/usr/bin/mediainfo', ['--Output=JSON', '/tmp/movie.mkv'])
         })
-        const parsed = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
-        expect(parsed.hasTrueHDCompatibilityTrack).toBeUndefined()
+
+        it('throws TypeError when the mediainfo command fails', async () => {
+            runCommandMock.mockRejectedValueOnce(new Error('analysis failed'))
+            const { parseMetadataFromMediainfo } = await loadService()
+
+            await expect(parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')).rejects.toThrow(TypeError)
+        })
+
+        describe('resolution', () => {
+            it.each([
+                { height: '4320', scanType: 'Progressive', expected: '4320p' },
+                { height: '2160', scanType: 'Progressive', expected: '2160p' },
+                { height: '2074', scanType: 'Progressive', expected: '2160p' },
+                { height: '1744', scanType: 'Progressive', expected: '2160p' },
+                { height: '1080', scanType: 'Progressive', expected: '1080p' },
+                { height: '1080', scanType: 'Interlaced', expected: '1080i' },
+                { height: '1080', scanType: 'MBAFF', expected: '1080i' },
+                { height: '1072', scanType: 'Progressive', expected: '1080p' },
+                { height: '1072', scanType: 'Interlaced', expected: '1080i' },
+                { height: '1040', scanType: 'Progressive', expected: '1080p' },
+                { height: '1040', scanType: 'Interlaced', expected: '1080i' },
+                { height: '1036', scanType: 'Progressive', expected: '1080p' },
+                { height: '1036', scanType: 'Interlaced', expected: '1080i' },
+                { height: '720', scanType: 'Progressive', expected: '720p' },
+                { height: '576', scanType: 'Progressive', expected: '576p' },
+                { height: '576', scanType: 'Interlaced', expected: '576i' },
+                { height: '480', scanType: 'Progressive', expected: '480p' },
+                { height: '480', scanType: 'Interlaced', expected: '480i' },
+            ])('$height $scanType → $expected', async ({ height, scanType, expected }) => {
+                mockTracks(videoTrack({ Height: height, ScanType: scanType }), audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+                expect(result.resolution).toBe(expected)
+            })
+
+            it('returns undefined for unrecognised height', async () => {
+                mockTracks(videoTrack({ Height: '999' }), audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+                expect(result.resolution).toBeUndefined()
+            })
+        })
+
+        describe('frameRate', () => {
+            it('parses a decimal FrameRate value', async () => {
+                mockTracks(videoTrack({ FrameRate: '23.976' }), audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result.frameRate).toBe(23.976)
+            })
+
+            it('returns undefined when FrameRate contains no digits', async () => {
+                mockTracks(videoTrack({ FrameRate: 'N/A' }), audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result.frameRate).toBeUndefined()
+            })
+        })
+
+        describe('videoCodec', () => {
+            it.each([
+                { format: 'AVC', sourceType: 'WEB-DL' as const, expected: 'H.264' },
+                { format: 'AVC', sourceType: 'WEBRIP' as const, expected: 'x264' },
+                { format: 'AVC', sourceType: 'REMUX' as const, expected: 'AVC' },
+                { format: 'HEVC', sourceType: 'WEB-DL' as const, expected: 'H.265' },
+                { format: 'HEVC', sourceType: 'WEBRIP' as const, expected: 'x265' },
+                { format: 'HEVC', sourceType: 'REMUX' as const, expected: 'HEVC' },
+                { format: 'VC-1', sourceType: 'REMUX' as const, expected: 'VC-1' },
+                { format: 'VP9', sourceType: 'REMUX' as const, expected: 'VP9' },
+                { format: 'AV1', sourceType: 'REMUX' as const, expected: 'AV1' },
+            ])('$format ($sourceType) → $expected', async ({ format, sourceType, expected }) => {
+                mockTracks(videoTrack({ Format: format }), audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', sourceType)
+                expect(result.videoCodec).toBe(expected)
+            })
+
+            it.each([
+                { version: '1', expected: 'MPEG-1' },
+                { version: '2', expected: 'MPEG-2' },
+            ])('MPEG Video version $version → $expected', async ({ version, expected }) => {
+                mockTracks(videoTrack({ Format: 'MPEG Video', Format_Version: version }), audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+                expect(result.videoCodec).toBe(expected)
+            })
+        })
+
+        describe('videoStandard', () => {
+            it.each([
+                { standard: 'NTSC', expected: 'NTSC' },
+                { standard: 'PAL', expected: 'PAL' },
+            ])('Standard "$standard" → $expected', async ({ standard, expected }) => {
+                mockTracks(videoTrack({ Standard: standard }), audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+                expect(result.videoStandard).toBe(expected)
+            })
+
+            it('returns undefined when Standard is absent', async () => {
+                mockTracks(videoTrack(), audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+                expect(result.videoStandard).toBeUndefined()
+            })
+        })
+
+        describe('hi10p', () => {
+            it.each([
+                { format: 'AVC', profile: 'High 10@L4.1', expected: true },
+                { format: 'AVC', profile: 'High@L4.1', expected: false },
+                { format: 'AVC', profile: '', expected: false },
+                { format: 'HEVC', profile: 'High 10@L4.1', expected: false },
+            ])('$format profile="$profile" → $expected', async ({ format, profile, expected }) => {
+                mockTracks(videoTrack({ Format: format, Format_Profile: profile }), audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result.hi10p).toBe(expected)
+            })
+        })
+
+        describe('hdr', () => {
+            it.each([
+                { hdrFormat: 'Dolby Vision', compat: '', expected: ['DV'] },
+                { hdrFormat: 'Dolby Vision HLG', compat: '', expected: ['DV', 'HLG'] },
+                { hdrFormat: 'HDR10+', compat: '', expected: ['HDR10+'] },
+                { hdrFormat: 'HDR', compat: '', expected: ['HDR'] },
+                { hdrFormat: 'SMPTE ST 2086', compat: 'HDR10', expected: ['HDR'] },
+                { hdrFormat: 'SMPTE ST 2086', compat: 'HDR10+', expected: ['HDR10+'] },
+                { hdrFormat: 'Unknown HDR', compat: 'HDR10+', expected: ['HDR', 'HDR10+'] },
+                { hdrFormat: 'GammaTone', compat: 'CompatX', expected: [] },
+                { hdrFormat: '', compat: '', expected: [] },
+                { hdrFormat: '<nil>', compat: '<nil>', expected: [] },
+            ])('$hdrFormat / "$compat" → $expected', async ({ hdrFormat, compat, expected }) => {
+                mockTracks(videoTrack({ HDR_Format: hdrFormat, HDR_Format_Compatibility: compat }), audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result.hdr).toEqual(expected)
+            })
+        })
+
+        describe('audioCodec', () => {
+            it.each([
+                { format: 'E-AC-3', commercial: '', expected: 'DD+' },
+                { format: 'EAC3', commercial: '', expected: 'DD+' },
+                { format: 'DDP', commercial: '', expected: 'DD+' },
+                { format: 'AC-3', commercial: '', expected: 'DD' },
+                { format: 'AC3', commercial: '', expected: 'DD' },
+                { format: 'DD', commercial: '', expected: 'DD' },
+                { format: 'AAC', commercial: '', expected: 'AAC' },
+                { format: 'DTS', commercial: 'DTS-HD Master Audio', expected: 'DTS-HD MA' },
+                { format: 'DTS', commercial: 'DTS-HD MA + DTS:X', expected: 'DTS:X' },
+                { format: 'DTS', commercial: '', expected: 'DTS' },
+                { format: 'FLAC', commercial: '', expected: 'FLAC' },
+                { format: 'MLP FBA', commercial: '', expected: 'TrueHD' },
+                { format: 'MLP FBA', commercial: 'Auro3D', expected: 'TrueHD' },
+                { format: 'UNKNOWN', commercial: '', expected: undefined },
+            ])('$format ($commercial || generic) → $expected', async ({ format, commercial, expected }) => {
+                mockTracks(videoTrack(), audioTrack({ Format: format, Format_Commercial_IfAny: commercial }))
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+                expect(result.audioCodec).toBe(expected)
+            })
+        })
+
+        describe('audioChannels', () => {
+            it.each([
+                { channels: '1', layout: 'C', expected: '1.0' },
+                { channels: '2', layout: 'L R', expected: '2.0' },
+                { channels: '3', layout: 'L R C', expected: '3.0' },
+                { channels: '6', layout: 'C L R Ls Rs LFE', expected: '5.1' },
+                { channels: '6', layout: 'L R C LFE Ls Rs', expected: '5.1' },
+                { channels: '7', layout: 'C L R Ls Rs LFE Cb', expected: '6.1' },
+                { channels: '8', layout: 'C L R Ls Rs Lb Rb LFE', expected: '7.1' },
+                { channels: '8', layout: 'L R C LFE Ls Rs Lb Rb', expected: '7.1' },
+                { channels: '8', layout: 'C L R Ls Rs LFE Lw Rw', expected: '7.1' },
+                { channels: '8', layout: 'C L R LFE Lb Rb Lss Rss Objects', expected: '7.1' },
+                { channels: '9', layout: 'Unknown', expected: undefined },
+            ])('$channels ch / "$layout" → $expected', async ({ channels, layout, expected }) => {
+                mockTracks(videoTrack(), audioTrack({ Channels: channels, ChannelLayout: layout }))
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+                expect(result.audioChannels).toBe(expected)
+            })
+        })
+
+        describe('audioMetadata', () => {
+            it.each([
+                { commercial: 'Dolby Digital Plus with Atmos', title: 'Main', expected: 'Atmos' },
+                { commercial: 'DTS-HD Master Audio', title: 'Main Atmos', expected: 'Atmos' },
+                { commercial: 'Auro3D', title: 'Main', expected: 'Auro3D' },
+                { commercial: 'DTS-HD Master Audio', title: 'Main Auro3D', expected: 'Auro3D' },
+                { commercial: 'Dolby Digital Plus', title: 'Main', expected: undefined },
+                { commercial: '', title: 'Main', expected: undefined },
+                { commercial: 'DTS-HD Master Audio', title: 'Main', expected: undefined },
+            ])('commercial="$commercial" title="$title" → $expected', async ({ commercial, title, expected }) => {
+                mockTracks(videoTrack(), audioTrack({ Format_Commercial_IfAny: commercial, Title: title }))
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+                expect(result.audioMetadata).toBe(expected)
+            })
+        })
+
+        describe('language', () => {
+            it('strips region suffix from language code', async () => {
+                mockTracks(videoTrack(), audioTrack({ Language: 'en-US' }))
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result.language).toEqual(['en'])
+            })
+
+            it('lowercases a bare uppercase language code', async () => {
+                mockTracks(videoTrack(), audioTrack({ Language: 'JA' }))
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result.language).toEqual(['ja'])
+            })
+
+            it('deduplicates and sorts multiple languages', async () => {
+                mockTracks(
+                    videoTrack(),
+                    audioTrack({ Default: 'Yes', Language: 'fr-CA', Title: 'French' }),
+                    audioTrack({ Default: 'No', Language: 'en-US', Title: 'English' }),
+                    audioTrack({ Default: 'No', Language: 'fr-FR', Title: 'French 2' })
+                )
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result.language).toEqual(['en', 'fr'])
+            })
+
+            it('excludes commentary tracks', async () => {
+                mockTracks(
+                    videoTrack(),
+                    audioTrack({ Default: 'Yes', Language: 'en-US', Title: 'Main' }),
+                    audioTrack({ Default: 'No', Language: 'en-US', Title: 'Commentary by Director' })
+                )
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result.language).toEqual(['en'])
+            })
+
+            it('excludes tracks with blank or whitespace-only language', async () => {
+                mockTracks(videoTrack(), audioTrack({ Default: 'Yes', Language: '   ', Title: 'Main' }), audioTrack({ Default: 'No', Language: 'FR', Title: 'French' }))
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result.language).toEqual(['fr'])
+            })
+
+            it('treats "<nil>" language as absent', async () => {
+                mockTracks(videoTrack(), audioTrack({ Language: '<nil>' }))
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result.language).toEqual([])
+            })
+        })
+
+        describe('hasTrueHDCompatibilityTrack', () => {
+            it.each([{ compatFormat: 'AC-3' }, { compatFormat: 'E-AC-3' }])('is true when TrueHD is paired with a $compatFormat track', async ({ compatFormat }) => {
+                mockTracks(audioTrack({ Format: 'MLP FBA', Channels: '8', ChannelLayout: 'L R C LFE Ls Rs Lb Rb', Title: 'Main' }), {
+                    '@type': 'Audio',
+                    Default: 'No',
+                    Format: compatFormat,
+                    Channels: '6',
+                    ChannelLayout: 'L R C LFE Ls Rs',
+                    Language: 'en',
+                    Title: 'Compat',
+                })
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+                expect(result.hasTrueHDCompatibilityTrack).toBe(true)
+            })
+
+            it('is false when TrueHD has no companion track', async () => {
+                mockTracks(audioTrack({ Format: 'MLP FBA', Channels: '8', ChannelLayout: 'L R C LFE Ls Rs Lb Rb' }))
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+                expect(result.hasTrueHDCompatibilityTrack).toBe(false)
+            })
+
+            it('is false when the only AC-3 track is a commentary', async () => {
+                mockTracks(audioTrack({ Format: 'MLP FBA', Channels: '8', ChannelLayout: 'L R C LFE Ls Rs Lb Rb', Title: 'Main' }), {
+                    '@type': 'Audio',
+                    Default: 'No',
+                    Format: 'AC-3',
+                    Channels: '2',
+                    ChannelLayout: 'L R',
+                    Language: 'en',
+                    Title: 'Commentary Track',
+                })
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+                expect(result.hasTrueHDCompatibilityTrack).toBe(false)
+            })
+
+            it('is undefined when the primary codec is not TrueHD', async () => {
+                mockTracks(audioTrack({ Format: 'DTS', Format_Commercial_IfAny: 'DTS-HD Master Audio', Channels: '6', ChannelLayout: 'L R C LFE Ls Rs' }))
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+                expect(result.hasTrueHDCompatibilityTrack).toBeUndefined()
+            })
+        })
+
+        describe('hasEnglishSubs', () => {
+            it.each([{ language: 'en' }, { language: 'en-US' }, { language: 'en-GB' }])('is true for Text track language "$language"', async ({ language }) => {
+                mockTracks(audioTrack(), textTrack(language))
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result.hasEnglishSubs).toBe(true)
+            })
+
+            it('is false when no Text tracks exist', async () => {
+                mockTracks(audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result.hasEnglishSubs).toBe(false)
+            })
+
+            it('is false when Text tracks exist but none are English', async () => {
+                mockTracks(audioTrack(), textTrack('fr'), textTrack('de'))
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result.hasEnglishSubs).toBe(false)
+            })
+        })
+
+        describe('ids from General track', () => {
+            it.each([
+                {
+                    description: 'parses IMDB, tmdb:// prefix, and tvdb- prefix',
+                    extra: { IMDB: 'tt123', TMDB: 'tmdb://55', TVDB: 'tvdb-66' },
+                    expected: { imdbId: 'tt123', tmdbId: 55, tvdbId: 66 },
+                },
+                {
+                    description: 'truncates decimal part of TMDB and TVDB ids',
+                    extra: { IMDB: 'tt123', TMDB: 'tmdb://55.9', TVDB: 'tvdb-66.9' },
+                    expected: { tmdbId: 55, tvdbId: 66 },
+                },
+                {
+                    description: 'returns undefined for non-numeric TMDB and TVDB',
+                    extra: { IMDB: 'tt999', TMDB: 'abc', TVDB: 'xyz' },
+                    expected: { imdbId: 'tt999', tmdbId: undefined, tvdbId: undefined },
+                },
+            ])('$description', async ({ extra, expected }) => {
+                mockTracks(generalTrack(extra), audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result).toMatchObject(expected)
+            })
+
+            it('returns empty imdbId when no General track is present', async () => {
+                mockTracks(audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result.imdbId).toBe('')
+            })
+
+            it('handles a non-object extra field on the General track', async () => {
+                mockTracks(generalTrack('<nil>'), audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'WEB-DL')
+                expect(result.imdbId).toBe('')
+                expect(result.tmdbId).toBeUndefined()
+                expect(result.tvdbId).toBeUndefined()
+            })
+        })
     })
 })
