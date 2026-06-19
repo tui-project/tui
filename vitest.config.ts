@@ -5,7 +5,7 @@ export default defineConfig({
     test: {
         coverage: {
             provider: 'v8',
-            include: ['server/**/*.{ts,js}', 'app/**/*'],
+            include: ['server/**/*.{ts,js}', 'app/**/*.{ts,js,vue}'],
             exclude: ['server/**/*.d.ts'],
             reporter: ['text', 'html', 'json'],
         },

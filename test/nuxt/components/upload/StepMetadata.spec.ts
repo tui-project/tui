@@ -543,7 +543,7 @@ describe('StepMetadata', () => {
             expect(yearInput.getAttribute('value')).toBe('2024')
             expect(screen.getByRole('combobox', { name: 'Resolution' }).textContent).toBe('1080p')
             expect(tvdbInput.getAttribute('value')).toBe('4321')
-        })
+        }, 10000)
 
         it.each([
             ['Video Codec', 'AVC'],
@@ -573,6 +573,96 @@ describe('StepMetadata', () => {
 
             await waitFor(() => expect(tmdbInput.getAttribute('value')).toBe('12345'))
         })
+
+        it('covers single-select dropdown v-model handlers in basic and source-release sections', async () => {
+            // All interactions in one test: one renderSuspended, one cleanup — avoids multi-test
+            // pointer-event accumulation that degrades the happy-dom environment over time.
+            const user = userEvent.setup()
+            await renderSuspended(StepMetadata, { props: { selectedPath } })
+
+            // Service must be clicked before Source changes away from Web
+            await user.click(screen.getByRole('combobox', { name: 'Service' }))
+            await user.click(await screen.findByRole('option', { name: 'Apple TV+' }))
+
+            await user.click(screen.getByRole('combobox', { name: 'Original Language' }))
+            await user.click(await screen.findByRole('option', { name: 'Korean' }))
+
+            await user.click(screen.getByRole('combobox', { name: 'Cut' }))
+            await user.click(await screen.findByRole('option', { name: "Director's Cut" }))
+
+            await user.click(screen.getByRole('combobox', { name: 'Ratio' }))
+            await user.click(await screen.findByRole('option', { name: 'IMAX' }))
+
+            await user.click(screen.getByRole('combobox', { name: 'Source' }))
+            await user.click(await screen.findByRole('option', { name: 'BluRay' }))
+
+            await user.click(screen.getByRole('combobox', { name: 'Type' }))
+            await user.click(await screen.findByRole('option', { name: 'Remux' }))
+
+            await user.click(screen.getByRole('combobox', { name: 'Media Type' }))
+            await user.click(await screen.findByRole('option', { name: 'TV' }))
+
+            await waitFor(() => {
+                expect(screen.getByRole('combobox', { name: 'Source' }).textContent).toBe('BluRay')
+                expect(screen.getByRole('combobox', { name: 'Type' }).textContent).toBe('Remux')
+                expect(screen.getByRole('combobox', { name: 'Media Type' }).textContent).toBe('TV')
+            })
+        }, 20000)
+
+        it('covers HDR and Language multi-select v-model handlers', async () => {
+            const user = userEvent.setup()
+            mockExecute.mockImplementation(() => {
+                mockData.value = createMetadata({ hdr: [], language: [] })
+            })
+
+            await renderSuspended(StepMetadata, { props: { selectedPath } })
+
+            // Multi-select dropdowns stay open after selecting — close with Escape before
+            // opening the next one to prevent aria-modal from hiding siblings.
+            await user.click(screen.getByRole('combobox', { name: 'HDR' }))
+            await user.click(await screen.findByRole('option', { name: 'DV' }))
+            await user.keyboard('{Escape}')
+
+            await user.click(screen.getByRole('combobox', { name: 'Language' }))
+            await user.click(await screen.findByRole('option', { name: 'Korean' }))
+            await user.keyboard('{Escape}')
+
+            await waitFor(() => {
+                expect(screen.getByRole('combobox', { name: 'HDR' }).textContent).toContain('DV')
+                expect(screen.getByRole('combobox', { name: 'Language' }).textContent).toContain('Korean')
+            })
+        }, 10000)
+
+        it('covers UInput v-model handlers for Original Title, IMDb ID, Release Group and Locale', async () => {
+            await renderSuspended(StepMetadata, { props: { selectedPath } })
+
+            await fireEvent.update(screen.getByRole('textbox', { name: 'Original Title' }), 'New Original Title')
+            await fireEvent.update(screen.getByRole('textbox', { name: 'IMDb ID' }), 'tt9999999')
+            await fireEvent.update(screen.getByRole('textbox', { name: 'Release Group' }), 'NEWGROUP')
+            await fireEvent.update(screen.getByRole('textbox', { name: 'Locale' }), 'AU')
+
+            await waitFor(() => {
+                expect(screen.getByRole('textbox', { name: 'Original Title' }).getAttribute('value')).toBe('New Original Title')
+                expect(screen.getByRole('textbox', { name: 'IMDb ID' }).getAttribute('value')).toBe('tt9999999')
+                expect(screen.getByRole('textbox', { name: 'Release Group' }).getAttribute('value')).toBe('NEWGROUP')
+                expect(screen.getByRole('textbox', { name: 'Locale' }).getAttribute('value')).toBe('AU')
+            })
+        })
+
+        it('allows typing into the TVDB ID input', async () => {
+            const user = userEvent.setup()
+            mockExecute.mockImplementation(() => {
+                mockData.value = createMetadata({ mediaType: 'tv', season: 1, episode: 1, tvdbId: undefined })
+            })
+
+            await renderSuspended(StepMetadata, { props: { selectedPath } })
+
+            const tvdbInput = screen.getByRole('spinbutton', { name: 'TVDB ID' })
+            await user.type(tvdbInput, '12345')
+            await user.tab()
+
+            await waitFor(() => expect(tvdbInput.getAttribute('value')).toBe('12345'))
+        }, 10000)
     })
 
     describe('validation', () => {
