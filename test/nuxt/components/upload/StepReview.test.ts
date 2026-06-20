@@ -10,11 +10,11 @@ const { toastAddMock, navigateToMock } = vi.hoisted(() => ({
     navigateToMock: vi.fn(),
 }))
 
-const getSettingsMock = vi.fn()
 const fetchTitleMock = vi.fn()
 const getViolationsMock = vi.fn()
 const getDuplicatesMock = vi.fn()
 const settingsLoading = ref(false)
+const settingsData = ref<{ trackers: Array<{ code: string; name: string }> } | null>(null)
 
 const executeUploadMock = vi.fn()
 const uploadPending = ref(false)
@@ -22,11 +22,12 @@ const uploadError = ref<boolean | null>(null)
 type UploadBody = { filepath: string; metadata: Metadata; description: string | undefined; trackers: TrackerItem[] } | null
 let capturedUploadBody: { value: UploadBody } | null = null
 
-vi.mock('~/composables/useSettings', () => ({
-    useSettings: () => ({
-        getSettings: getSettingsMock,
-        loading: settingsLoading,
-        error: ref(false),
+vi.mock('~/composables/useGetSettings', () => ({
+    useGetSettings: () => ({
+        pending: settingsLoading,
+        data: settingsData,
+        error: ref(null),
+        refresh: vi.fn(),
     }),
 }))
 
@@ -102,7 +103,6 @@ const DEFAULT_TITLE = 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP'
 
 describe('StepReview', () => {
     beforeEach(() => {
-        getSettingsMock.mockReset()
         executeUploadMock.mockReset()
         fetchTitleMock.mockReset()
         getViolationsMock.mockReset()
@@ -110,15 +110,15 @@ describe('StepReview', () => {
         toastAddMock.mockReset()
         navigateToMock.mockReset()
         settingsLoading.value = false
-        uploadPending.value = false
-        uploadError.value = null
-        capturedUploadBody = null
-        getSettingsMock.mockResolvedValue({
+        settingsData.value = {
             trackers: [
                 { code: 'ULCX', name: 'Upload.cx' },
                 { code: 'ATH', name: 'Aither' },
             ],
-        })
+        }
+        uploadPending.value = false
+        uploadError.value = null
+        capturedUploadBody = null
         fetchTitleMock.mockResolvedValue(DEFAULT_TITLE)
         getViolationsMock.mockResolvedValue([])
         getDuplicatesMock.mockResolvedValue([])
@@ -310,7 +310,7 @@ describe('StepReview', () => {
     })
 
     it('falls back to tracker code when tracker name is not in settings', async () => {
-        getSettingsMock.mockResolvedValue({ trackers: [] })
+        settingsData.value = { trackers: [] }
 
         await renderSuspended(StepReview, {
             props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -345,7 +345,7 @@ describe('StepReview', () => {
         })
 
         it('uses tracker code as fallback in trumpable description when tracker name is absent from settings', async () => {
-            getSettingsMock.mockResolvedValue({ trackers: [] })
+            settingsData.value = { trackers: [] }
             getDuplicatesMock.mockResolvedValue([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: true }])
 
             await renderSuspended(StepReview, {
@@ -370,7 +370,7 @@ describe('StepReview', () => {
         })
 
         it('uses tracker code as fallback in non-trumpable description when tracker name is absent from settings', async () => {
-            getSettingsMock.mockResolvedValue({ trackers: [] })
+            settingsData.value = { trackers: [] }
             getDuplicatesMock.mockResolvedValue([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }])
 
             await renderSuspended(StepReview, {
@@ -491,7 +491,7 @@ describe('StepReview', () => {
         })
 
         it('uses tracker code as fallback in violation description when tracker name is absent from settings', async () => {
-            getSettingsMock.mockResolvedValue({ trackers: [] })
+            settingsData.value = { trackers: [] }
             getViolationsMock.mockResolvedValue([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned.' }])
 
             await renderSuspended(StepReview, {
@@ -625,7 +625,7 @@ describe('StepReview', () => {
     })
 
     it('does not populate trackerNames when getSettings returns null', async () => {
-        getSettingsMock.mockResolvedValue(null)
+        settingsData.value = null
 
         await renderSuspended(StepReview, {
             props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },

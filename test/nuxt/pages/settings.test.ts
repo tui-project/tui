@@ -4,14 +4,16 @@ import userEvent from '@testing-library/user-event'
 import { screen, waitFor } from '@testing-library/vue'
 import { ref } from 'vue'
 import SettingsPage from '../../../app/pages/settings.vue'
-import type { AppSettings } from '../../../app/composables/useSettings'
+import type { AppSettings } from '../../../app/composables/useGetSettings'
 
 const loadingRef = ref(false)
-const loadErrorRef = ref(false)
-const saveErrorRef = ref<string | null>(null)
+const loadErrorRef = ref<Error | null>(null)
+const loadedDataRef = ref<AppSettings | null>(null)
+const savedDataRef = ref<AppSettings | null>(null)
+const saveErrorRef = ref('')
+let capturedSaveBody: { value: AppSettings | undefined } | undefined
 
-const { getSettingsMock, saveSettingsMock, toastAddMock } = vi.hoisted(() => ({
-    getSettingsMock: vi.fn(),
+const { saveSettingsMock, toastAddMock } = vi.hoisted(() => ({
     saveSettingsMock: vi.fn(),
     toastAddMock: vi.fn(),
 }))
@@ -20,14 +22,25 @@ mockNuxtImport('useToast', () => {
     return () => ({ add: toastAddMock })
 })
 
-mockNuxtImport('useSettings', () => {
+mockNuxtImport('useGetSettings', () => {
     return () => ({
-        getSettings: getSettingsMock,
-        saveSettings: saveSettingsMock,
-        loading: loadingRef,
-        loadError: loadErrorRef,
-        saveError: saveErrorRef,
+        pending: loadingRef,
+        data: loadedDataRef,
+        error: loadErrorRef,
+        refresh: vi.fn(),
     })
+})
+
+mockNuxtImport('usePostSettings', () => {
+    return (body: { value: AppSettings | undefined }) => {
+        capturedSaveBody = body
+        return {
+            pending: ref(false),
+            data: savedDataRef,
+            errorMessage: saveErrorRef,
+            execute: saveSettingsMock,
+        }
+    }
 })
 
 function buildSettings(overrides: Partial<AppSettings> = {}): AppSettings {
@@ -53,17 +66,17 @@ function buildSaveSettingsRequest(overrides: Partial<AppSettings> = {}): AppSett
 
 describe('settings page', () => {
     beforeEach(() => {
-        getSettingsMock.mockReset()
         saveSettingsMock.mockReset()
         toastAddMock.mockReset()
         loadingRef.value = false
-        loadErrorRef.value = false
-        saveErrorRef.value = null
+        loadErrorRef.value = null
+        loadedDataRef.value = buildSettings()
+        savedDataRef.value = null
+        saveErrorRef.value = ''
+        capturedSaveBody = undefined
     })
 
     it('adds/removes paths and submits updated settings', async () => {
-        getSettingsMock.mockResolvedValue(buildSettings())
-        saveSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'] }))
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -71,12 +84,12 @@ describe('settings page', () => {
         await user.keyboard('{Enter}')
         await user.click(screen.getByRole('button', { name: /save/i }))
 
-        expect(saveSettingsMock).toHaveBeenCalledWith(buildSaveSettingsRequest({ mediaPaths: ['/media/a'] }))
+        expect(saveSettingsMock).toHaveBeenCalled()
+        expect(capturedSaveBody?.value).toEqual(buildSaveSettingsRequest({ mediaPaths: ['/media/a'] }))
     })
 
     it('shows success message after saving settings', async () => {
-        getSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'] }))
-        saveSettingsMock.mockResolvedValue(undefined)
+        loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'] })
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -88,22 +101,12 @@ describe('settings page', () => {
     })
 
     it('loads and submits screenshot settings in nested provider payload', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                imageHostProviders: [{ selected: true, code: 'imgbb', name: 'ImgBB', apiKey: 'old-imgbb-key' }],
-                ffmpegPath: '/usr/local/bin/ffmpeg',
-                ffprobePath: '/usr/local/bin/ffprobe',
-            })
-        )
-        saveSettingsMock.mockResolvedValue(
-            buildSaveSettingsRequest({
-                mediaPaths: ['/media/a'],
-                imageHostProviders: [{ selected: true, code: 'imgbb', name: 'ImgBB', apiKey: 'new-imgbb-key' }],
-                ffmpegPath: '/opt/ffmpeg',
-                ffprobePath: '/opt/ffprobe',
-            })
-        )
+        loadedDataRef.value = buildSettings({
+            mediaPaths: ['/media/a'],
+            imageHostProviders: [{ selected: true, code: 'imgbb', name: 'ImgBB', apiKey: 'old-imgbb-key' }],
+            ffmpegPath: '/usr/local/bin/ffmpeg',
+            ffprobePath: '/usr/local/bin/ffprobe',
+        })
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -116,7 +119,8 @@ describe('settings page', () => {
         await user.type(screen.getByPlaceholderText('Enter ImgBB API key'), 'new-imgbb-key')
         await user.click(screen.getByRole('button', { name: /save/i }))
 
-        expect(saveSettingsMock).toHaveBeenCalledWith(
+        expect(saveSettingsMock).toHaveBeenCalled()
+        expect(capturedSaveBody?.value).toEqual(
             buildSaveSettingsRequest({
                 mediaPaths: ['/media/a'],
                 imageHostProviders: [{ selected: true, code: 'imgbb', name: 'ImgBB', apiKey: 'new-imgbb-key' }],
@@ -127,18 +131,10 @@ describe('settings page', () => {
     })
 
     it('loads and submits tracker settings in nested tracker payload', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'old-api-key', passKey: 'old-pass-key' }],
-            })
-        )
-        saveSettingsMock.mockResolvedValue(
-            buildSaveSettingsRequest({
-                mediaPaths: ['/media/a'],
-                trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'new-api-key', passKey: 'new-pass-key' }],
-            })
-        )
+        loadedDataRef.value = buildSettings({
+            mediaPaths: ['/media/a'],
+            trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'old-api-key', passKey: 'old-pass-key' }],
+        })
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -149,7 +145,8 @@ describe('settings page', () => {
         await user.type(screen.getByPlaceholderText('Enter ULCX pass key'), 'new-pass-key')
         await user.click(screen.getByRole('button', { name: /save/i }))
 
-        expect(saveSettingsMock).toHaveBeenCalledWith(
+        expect(saveSettingsMock).toHaveBeenCalled()
+        expect(capturedSaveBody?.value).toEqual(
             buildSaveSettingsRequest({
                 mediaPaths: ['/media/a'],
                 trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'new-api-key', passKey: 'new-pass-key' }],
@@ -157,73 +154,45 @@ describe('settings page', () => {
         )
     })
 
-    it('removes tracker object from payload when unticked', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'old-api-key', passKey: 'old-pass-key' }],
-            })
-        )
-        saveSettingsMock.mockResolvedValue(
-            buildSaveSettingsRequest({
-                mediaPaths: ['/media/a'],
-                trackers: [{ selected: false, code: 'ULCX', name: 'Upload.cx' }],
-            })
-        )
-        const user = userEvent.setup()
+    it.each([
+        {
+            label: 'tracker',
+            settings: { trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'old-api-key', passKey: 'old-pass-key' }] },
+            checkboxLabel: 'Upload.cx (ULCX)',
+            expected: { trackers: [{ selected: false, code: 'ULCX', name: 'Upload.cx' }] },
+        },
+        {
+            label: 'image host provider',
+            settings: { imageHostProviders: [{ selected: true, code: 'imgbb', name: 'ImgBB', apiKey: 'old-imgbb-key' }] },
+            checkboxLabel: 'ImgBB',
+            expected: { imageHostProviders: [{ selected: false, code: 'imgbb', name: 'ImgBB' }] },
+        },
+    ] as { label: string; settings: Partial<AppSettings>; checkboxLabel: string; expected: Partial<AppSettings> }[])(
+        'removes $label from payload when unticked',
+        async ({ settings, checkboxLabel, expected }) => {
+            loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'], ...settings })
+            const user = userEvent.setup()
 
-        await renderSuspended(SettingsPage)
-        await user.click(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' }))
-        await user.click(screen.getByRole('button', { name: /save/i }))
+            await renderSuspended(SettingsPage)
+            await user.click(screen.getByRole('checkbox', { name: checkboxLabel }))
+            await user.click(screen.getByRole('button', { name: /save/i }))
 
-        expect(saveSettingsMock).toHaveBeenCalledWith(
-            buildSaveSettingsRequest({
-                mediaPaths: ['/media/a'],
-                trackers: [{ selected: false, code: 'ULCX', name: 'Upload.cx' }],
-            })
-        )
-    })
-
-    it('removes image host object from payload when unticked', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                imageHostProviders: [{ selected: true, code: 'imgbb', name: 'ImgBB', apiKey: 'old-imgbb-key' }],
-            })
-        )
-        saveSettingsMock.mockResolvedValue(
-            buildSaveSettingsRequest({
-                mediaPaths: ['/media/a'],
-                imageHostProviders: [{ selected: false, code: 'imgbb', name: 'ImgBB' }],
-            })
-        )
-        const user = userEvent.setup()
-
-        await renderSuspended(SettingsPage)
-        await user.click(screen.getByRole('checkbox', { name: 'ImgBB' }))
-        await user.click(screen.getByRole('button', { name: /save/i }))
-
-        expect(saveSettingsMock).toHaveBeenCalledWith(
-            buildSaveSettingsRequest({
-                mediaPaths: ['/media/a'],
-                imageHostProviders: [{ selected: false, code: 'imgbb', name: 'ImgBB' }],
-            })
-        )
-    })
+            expect(saveSettingsMock).toHaveBeenCalled()
+            expect(capturedSaveBody?.value).toEqual(buildSaveSettingsRequest({ mediaPaths: ['/media/a'], ...expected }))
+        }
+    )
 
     it('refreshes image host credentials from the saved response after unticking and saving', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                imageHostProviders: [{ selected: true, code: 'imgbb', name: 'ImgBB', apiKey: 'old-imgbb-key' }],
-            })
-        )
-        saveSettingsMock.mockResolvedValue(
-            buildSettings({
+        loadedDataRef.value = buildSettings({
+            mediaPaths: ['/media/a'],
+            imageHostProviders: [{ selected: true, code: 'imgbb', name: 'ImgBB', apiKey: 'old-imgbb-key' }],
+        })
+        saveSettingsMock.mockImplementation(async () => {
+            savedDataRef.value = buildSettings({
                 mediaPaths: ['/media/a'],
                 imageHostProviders: [{ selected: false, code: 'imgbb', name: 'ImgBB' }],
             })
-        )
+        })
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -234,46 +203,35 @@ describe('settings page', () => {
         expect((screen.getByPlaceholderText('Enter ImgBB API key') as HTMLInputElement).value).toBe('')
     })
 
-    it('shows inline tracker validation errors and blocks submit when credentials are missing', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-            })
-        )
+    it.each([
+        {
+            label: 'tracker credentials',
+            checkboxLabel: 'Upload.cx (ULCX)',
+            errors: ['API Key is required for ULCX.', 'Pass Key is required for ULCX.'],
+        },
+        {
+            label: 'image host api key',
+            checkboxLabel: 'ImgBB',
+            errors: ['ImgBB API Key is required when ImgBB is selected.'],
+        },
+    ])('shows inline $label validation errors and blocks submit when missing', async ({ checkboxLabel, errors }) => {
+        loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'] })
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
-        await user.click(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' }))
+        await user.click(screen.getByRole('checkbox', { name: checkboxLabel }))
         await user.click(screen.getByRole('button', { name: /save/i }))
 
-        expect(await screen.findByText('API Key is required for ULCX.')).toBeDefined()
-        expect(screen.getByText('Pass Key is required for ULCX.')).toBeDefined()
-        expect(saveSettingsMock).not.toHaveBeenCalled()
-    })
-
-    it('shows inline image host validation errors and blocks submit when the api key is missing', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-            })
-        )
-        const user = userEvent.setup()
-
-        await renderSuspended(SettingsPage)
-        await user.click(screen.getByRole('checkbox', { name: 'ImgBB' }))
-        await user.click(screen.getByRole('button', { name: /save/i }))
-
-        expect(await screen.findByText('ImgBB API Key is required when ImgBB is selected.')).toBeDefined()
+        await screen.findByText(errors[0]!)
+        for (const error of errors.slice(1)) expect(screen.getByText(error)).toBeDefined()
         expect(saveSettingsMock).not.toHaveBeenCalled()
     })
 
     it('preserves tracker credentials locally when a tracker is unticked and re-ticked', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'saved-api-key', passKey: 'saved-pass-key' }],
-            })
-        )
+        loadedDataRef.value = buildSettings({
+            mediaPaths: ['/media/a'],
+            trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'saved-api-key', passKey: 'saved-pass-key' }],
+        })
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -285,12 +243,7 @@ describe('settings page', () => {
     })
 
     it('blocks submit when TMDB API key is empty', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                tmdbApiKey: '',
-            })
-        )
+        loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -302,40 +255,36 @@ describe('settings page', () => {
         expect(saveSettingsMock).not.toHaveBeenCalled()
     })
 
-    it('blocks submit when FFmpeg path is empty', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                ffmpegPath: '',
-            })
-        )
+    it('submits updated TMDB API key', async () => {
+        loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'], tmdbApiKey: 'old-key' })
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
+        await user.clear(screen.getByPlaceholderText('Enter TMDB API key'))
+        await user.type(screen.getByPlaceholderText('Enter TMDB API key'), 'new-key')
         await user.click(screen.getByRole('button', { name: /save/i }))
 
-        expect(await screen.findByText('FFmpeg Path is required.')).toBeDefined()
-        expect(saveSettingsMock).not.toHaveBeenCalled()
+        expect(saveSettingsMock).toHaveBeenCalled()
+        expect(capturedSaveBody?.value?.tmdbApiKey).toBe('new-key')
     })
 
-    it('blocks submit when FFprobe path is empty', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                ffprobePath: '',
-            })
-        )
+    it.each([
+        { name: 'ffmpegPath', settings: { ffmpegPath: '' }, error: 'FFmpeg Path is required.' },
+        { name: 'ffprobePath', settings: { ffprobePath: '' }, error: 'FFprobe Path is required.' },
+        { name: 'mediainfoPath', settings: { mediainfoPath: '' }, error: 'Mediainfo Path is required.' },
+    ])('blocks submit when $name is empty', async ({ settings, error }) => {
+        loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'], ...settings })
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
         await user.click(screen.getByRole('button', { name: /save/i }))
 
-        expect(await screen.findByText('FFprobe Path is required.')).toBeDefined()
+        await screen.findByText(error)
         expect(saveSettingsMock).not.toHaveBeenCalled()
     })
 
     it('clears the media paths validation error after adding a path', async () => {
-        getSettingsMock.mockResolvedValue(buildSettings())
+        loadedDataRef.value = buildSettings()
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -352,11 +301,7 @@ describe('settings page', () => {
     })
 
     it('marks the first invalid settings input after schema validation fails', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-            })
-        )
+        loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'] })
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -370,20 +315,10 @@ describe('settings page', () => {
     })
 
     it('submits updated screenshot counts and refreshes the saved values from the response', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                movieScreenshotCount: 6,
-                episodePackScreenshotCount: 3,
-            })
-        )
-        saveSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                movieScreenshotCount: 8,
-                episodePackScreenshotCount: 4,
-            })
-        )
+        loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'], movieScreenshotCount: 6, episodePackScreenshotCount: 3 })
+        saveSettingsMock.mockImplementation(async () => {
+            savedDataRef.value = buildSettings({ mediaPaths: ['/media/a'], movieScreenshotCount: 8, episodePackScreenshotCount: 4 })
+        })
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -394,13 +329,8 @@ describe('settings page', () => {
         await user.type(screen.getByLabelText('Episode Pack Screenshot Count'), '4')
         await user.click(screen.getByRole('button', { name: /save/i }))
 
-        expect(saveSettingsMock).toHaveBeenCalledWith(
-            buildSaveSettingsRequest({
-                mediaPaths: ['/media/a'],
-                movieScreenshotCount: 8,
-                episodePackScreenshotCount: 4,
-            })
-        )
+        expect(saveSettingsMock).toHaveBeenCalled()
+        expect(capturedSaveBody?.value).toEqual(buildSaveSettingsRequest({ mediaPaths: ['/media/a'], movieScreenshotCount: 8, episodePackScreenshotCount: 4 }))
 
         await waitFor(() => {
             expect((screen.getByLabelText('Movie / Single Episode Screenshot Count') as HTMLInputElement).value).toBe('8')
@@ -409,18 +339,16 @@ describe('settings page', () => {
     })
 
     it('refreshes all tool path and screenshot fields from the save response', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                mediainfoPath: 'mediainfo',
-                ffmpegPath: 'ffmpeg',
-                ffprobePath: 'ffprobe',
-                movieScreenshotCount: 6,
-                episodePackScreenshotCount: 3,
-            })
-        )
-        saveSettingsMock.mockResolvedValue(
-            buildSettings({
+        loadedDataRef.value = buildSettings({
+            mediaPaths: ['/media/a'],
+            mediainfoPath: 'mediainfo',
+            ffmpegPath: 'ffmpeg',
+            ffprobePath: 'ffprobe',
+            movieScreenshotCount: 6,
+            episodePackScreenshotCount: 3,
+        })
+        saveSettingsMock.mockImplementation(async () => {
+            savedDataRef.value = buildSettings({
                 mediaPaths: ['/media/a'],
                 mediainfoPath: '/custom/mediainfo',
                 ffmpegPath: '/custom/ffmpeg',
@@ -428,7 +356,7 @@ describe('settings page', () => {
                 movieScreenshotCount: 10,
                 episodePackScreenshotCount: 5,
             })
-        )
+        })
 
         const wrapper = await mountSuspended(SettingsPage)
         const vm = wrapper.vm as unknown as {
@@ -452,11 +380,10 @@ describe('settings page', () => {
         expect(vm.formState.episodePackScreenshotCount).toBe(5)
     })
 
-    it('shows error toast with API message when save fails', async () => {
-        getSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'] }))
+    it('shows error toast and not success toast when save fails', async () => {
+        loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'] })
         saveSettingsMock.mockImplementation(async () => {
             saveErrorRef.value = 'Media path does not exist: /missing'
-            return null
         })
         const user = userEvent.setup()
 
@@ -467,27 +394,12 @@ describe('settings page', () => {
             expect(toastAddMock).toHaveBeenCalledWith(
                 expect.objectContaining({ title: 'Failed to save settings.', description: 'Media path does not exist: /missing', color: 'error' })
             )
-        })
-    })
-
-    it('does not show success toast when save fails', async () => {
-        getSettingsMock.mockResolvedValue(buildSettings({ mediaPaths: ['/media/a'] }))
-        saveSettingsMock.mockImplementation(async () => {
-            saveErrorRef.value = 'Media path does not exist: /missing'
-            return null
-        })
-        const user = userEvent.setup()
-
-        await renderSuspended(SettingsPage)
-        await user.click(screen.getByRole('button', { name: /save/i }))
-
-        await waitFor(() => {
             expect(toastAddMock).not.toHaveBeenCalledWith(expect.objectContaining({ color: 'success' }))
         })
     })
 
     it('does not scroll to a field when onError is called with no errors', async () => {
-        getSettingsMock.mockResolvedValue(buildSettings())
+        loadedDataRef.value = buildSettings()
 
         const wrapper = await mountSuspended(SettingsPage)
         const vm = wrapper.vm as unknown as {
@@ -499,7 +411,6 @@ describe('settings page', () => {
 
     it('shows loading skeletons while settings are loading', async () => {
         loadingRef.value = true
-        getSettingsMock.mockResolvedValue(buildSettings())
 
         const wrapper = await mountSuspended(SettingsPage)
 
@@ -507,8 +418,7 @@ describe('settings page', () => {
     })
 
     it('shows load error alert when settings fail to load', async () => {
-        loadErrorRef.value = true
-        getSettingsMock.mockResolvedValue(null)
+        loadErrorRef.value = new Error('network')
 
         await renderSuspended(SettingsPage)
 
@@ -517,15 +427,13 @@ describe('settings page', () => {
     })
 
     it('shows separator between selected trackers when there are multiple', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                trackers: [
-                    { selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'key1', passKey: 'pass1' },
-                    { selected: true, code: 'BHD', name: 'BeyondHD', apiKey: 'key2', passKey: 'pass2' },
-                ],
-            })
-        )
+        loadedDataRef.value = buildSettings({
+            mediaPaths: ['/media/a'],
+            trackers: [
+                { selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'key1', passKey: 'pass1' },
+                { selected: true, code: 'BHD', name: 'BeyondHD', apiKey: 'key2', passKey: 'pass2' },
+            ],
+        })
 
         const wrapper = await mountSuspended(SettingsPage)
 
@@ -533,15 +441,13 @@ describe('settings page', () => {
     })
 
     it('does not deselect other torrent clients when a client is deselected', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                torrentClients: [
-                    { selected: true, code: 'QUI', name: 'qui', url: 'http://localhost:7474', apiKey: 'key' },
-                    { selected: false, code: 'OTHER', name: 'Other', url: '', apiKey: '' },
-                ],
-            })
-        )
+        loadedDataRef.value = buildSettings({
+            mediaPaths: ['/media/a'],
+            torrentClients: [
+                { selected: true, code: 'QUI', name: 'qui', url: 'http://localhost:7474', apiKey: 'key' },
+                { selected: false, code: 'OTHER', name: 'Other', url: '', apiKey: '' },
+            ],
+        })
 
         const wrapper = await mountSuspended(SettingsPage)
         const vm = wrapper.vm as unknown as { formState: AppSettings }
@@ -554,79 +460,59 @@ describe('settings page', () => {
         expect(vm.formState.torrentClients[1]?.selected).toBe(false)
     })
 
-    it('blocks submit when mediainfoPath is empty', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                mediainfoPath: '',
-            })
-        )
+    it('submits updated mediainfo path', async () => {
+        loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'] })
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
+        await user.clear(screen.getByPlaceholderText('mediainfo'))
+        await user.type(screen.getByPlaceholderText('mediainfo'), '/usr/bin/mediainfo')
         await user.click(screen.getByRole('button', { name: /save/i }))
 
-        expect(await screen.findByText('Mediainfo Path is required.')).toBeDefined()
-        expect(saveSettingsMock).not.toHaveBeenCalled()
+        expect(saveSettingsMock).toHaveBeenCalled()
+        expect(capturedSaveBody?.value?.mediainfoPath).toBe('/usr/bin/mediainfo')
     })
 
-    it('responds to checkbox and input update events from the rendered form controls', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                imageHostProviders: [{ selected: false, code: 'imgbb', name: 'ImgBB' }],
-                trackers: [{ selected: false, code: 'ULCX', name: 'Upload.cx' }],
-                ffmpegPath: 'ffmpeg',
-                ffprobePath: 'ffprobe',
-            })
-        )
+    it('submits updated log level', async () => {
+        loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'] })
 
         const wrapper = await mountSuspended(SettingsPage)
-        const vm = wrapper.vm as unknown as {
-            formState: AppSettings
-        }
+        const vm = wrapper.vm as unknown as { formState: AppSettings; onSubmit: (event: { data: AppSettings }) => Promise<void> }
 
-        const checkboxes = wrapper.findAllComponents({ name: 'UCheckbox' })
-        const trackerCheckbox = checkboxes.find((c) => c.props('label')?.includes('ULCX'))
-        const imageHostCheckbox = checkboxes.find((c) => c.props('label') === 'ImgBB')
-        await trackerCheckbox?.vm.$emit('update:model-value', true)
-        await imageHostCheckbox?.vm.$emit('update:model-value', true)
+        await wrapper.findComponent({ name: 'USelect' }).vm.$emit('update:model-value', 4)
+        await vm.onSubmit({ data: vm.formState })
 
-        const ffmpegInput = wrapper.findAllComponents({ name: 'UInput' }).find((component) => component.props('placeholder') === 'ffmpeg')
-        const ffprobeInput = wrapper.findAllComponents({ name: 'UInput' }).find((component) => component.props('placeholder') === 'ffprobe')
-
-        await ffmpegInput?.vm.$emit('update:model-value', '/evented/ffmpeg')
-        await ffprobeInput?.vm.$emit('update:model-value', '/evented/ffprobe')
-
-        expect(vm.formState.trackers[0]?.selected).toBe(true)
-        expect(vm.formState.imageHostProviders[0]?.selected).toBe(true)
-        expect(vm.formState.ffmpegPath).toBe('/evented/ffmpeg')
-        expect(vm.formState.ffprobePath).toBe('/evented/ffprobe')
+        expect(saveSettingsMock).toHaveBeenCalled()
+        expect(capturedSaveBody?.value?.logLevel).toBe(4)
     })
 
-    it('shows url and api key inputs when a torrent client is selected', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                torrentClients: [{ selected: false, code: 'QUI', name: 'qui', url: '', apiKey: '' }],
-            })
-        )
+    it('submits torrent client url and api key when credentials are filled after selecting the client', async () => {
+        loadedDataRef.value = buildSettings({
+            mediaPaths: ['/media/a'],
+            torrentClients: [{ selected: false, code: 'QUI', name: 'qui', url: '', apiKey: '' }],
+        })
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
         await user.click(screen.getByRole('checkbox', { name: 'qui' }))
+        await user.type(screen.getByPlaceholderText('e.g. http://localhost:7474'), 'http://localhost:7474')
+        await user.type(screen.getByPlaceholderText('Enter qui API key'), 'my-api-key')
+        await user.click(screen.getByRole('button', { name: /save/i }))
 
-        expect(screen.getByPlaceholderText('e.g. http://localhost:7474')).toBeTruthy()
-        expect(screen.getByPlaceholderText('Enter qui API key')).toBeTruthy()
+        expect(saveSettingsMock).toHaveBeenCalled()
+        expect(capturedSaveBody?.value).toEqual(
+            buildSaveSettingsRequest({
+                mediaPaths: ['/media/a'],
+                torrentClients: [{ selected: true, code: 'QUI', name: 'qui', url: 'http://localhost:7474', apiKey: 'my-api-key' }],
+            })
+        )
     })
 
     it('shows inline torrent client validation errors when url or api key is missing', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                torrentClients: [{ selected: true, code: 'QUI', name: 'qui', url: '', apiKey: '' }],
-            })
-        )
+        loadedDataRef.value = buildSettings({
+            mediaPaths: ['/media/a'],
+            torrentClients: [{ selected: true, code: 'QUI', name: 'qui', url: '', apiKey: '' }],
+        })
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)
@@ -638,15 +524,13 @@ describe('settings page', () => {
     })
 
     it('deselects other torrent clients when one is selected', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                torrentClients: [
-                    { selected: true, code: 'QUI', name: 'qui', url: 'http://localhost:7474', apiKey: 'key' },
-                    { selected: false, code: 'OTHER', name: 'Other', url: '', apiKey: '' },
-                ],
-            })
-        )
+        loadedDataRef.value = buildSettings({
+            mediaPaths: ['/media/a'],
+            torrentClients: [
+                { selected: true, code: 'QUI', name: 'qui', url: 'http://localhost:7474', apiKey: 'key' },
+                { selected: false, code: 'OTHER', name: 'Other', url: '', apiKey: '' },
+            ],
+        })
 
         const wrapper = await mountSuspended(SettingsPage)
         const vm = wrapper.vm as unknown as { formState: AppSettings }
@@ -660,15 +544,13 @@ describe('settings page', () => {
     })
 
     it('shows validation error and blocks submit when more than one torrent client is selected', async () => {
-        getSettingsMock.mockResolvedValue(
-            buildSettings({
-                mediaPaths: ['/media/a'],
-                torrentClients: [
-                    { selected: true, code: 'QUI', name: 'qui', url: 'http://localhost:7474', apiKey: 'key' },
-                    { selected: true, code: 'OTHER', name: 'Other', url: 'http://localhost:8080', apiKey: 'key2' },
-                ],
-            })
-        )
+        loadedDataRef.value = buildSettings({
+            mediaPaths: ['/media/a'],
+            torrentClients: [
+                { selected: true, code: 'QUI', name: 'qui', url: 'http://localhost:7474', apiKey: 'key' },
+                { selected: true, code: 'OTHER', name: 'Other', url: 'http://localhost:8080', apiKey: 'key2' },
+            ],
+        })
         const user = userEvent.setup()
 
         await renderSuspended(SettingsPage)

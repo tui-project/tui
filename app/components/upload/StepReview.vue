@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import StepNavigationButtons from './StepNavigationButtons.vue'
-import { useSettings } from '~/composables/useSettings'
+import { useGetSettings } from '~/composables/useGetSettings'
 import { useTrackerTitle } from '~/composables/useTrackerTitle'
 import { useTrackerRules, type RuleViolation } from '~/composables/useTrackerRules'
 import { useTrackerDuplicates, type DuplicateEntry } from '~/composables/useTrackerDuplicates'
@@ -17,7 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
-const { getSettings, loading: settingsLoading } = useSettings()
+const { pending: settingsLoading, data: settings } = useGetSettings()
 const { getTitle, loading: titlesLoading } = useTrackerTitle()
 const { getViolations, loading: rulesLoading } = useTrackerRules()
 const { getDuplicates, loading: duplicatesLoading } = useTrackerDuplicates()
@@ -65,11 +65,17 @@ const {
     watch: false,
 })
 
+watch(
+    settings,
+    (settings) => {
+        if (settings) {
+            trackerNames.value = Object.fromEntries(settings.trackers.map((t) => [t.code, `${t.name} (${t.code})`]))
+        }
+    },
+    { immediate: true }
+)
+
 onMounted(async () => {
-    const settings = await getSettings()
-    if (settings) {
-        trackerNames.value = Object.fromEntries(settings.trackers.map((t) => [t.code, `${t.name} (${t.code})`]))
-    }
     await loadTrackerItems()
 })
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import StepNavigationButtons from './StepNavigationButtons.vue'
-import { useSettings } from '~/composables/useSettings'
+import { useGetSettings } from '~/composables/useGetSettings'
 
 const selectedTrackers = defineModel<string[]>({ default: [] })
 
@@ -9,32 +9,31 @@ const emit = defineEmits<{
     next: []
 }>()
 
-const { getSettings, loading, loadError: error } = useSettings()
+const { pending, data: settings, error } = useGetSettings()
 const trackers = ref<Array<{ name: string; code: string }>>([])
 const canProceed = computed(() => selectedTrackers.value.length > 0)
 
-onMounted(async () => {
-    await loadTrackers()
-})
+watch(
+    settings,
+    (settings) => {
+        if (!settings) {
+            trackers.value = []
+            selectedTrackers.value = []
+            return
+        }
 
-async function loadTrackers() {
-    const settings = await getSettings()
-    if (!settings) {
-        trackers.value = []
-        selectedTrackers.value = []
-        return
-    }
+        trackers.value = settings.trackers
+            .filter((tracker) => tracker.selected)
+            .map((tracker) => ({
+                code: tracker.code,
+                name: `${tracker.name} (${tracker.code})`,
+            }))
 
-    trackers.value = settings.trackers
-        .filter((tracker) => tracker.selected)
-        .map((tracker) => ({
-            code: tracker.code,
-            name: `${tracker.name} (${tracker.code})`,
-        }))
-
-    const availableTrackerCodes = new Set(trackers.value.map((tracker) => tracker.code))
-    selectedTrackers.value = selectedTrackers.value.filter((code) => availableTrackerCodes.has(code))
-}
+        const availableTrackerCodes = new Set(trackers.value.map((tracker) => tracker.code))
+        selectedTrackers.value = selectedTrackers.value.filter((code) => availableTrackerCodes.has(code))
+    },
+    { immediate: true }
+)
 
 function toggleTracker(code: string) {
     if (selectedTrackers.value.includes(code)) {
@@ -56,7 +55,7 @@ function toggleTracker(code: string) {
 
         <UAlert v-if="error" color="error" variant="soft" title="Failed to load trackers from settings. Please try again." class="mb-4" />
 
-        <div v-if="loading" class="space-y-2">
+        <div v-if="pending" class="space-y-2">
             <USkeleton class="h-8 w-full" />
             <USkeleton class="h-8 w-full" />
             <USkeleton class="h-8 w-full" />
@@ -89,6 +88,6 @@ function toggleTracker(code: string) {
             <p class="text-xs text-muted">Selected: {{ selectedTrackers.length }}</p>
         </div>
 
-        <StepNavigationButtons class="mt-5" :next="{ disabled: !canProceed || loading }" @back="emit('back')" @next="emit('next')" />
+        <StepNavigationButtons class="mt-5" :next="{ disabled: !canProceed || pending }" @back="emit('back')" @next="emit('next')" />
     </UCard>
 </template>

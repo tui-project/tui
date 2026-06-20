@@ -1,12 +1,29 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormErrorEvent, FormSubmitEvent } from '@nuxt/ui'
-import type { AppSettings } from '../composables/useSettings'
+import type { AppSettings } from '../composables/useGetSettings'
 
 type SettingsFormState = z.output<typeof schema>
 
-const { getSettings, saveSettings, loading, loadError, saveError } = useSettings()
+const saveBody = ref<AppSettings | undefined>(undefined)
+
+const { pending, data: settings, error: loadError } = useGetSettings()
+const { pending: savePending, data: savedSettings, errorMessage: saveError, execute: saveSettings } = usePostSettings(saveBody)
 const toast = useToast()
+
+const formState = reactive<AppSettings>({
+    mediaPaths: [] as string[],
+    tmdbApiKey: '',
+    imageHostProviders: [] as AppSettings['imageHostProviders'],
+    trackers: [] as AppSettings['trackers'],
+    torrentClients: [] as AppSettings['torrentClients'],
+    mediainfoPath: 'mediainfo',
+    ffmpegPath: 'ffmpeg',
+    ffprobePath: 'ffprobe',
+    movieScreenshotCount: 6,
+    episodePackScreenshotCount: 3,
+    logLevel: 3,
+})
 
 const schema = z
     .object({
@@ -95,19 +112,7 @@ const LOG_LEVEL_OPTIONS = [
     { label: 'Trace', value: 5 },
 ]
 
-const formState = reactive<AppSettings>({
-    mediaPaths: [] as string[],
-    tmdbApiKey: '',
-    imageHostProviders: [] as AppSettings['imageHostProviders'],
-    trackers: [] as AppSettings['trackers'],
-    torrentClients: [] as AppSettings['torrentClients'],
-    mediainfoPath: 'mediainfo',
-    ffmpegPath: 'ffmpeg',
-    ffprobePath: 'ffprobe',
-    movieScreenshotCount: 6,
-    episodePackScreenshotCount: 3,
-    logLevel: 3,
-})
+watch(settings, (settings) => Object.assign(formState, settings), { immediate: true })
 
 async function onError(event: FormErrorEvent) {
     const firstError = event.errors[0]
@@ -121,7 +126,8 @@ async function onError(event: FormErrorEvent) {
 }
 
 async function onSubmit(event: FormSubmitEvent<SettingsFormState>) {
-    const response = await saveSettings(buildSaveSettingsRequest(event.data))
+    saveBody.value = buildSaveSettingsRequest(event.data)
+    await saveSettings()
 
     if (saveError.value) {
         toast.add({
@@ -132,18 +138,13 @@ async function onSubmit(event: FormSubmitEvent<SettingsFormState>) {
         return
     }
 
-    Object.assign(formState, response)
+    Object.assign(formState, savedSettings.value)
 
     toast.add({
         title: 'Settings successfully saved.',
         color: 'success',
     })
 }
-
-onMounted(async () => {
-    const response = await getSettings()
-    Object.assign(formState, response)
-})
 
 function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
     return {
@@ -182,7 +183,7 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
 <template>
     <PageContainer>
         <PageHeader title="Settings" description="Configure settings for the application." />
-        <div v-if="loading" class="space-y-2">
+        <div v-if="pending" class="space-y-2">
             <USkeleton class="h-20 w-full" />
             <USkeleton class="h-20 w-full" />
             <USkeleton class="h-20 w-full" />
@@ -343,7 +344,7 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
             </UCard>
 
             <div class="flex justify-end pt-4">
-                <UButton size="xl" type="submit" :loading="loading" :disabled="loading"> Save </UButton>
+                <UButton size="xl" type="submit" :loading="savePending" :disabled="savePending"> Save </UButton>
             </div>
         </UForm>
     </PageContainer>

@@ -1,19 +1,37 @@
-import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
+import { renderSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StepSelectTrackers from '~/components/upload/StepSelectTrackers.vue'
+import type { AppSettings, TrackerSettings } from '~/composables/useGetSettings'
 
-const getSettingsMock = vi.fn()
+function buildTrackerSettings(trackers: Partial<TrackerSettings>[]): AppSettings {
+    return {
+        mediaPaths: [],
+        tmdbApiKey: '',
+        imageHostProviders: [],
+        trackers: trackers.map((t) => ({ selected: false, code: '', name: '', ...t })),
+        torrentClients: [],
+        mediainfoPath: 'mediainfo',
+        ffmpegPath: 'ffmpeg',
+        ffprobePath: 'ffprobe',
+        movieScreenshotCount: 6,
+        episodePackScreenshotCount: 3,
+        logLevel: 3,
+    }
+}
+
+const settingsData = ref<AppSettings | null>(null)
 const loading = ref(false)
-const loadError = ref(false)
+const loadError = ref<Error | null>(null)
 
-vi.mock('~/composables/useSettings', () => ({
-    useSettings: () => ({
-        getSettings: getSettingsMock,
-        loading,
-        loadError,
+vi.mock('~/composables/useGetSettings', () => ({
+    useGetSettings: () => ({
+        pending: loading,
+        data: settingsData,
+        error: loadError,
+        refresh: vi.fn(),
     }),
 }))
 
@@ -21,27 +39,21 @@ mockNuxtImport('navigateTo', () => vi.fn())
 
 describe('StepSelectTrackers', () => {
     beforeEach(() => {
-        getSettingsMock.mockReset()
+        settingsData.value = null
         loading.value = false
-        loadError.value = false
+        loadError.value = null
     })
 
     it('loads only selected trackers from settings and toggles upload targets', async () => {
         const user = userEvent.setup()
-        getSettingsMock.mockResolvedValue({
-            trackers: [
-                { selected: true, code: 'ULCX', name: 'Upload.cx' },
-                { selected: false, code: 'ATH', name: 'Aither' },
-                { selected: true, code: 'BHD', name: 'BeyondHD' },
-            ],
-        })
+        settingsData.value = buildTrackerSettings([
+            { selected: true, code: 'ULCX', name: 'Upload.cx' },
+            { selected: false, code: 'ATH', name: 'Aither' },
+            { selected: true, code: 'BHD', name: 'BeyondHD' },
+        ])
 
         const { emitted } = await renderSuspended(StepSelectTrackers, {
             props: { modelValue: [] },
-        })
-
-        await waitFor(() => {
-            expect(getSettingsMock).toHaveBeenCalledTimes(1)
         })
 
         expect(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' })).toBeTruthy()
@@ -67,9 +79,7 @@ describe('StepSelectTrackers', () => {
     })
 
     it('shows an empty state when no trackers are enabled in settings', async () => {
-        getSettingsMock.mockResolvedValue({
-            trackers: [{ selected: false, code: 'ULCX', name: 'Upload.cx' }],
-        })
+        settingsData.value = buildTrackerSettings([{ selected: false, code: 'ULCX', name: 'Upload.cx' }])
 
         await renderSuspended(StepSelectTrackers, {
             props: { modelValue: [] },
@@ -79,8 +89,7 @@ describe('StepSelectTrackers', () => {
     })
 
     it('shows an error alert when trackers fail to load', async () => {
-        getSettingsMock.mockResolvedValue(null)
-        loadError.value = true
+        loadError.value = new Error('network')
 
         await renderSuspended(StepSelectTrackers, {
             props: { modelValue: [] },
@@ -91,7 +100,6 @@ describe('StepSelectTrackers', () => {
 
     it('shows loading skeletons while settings are being fetched', async () => {
         loading.value = true
-        getSettingsMock.mockResolvedValue({ trackers: [] })
 
         await renderSuspended(StepSelectTrackers, {
             props: { modelValue: [] },
@@ -102,9 +110,7 @@ describe('StepSelectTrackers', () => {
 
     it('Next button is disabled until at least one tracker is selected', async () => {
         const user = userEvent.setup()
-        getSettingsMock.mockResolvedValue({
-            trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx' }],
-        })
+        settingsData.value = buildTrackerSettings([{ selected: true, code: 'ULCX', name: 'Upload.cx' }])
 
         const { emitted } = await renderSuspended(StepSelectTrackers, {
             props: { modelValue: [] },
