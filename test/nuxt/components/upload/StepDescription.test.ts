@@ -12,12 +12,12 @@ const selectedPath: Path = {
     folder: false,
 }
 
-const createScreenshotsMock = vi.fn()
+const executeScreenshotsMock = vi.fn()
 const applyImageLoadingMock = vi.fn()
 const bbcodeError = ref<string | undefined>(undefined)
 const screenshotLoading = ref(false)
-const screenshotError = ref(false)
-const screenshotErrorMessage = ref('')
+const screenshotFetchError = ref<{ data?: { message?: string; data?: { missingFields?: string[] } } } | undefined>(undefined)
+const screenshotData = ref<{ screenshots: Array<{ order: number; url: string; thumbnailUrl?: string }> } | null>(null)
 
 vi.mock('~/composables/useBbcodeRender', () => ({
     useBbcodeRender: () => ({
@@ -32,27 +32,32 @@ vi.mock('~/composables/usePreviewImageLoadingState', () => ({
     }),
 }))
 
-vi.mock('~/composables/useScreenshots', () => ({
-    useScreenshots: () => ({
-        createScreenshots: createScreenshotsMock,
-        loading: screenshotLoading,
-        error: screenshotError,
+const screenshotErrorMessage = computed(() => {
+    const err = screenshotFetchError.value
+    const missingFields = err?.data?.data?.missingFields
+    if (err?.data?.message === 'missing_screenshot_settings' && missingFields && missingFields.length > 0) {
+        return `Set ${missingFields.join(', ')} in Settings before generating screenshots.`
+    }
+    return err ? 'Failed to generate screenshots.' : ''
+})
+
+vi.mock('~/composables/usePostScreenshots', () => ({
+    usePostScreenshots: () => ({
+        execute: executeScreenshotsMock,
+        pending: screenshotLoading,
         errorMessage: screenshotErrorMessage,
-        clearError: vi.fn(() => {
-            screenshotError.value = false
-            screenshotErrorMessage.value = ''
-        }),
+        data: screenshotData,
     }),
 }))
 
 describe('StepDescription', () => {
     beforeEach(() => {
-        createScreenshotsMock.mockReset()
+        executeScreenshotsMock.mockReset()
         applyImageLoadingMock.mockReset()
         bbcodeError.value = undefined
         screenshotLoading.value = false
-        screenshotError.value = false
-        screenshotErrorMessage.value = ''
+        screenshotFetchError.value = undefined
+        screenshotData.value = null
     })
 
     it('renders the write state and inserts toolbar tags around a selection', async () => {
@@ -112,8 +117,7 @@ describe('StepDescription', () => {
     })
 
     it('disables screenshot creation until a path is selected and shows screenshot errors', async () => {
-        screenshotError.value = true
-        screenshotErrorMessage.value = 'Set FFmpeg Path in Settings before generating screenshots.'
+        screenshotFetchError.value = { data: { message: 'missing_screenshot_settings', data: { missingFields: ['FFmpeg Path'] } } }
 
         await renderSuspended(StepDescription)
 
@@ -123,11 +127,13 @@ describe('StepDescription', () => {
 
     it('adds formatted screenshots and hdr disclaimer to the description', async () => {
         const user = userEvent.setup()
-        createScreenshotsMock.mockResolvedValue({
-            screenshots: [
-                { order: 2, url: 'https://two', thumbnailUrl: 'https://thumb-two' },
-                { order: 1, url: 'https://one', thumbnailUrl: 'https://thumb-one' },
-            ],
+        executeScreenshotsMock.mockImplementation(async () => {
+            screenshotData.value = {
+                screenshots: [
+                    { order: 1, url: 'https://one', thumbnailUrl: 'https://thumb-one' },
+                    { order: 2, url: 'https://two', thumbnailUrl: 'https://thumb-two' },
+                ],
+            }
         })
 
         await renderSuspended(StepDescription, {
@@ -144,7 +150,7 @@ describe('StepDescription', () => {
         const textarea = screen.getByRole('textbox', { name: 'Description' }) as HTMLTextAreaElement
 
         await waitFor(() => {
-            expect(createScreenshotsMock).toHaveBeenCalledWith('/media/nas/movie.mkv', true, true)
+            expect(executeScreenshotsMock).toHaveBeenCalled()
             expect(textarea.value).toContain('[center]')
             expect(textarea.value).toContain('[url=https://one][img=500]https://thumb-one[/img][/url] [url=https://two][img=500]https://thumb-two[/img][/url]')
             expect(textarea.value).toContain('Screenshots were tone mapped from HDR to SDR for reference.')
@@ -153,8 +159,8 @@ describe('StepDescription', () => {
 
     it('adds screenshots without a leading newline when the description is empty', async () => {
         const user = userEvent.setup()
-        createScreenshotsMock.mockResolvedValue({
-            screenshots: [{ order: 1, url: 'https://one', thumbnailUrl: 'https://thumb-one' }],
+        executeScreenshotsMock.mockImplementation(async () => {
+            screenshotData.value = { screenshots: [{ order: 1, url: 'https://one', thumbnailUrl: 'https://thumb-one' }] }
         })
 
         await renderSuspended(StepDescription, {
@@ -168,7 +174,7 @@ describe('StepDescription', () => {
         const textarea = screen.getByRole('textbox', { name: 'Description' }) as HTMLTextAreaElement
 
         await waitFor(() => {
-            expect(createScreenshotsMock).toHaveBeenCalledWith('/media/nas/movie.mkv', false, false)
+            expect(executeScreenshotsMock).toHaveBeenCalled()
             expect(textarea.value.startsWith('[center]\n')).toBe(true)
             expect(textarea.value).not.toContain('tone mapped from HDR')
         })
@@ -176,7 +182,7 @@ describe('StepDescription', () => {
 
     it('keeps the description unchanged when screenshot generation returns nothing', async () => {
         const user = userEvent.setup()
-        createScreenshotsMock.mockResolvedValue(undefined)
+        executeScreenshotsMock.mockResolvedValue(undefined)
 
         await renderSuspended(StepDescription, {
             props: {
@@ -189,7 +195,7 @@ describe('StepDescription', () => {
         await user.click(screen.getByRole('button', { name: 'Add screenshots' }))
 
         await waitFor(() => {
-            expect(createScreenshotsMock).toHaveBeenCalledWith('/media/nas/movie.mkv', false, false)
+            expect(executeScreenshotsMock).toHaveBeenCalled()
             expect(textarea.value).toBe('Existing copy')
         })
     })
@@ -217,10 +223,10 @@ describe('StepDescription', () => {
 
         screenshotLoading.value = true
         await vm.addScreenshots()
-        expect(createScreenshotsMock).not.toHaveBeenCalled()
+        expect(executeScreenshotsMock).not.toHaveBeenCalled()
 
         screenshotLoading.value = false
-        createScreenshotsMock.mockResolvedValue(undefined)
+        executeScreenshotsMock.mockResolvedValue(undefined)
         await vm.addScreenshots()
         await nextTick()
 
@@ -239,7 +245,7 @@ describe('StepDescription', () => {
     })
 
     it('returns early from addScreenshots when the service resolves without screenshots', async () => {
-        createScreenshotsMock.mockResolvedValue(undefined)
+        executeScreenshotsMock.mockResolvedValue(undefined)
         const wrapper = await mountSuspended(StepDescription, {
             props: {
                 selectedPath,
@@ -254,6 +260,6 @@ describe('StepDescription', () => {
         await vm.addScreenshots()
 
         expect(vm.description).toBe('Keep me')
-        expect(createScreenshotsMock).toHaveBeenCalledWith('/media/nas/movie.mkv', false, false)
+        expect(executeScreenshotsMock).toHaveBeenCalled()
     })
 })

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useBbcodeRender } from '~/composables/useBbcodeRender'
 import { usePreviewImageLoadingState } from '~/composables/usePreviewImageLoadingState'
-import { useScreenshots } from '~/composables/useScreenshots'
+import { usePostScreenshots } from '~/composables/usePostScreenshots'
 import StepNavigationButtons from './StepNavigationButtons.vue'
 
 const description = defineModel<string>({ default: '' })
@@ -28,7 +28,13 @@ const preview = ref<HTMLDivElement>()
 
 const { toHtml, error } = useBbcodeRender()
 const { applyImageLoading } = usePreviewImageLoadingState()
-const { createScreenshots, loading: isGeneratingScreenshots, error: hasScreenshotError, errorMessage: screenshotErrorMessage, clearError: clearScreenshotError } = useScreenshots()
+
+const screenshotBody = computed(() => ({
+    path: props.selectedPath!.value,
+    hdr: props.isHdr,
+    tv: props.isTv,
+}))
+const { pending: isGeneratingScreenshots, errorMessage: screenshotErrorMessage, data: screenshotResult, execute: generateScreenshots } = usePostScreenshots(screenshotBody)
 
 const toolbarActions: ToolbarAction[] = [
     { label: 'Bold', icon: 'i-lucide-bold', openTag: '[b]', closeTag: '[/b]' },
@@ -99,17 +105,14 @@ async function addScreenshots() {
         return
     }
 
-    clearScreenshotError()
+    await generateScreenshots()
 
-    const response = await createScreenshots(props.selectedPath.value, props.isHdr ?? false, props.isTv ?? false)
+    const response = screenshotResult.value
     if (!response) {
         return
     }
 
-    const orderedScreenshots = [...response.screenshots].sort((left, right) => left.order - right.order)
-
-    const block = orderedScreenshots.map((screenshot) => `[url=${screenshot.url}][img=500]${screenshot.thumbnailUrl}[/img][/url]`).join(' ')
-
+    const block = response.screenshots.map((screenshot) => `[url=${screenshot.url}][img=500]${screenshot.thumbnailUrl}[/img][/url]`).join(' ')
     const needsLeadingNewLine = description.value.length > 0 && !description.value.endsWith('\n')
     const prefix = `${needsLeadingNewLine ? '\n' : ''}[center]\n[font=Courier New][size=26]Screenshots[/size][/font]\n`
     const suffix = '\n[/center]\n'
@@ -168,7 +171,7 @@ async function addScreenshots() {
             </div>
 
             <div class="p-4">
-                <UAlert v-if="hasScreenshotError" color="error" variant="soft" :title="screenshotErrorMessage" class="mb-2" />
+                <UAlert v-if="screenshotErrorMessage" color="error" variant="soft" :title="screenshotErrorMessage" class="mb-2" />
                 <UAlert v-if="error" color="error" variant="soft" :title="error" class="mb-2" />
                 <template v-if="activeTab === 'write'">
                     <label for="upload-description" class="sr-only"> Description </label>
