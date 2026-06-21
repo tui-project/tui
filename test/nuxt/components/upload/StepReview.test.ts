@@ -14,7 +14,9 @@ const fetchTitleMock = vi.fn()
 let capturedTrackerCode: Ref<string> | null = null
 const titleDataRef = ref<{ title: string } | null>(null)
 const titleLoadingRef = ref(false)
-const getViolationsMock = vi.fn()
+const fetchRulesMock = vi.fn()
+let capturedRulesTrackerCode: Ref<string> | null = null
+const rulesDataRef = ref<{ violations: { rule: string; message: string }[] } | null>(null)
 const getDuplicatesMock = vi.fn()
 const rulesLoadingRef = ref(false)
 const duplicatesLoadingRef = ref(false)
@@ -48,12 +50,16 @@ vi.mock('~/composables/usePostTrackerTitle', () => ({
     },
 }))
 
-vi.mock('~/composables/useTrackerRules', () => ({
-    useTrackerRules: () => ({
-        getViolations: getViolationsMock,
-        loading: rulesLoadingRef,
-        error: ref(false),
-    }),
+vi.mock('~/composables/usePostTrackerRules', () => ({
+    usePostTrackerRules: (trackerCode: Ref<string>) => {
+        capturedRulesTrackerCode = trackerCode
+        return {
+            pending: rulesLoadingRef,
+            data: rulesDataRef,
+            error: ref(null),
+            execute: fetchRulesMock,
+        }
+    },
 }))
 
 vi.mock('~/composables/useTrackerDuplicates', () => ({
@@ -114,16 +120,21 @@ describe('StepReview', () => {
     beforeEach(() => {
         executeUploadMock.mockReset()
         fetchTitleMock.mockReset()
-        getViolationsMock.mockReset()
+        fetchRulesMock.mockReset()
         getDuplicatesMock.mockReset()
         toastAddMock.mockReset()
         navigateToMock.mockReset()
         capturedTrackerCode = null
+        capturedRulesTrackerCode = null
         titleDataRef.value = { title: DEFAULT_TITLE }
         titleLoadingRef.value = false
         rulesLoadingRef.value = false
+        rulesDataRef.value = null
         duplicatesLoadingRef.value = false
         fetchTitleMock.mockResolvedValue(undefined)
+        fetchRulesMock.mockImplementation(async () => {
+            rulesDataRef.value = { violations: [] }
+        })
         settingsLoading.value = false
         settingsData.value = {
             trackers: [
@@ -134,7 +145,6 @@ describe('StepReview', () => {
         uploadPending.value = false
         uploadError.value = null
         capturedUploadBody = null
-        getViolationsMock.mockResolvedValue([])
         getDuplicatesMock.mockResolvedValue([])
     })
 
@@ -161,7 +171,7 @@ describe('StepReview', () => {
         })
 
         await waitFor(() => expect(screen.getByPlaceholderText('Title for ULCX')).toHaveProperty('value', 'Generated title for ULCX'))
-        expect(screen.getByPlaceholderText('Title for ATH')).toHaveProperty('value', 'Generated title for ATH')
+        await waitFor(() => expect(screen.getByPlaceholderText('Title for ATH')).toHaveProperty('value', 'Generated title for ATH'))
     })
 
     it('marks title as modified when user changes it from the fetched default', async () => {
@@ -511,7 +521,9 @@ describe('StepReview', () => {
             [1, /This upload violates 1 rule for/],
             [2, /This upload violates 2 rules for/],
         ])('violation description counts %i rule(s) with correct pluralisation', async (count, pattern) => {
-            getViolationsMock.mockResolvedValue(Array.from({ length: count }, (_, i) => ({ rule: `rule_${i}`, message: `Message ${i}.` })))
+            fetchRulesMock.mockImplementation(async () => {
+                rulesDataRef.value = { violations: Array.from({ length: count }, (_, i) => ({ rule: `rule_${i}`, message: `Message ${i}.` })) }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -522,7 +534,9 @@ describe('StepReview', () => {
 
         it('uses tracker code as fallback in violation description when tracker name is absent from settings', async () => {
             settingsData.value = { trackers: [] }
-            getViolationsMock.mockResolvedValue([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned.' }])
+            fetchRulesMock.mockImplementation(async () => {
+                rulesDataRef.value = { violations: [{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned.' }] }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -532,7 +546,9 @@ describe('StepReview', () => {
         })
 
         it('shows violation message and skipped notice when tracker has an unaccepted violation', async () => {
-            getViolationsMock.mockResolvedValue([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }])
+            fetchRulesMock.mockImplementation(async () => {
+                rulesDataRef.value = { violations: [{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }] }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -545,7 +561,9 @@ describe('StepReview', () => {
 
         it('hides the skipped notice after user accepts the violation', async () => {
             const user = userEvent.setup()
-            getViolationsMock.mockResolvedValue([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }])
+            fetchRulesMock.mockImplementation(async () => {
+                rulesDataRef.value = { violations: [{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }] }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -559,9 +577,11 @@ describe('StepReview', () => {
         it('submits only trackers without unaccepted violations', async () => {
             const user = userEvent.setup()
             executeUploadMock.mockResolvedValue(undefined)
-            getViolationsMock.mockImplementation((code: string) =>
-                code === 'ULCX' ? Promise.resolve([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }]) : Promise.resolve([])
-            )
+            fetchRulesMock.mockImplementation(async () => {
+                rulesDataRef.value = {
+                    violations: capturedRulesTrackerCode?.value === 'ULCX' ? [{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }] : [],
+                }
+            })
             fetchTitleMock.mockImplementation(async () => {
                 titleDataRef.value = { title: `Title for ${capturedTrackerCode?.value}` }
             })
@@ -581,7 +601,9 @@ describe('StepReview', () => {
         it('includes a tracker with violations once the user accepts', async () => {
             const user = userEvent.setup()
             executeUploadMock.mockResolvedValue(undefined)
-            getViolationsMock.mockResolvedValue([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }])
+            fetchRulesMock.mockImplementation(async () => {
+                rulesDataRef.value = { violations: [{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }] }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -596,7 +618,9 @@ describe('StepReview', () => {
         })
 
         it('disables Submit Upload when all trackers have unaccepted violations', async () => {
-            getViolationsMock.mockResolvedValue([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }])
+            fetchRulesMock.mockImplementation(async () => {
+                rulesDataRef.value = { violations: [{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }] }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -618,6 +642,17 @@ describe('StepReview', () => {
             await waitFor(() => expect(screen.getByText('Movie.2024.1080p.WEB-DL.x264-GROUP')).toBeTruthy())
             expect(screen.queryByRole('link', { name: 'Movie.2024.1080p.WEB-DL.x264-GROUP' })).toBeNull()
         })
+    })
+
+    it('treats violations as empty when rules data is null after checkRules', async () => {
+        fetchRulesMock.mockResolvedValue(undefined)
+
+        await renderSuspended(StepReview, {
+            props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
+        })
+
+        await waitFor(() => expect(screen.getByPlaceholderText('Title for ULCX')).toBeTruthy())
+        expect(screen.queryByText('Rule violations detected')).toBeNull()
     })
 
     it('does not populate trackerNames when getSettings returns null', async () => {

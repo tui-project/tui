@@ -2,7 +2,7 @@
 import StepNavigationButtons from './StepNavigationButtons.vue'
 import { useGetSettings } from '~/composables/useGetSettings'
 import { usePostTrackerTitle } from '~/composables/usePostTrackerTitle'
-import { useTrackerRules, type RuleViolation } from '~/composables/useTrackerRules'
+import { usePostTrackerRules, type RuleViolation } from '~/composables/usePostTrackerRules'
 import { useTrackerDuplicates, type DuplicateEntry } from '~/composables/useTrackerDuplicates'
 
 const props = defineProps<{
@@ -27,7 +27,7 @@ const trackerCode = ref('')
 const toast = useToast()
 const { pending: settingsLoading, data: settings } = useGetSettings()
 const { pending: titleLoading, data: title, execute: generateTitle } = usePostTrackerTitle(trackerCode, props.metadata!)
-const { getViolations, loading: rulesLoading } = useTrackerRules()
+const { pending: rulesLoading, data: ruleViolations, execute: checkRules } = usePostTrackerRules(trackerCode, props.metadata!)
 const { getDuplicates, loading: duplicatesLoading } = useTrackerDuplicates()
 
 watch(
@@ -53,20 +53,18 @@ async function loadTrackerItems() {
         trackerCode.value = code
 
         await generateTitle()
-
         trackerItems.value = [...trackerItems.value, { code, title: title.value?.title ?? '', titleModified: false, anonymous: false, modQueueOptIn: false }]
+
+        await checkRules()
+        const violations = ruleViolations.value?.violations ?? []
+        const duplicates = await getDuplicates(code, metadata)
+
+        trackerViolations.value = { ...trackerViolations.value, [code]: violations }
+        if (violations.length > 0) acceptedViolations.value = { ...acceptedViolations.value, [code]: false }
+
+        trackerDuplicates.value = { ...trackerDuplicates.value, [code]: duplicates }
+        if (duplicates.filter((d) => !d.trumpable).length > 0) acceptedDuplicates.value = { ...acceptedDuplicates.value, [code]: false }
     }
-
-    const [violations, duplicates] = await Promise.all([
-        Promise.all(props.selectedTrackers.map(async (code) => ({ code, violations: await getViolations(code, metadata) }))),
-        Promise.all(props.selectedTrackers.map(async (code) => ({ code, duplicates: await getDuplicates(code, metadata) }))),
-    ])
-
-    trackerViolations.value = Object.fromEntries(violations.map(({ code, violations: v }) => [code, v]))
-    acceptedViolations.value = Object.fromEntries(violations.filter(({ violations: v }) => v.length > 0).map(({ code }) => [code, false]))
-
-    trackerDuplicates.value = Object.fromEntries(duplicates.map(({ code, duplicates: d }) => [code, d]))
-    acceptedDuplicates.value = Object.fromEntries(duplicates.filter(({ duplicates: d }) => d.length > 0).map(({ code }) => [code, false]))
 }
 
 const uploadableTrackers = computed(() =>
