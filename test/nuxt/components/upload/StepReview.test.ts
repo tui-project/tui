@@ -17,8 +17,10 @@ const titleLoadingRef = ref(false)
 const fetchRulesMock = vi.fn()
 let capturedRulesTrackerCode: Ref<string> | null = null
 const rulesDataRef = ref<{ violations: { rule: string; message: string }[] } | null>(null)
-const getDuplicatesMock = vi.fn()
 const rulesLoadingRef = ref(false)
+const duplicatesExecuteMock = vi.fn()
+let capturedDuplicatesTrackerCode: Ref<string> | null = null
+const duplicatesDataRef = ref<{ duplicates: Array<{ name: string; url?: string; trumpable: boolean }> } | null>(null)
 const duplicatesLoadingRef = ref(false)
 const settingsLoading = ref(false)
 const settingsData = ref<{ trackers: Array<{ code: string; name: string }> } | null>(null)
@@ -62,12 +64,16 @@ vi.mock('~/composables/usePostTrackerRules', () => ({
     },
 }))
 
-vi.mock('~/composables/useTrackerDuplicates', () => ({
-    useTrackerDuplicates: () => ({
-        getDuplicates: getDuplicatesMock,
-        loading: duplicatesLoadingRef,
-        error: ref(false),
-    }),
+vi.mock('~/composables/usePostTrackerDuplicates', () => ({
+    usePostTrackerDuplicates: (trackerCode: Ref<string>) => {
+        capturedDuplicatesTrackerCode = trackerCode
+        return {
+            pending: duplicatesLoadingRef,
+            data: duplicatesDataRef,
+            error: ref(null),
+            execute: duplicatesExecuteMock,
+        }
+    },
 }))
 
 mockNuxtImport('useToast', () => () => ({ add: toastAddMock }))
@@ -121,19 +127,24 @@ describe('StepReview', () => {
         executeUploadMock.mockReset()
         fetchTitleMock.mockReset()
         fetchRulesMock.mockReset()
-        getDuplicatesMock.mockReset()
+        duplicatesExecuteMock.mockReset()
         toastAddMock.mockReset()
         navigateToMock.mockReset()
         capturedTrackerCode = null
         capturedRulesTrackerCode = null
+        capturedDuplicatesTrackerCode = null
         titleDataRef.value = { title: DEFAULT_TITLE }
         titleLoadingRef.value = false
         rulesLoadingRef.value = false
         rulesDataRef.value = null
         duplicatesLoadingRef.value = false
+        duplicatesDataRef.value = null
         fetchTitleMock.mockResolvedValue(undefined)
         fetchRulesMock.mockImplementation(async () => {
             rulesDataRef.value = { violations: [] }
+        })
+        duplicatesExecuteMock.mockImplementation(async () => {
+            duplicatesDataRef.value = { duplicates: [] }
         })
         settingsLoading.value = false
         settingsData.value = {
@@ -145,7 +156,6 @@ describe('StepReview', () => {
         uploadPending.value = false
         uploadError.value = null
         capturedUploadBody = null
-        getDuplicatesMock.mockResolvedValue([])
     })
 
     it('renders a card per selected tracker with a server-generated title and anonymous checkbox', async () => {
@@ -360,7 +370,9 @@ describe('StepReview', () => {
 
     describe('duplicates', () => {
         it('shows all-trumpable alert and list when every duplicate is trumpable', async () => {
-            getDuplicatesMock.mockResolvedValue([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: true }])
+            duplicatesExecuteMock.mockImplementation(async () => {
+                duplicatesDataRef.value = { duplicates: [{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: true }] }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -371,10 +383,14 @@ describe('StepReview', () => {
         })
 
         it('pluralises the trumpable description when more than one release is trumpable', async () => {
-            getDuplicatesMock.mockResolvedValue([
-                { name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: true },
-                { name: 'Movie.2024.1080p.WEB-DL.x265-GROUP', url: 'https://tracker.example.com/torrents/2', trumpable: true },
-            ])
+            duplicatesExecuteMock.mockImplementation(async () => {
+                duplicatesDataRef.value = {
+                    duplicates: [
+                        { name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: true },
+                        { name: 'Movie.2024.1080p.WEB-DL.x265-GROUP', url: 'https://tracker.example.com/torrents/2', trumpable: true },
+                    ],
+                }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -385,7 +401,9 @@ describe('StepReview', () => {
 
         it('uses tracker code as fallback in trumpable description when tracker name is absent from settings', async () => {
             settingsData.value = { trackers: [] }
-            getDuplicatesMock.mockResolvedValue([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: true }])
+            duplicatesExecuteMock.mockImplementation(async () => {
+                duplicatesDataRef.value = { duplicates: [{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: true }] }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -395,10 +413,14 @@ describe('StepReview', () => {
         })
 
         it('pluralises the non-trumpable description when more than one release is non-trumpable', async () => {
-            getDuplicatesMock.mockResolvedValue([
-                { name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false },
-                { name: 'Movie.2024.1080p.WEB-DL.x265-GROUP', url: 'https://tracker.example.com/torrents/2', trumpable: false },
-            ])
+            duplicatesExecuteMock.mockImplementation(async () => {
+                duplicatesDataRef.value = {
+                    duplicates: [
+                        { name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false },
+                        { name: 'Movie.2024.1080p.WEB-DL.x265-GROUP', url: 'https://tracker.example.com/torrents/2', trumpable: false },
+                    ],
+                }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -409,7 +431,9 @@ describe('StepReview', () => {
 
         it('uses tracker code as fallback in non-trumpable description when tracker name is absent from settings', async () => {
             settingsData.value = { trackers: [] }
-            getDuplicatesMock.mockResolvedValue([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }])
+            duplicatesExecuteMock.mockImplementation(async () => {
+                duplicatesDataRef.value = { duplicates: [{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }] }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -419,7 +443,9 @@ describe('StepReview', () => {
         })
 
         it('shows the trumpable release name linked when url is present', async () => {
-            getDuplicatesMock.mockResolvedValue([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: true }])
+            duplicatesExecuteMock.mockImplementation(async () => {
+                duplicatesDataRef.value = { duplicates: [{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: true }] }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -432,7 +458,9 @@ describe('StepReview', () => {
         })
 
         it('shows duplicate name as plain text when url is absent', async () => {
-            getDuplicatesMock.mockResolvedValue([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', trumpable: true }])
+            duplicatesExecuteMock.mockImplementation(async () => {
+                duplicatesDataRef.value = { duplicates: [{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', trumpable: true }] }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -443,7 +471,9 @@ describe('StepReview', () => {
         })
 
         it('shows non-trumpable duplicates warning and skipped notice', async () => {
-            getDuplicatesMock.mockResolvedValue([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }])
+            duplicatesExecuteMock.mockImplementation(async () => {
+                duplicatesDataRef.value = { duplicates: [{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }] }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -455,7 +485,9 @@ describe('StepReview', () => {
 
         it('hides the skipped notice when user accepts duplicates', async () => {
             const user = userEvent.setup()
-            getDuplicatesMock.mockResolvedValue([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }])
+            duplicatesExecuteMock.mockImplementation(async () => {
+                duplicatesDataRef.value = { duplicates: [{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }] }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -467,7 +499,9 @@ describe('StepReview', () => {
         })
 
         it('disables Submit Upload when all trackers have non-trumpable duplicates', async () => {
-            getDuplicatesMock.mockResolvedValue([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }])
+            duplicatesExecuteMock.mockImplementation(async () => {
+                duplicatesDataRef.value = { duplicates: [{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }] }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -478,10 +512,14 @@ describe('StepReview', () => {
         })
 
         it('shows mixed duplicates list with (trumpable) label for trumpable entries', async () => {
-            getDuplicatesMock.mockResolvedValue([
-                { name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: true },
-                { name: 'Movie.2024.1080p.WEB-DL.x265-GROUP', url: 'https://tracker.example.com/torrents/2', trumpable: false },
-            ])
+            duplicatesExecuteMock.mockImplementation(async () => {
+                duplicatesDataRef.value = {
+                    duplicates: [
+                        { name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: true },
+                        { name: 'Movie.2024.1080p.WEB-DL.x265-GROUP', url: 'https://tracker.example.com/torrents/2', trumpable: false },
+                    ],
+                }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -494,11 +532,14 @@ describe('StepReview', () => {
         it('submits only trackers without unaccepted non-trumpable duplicates', async () => {
             const user = userEvent.setup()
             executeUploadMock.mockResolvedValue(undefined)
-            getDuplicatesMock.mockImplementation((code: string) =>
-                code === 'ULCX'
-                    ? Promise.resolve([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }])
-                    : Promise.resolve([])
-            )
+            duplicatesExecuteMock.mockImplementation(async () => {
+                duplicatesDataRef.value = {
+                    duplicates:
+                        capturedDuplicatesTrackerCode?.value === 'ULCX'
+                            ? [{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }]
+                            : [],
+                }
+            })
             fetchTitleMock.mockImplementation(async () => {
                 titleDataRef.value = { title: `Title for ${capturedTrackerCode?.value}` }
             })
@@ -633,7 +674,9 @@ describe('StepReview', () => {
 
     describe('duplicate acceptance state', () => {
         it('shows non-trumpable duplicate name as plain text when url is absent', async () => {
-            getDuplicatesMock.mockResolvedValue([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', trumpable: false }])
+            duplicatesExecuteMock.mockImplementation(async () => {
+                duplicatesDataRef.value = { duplicates: [{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', trumpable: false }] }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -642,6 +685,20 @@ describe('StepReview', () => {
             await waitFor(() => expect(screen.getByText('Movie.2024.1080p.WEB-DL.x264-GROUP')).toBeTruthy())
             expect(screen.queryByRole('link', { name: 'Movie.2024.1080p.WEB-DL.x264-GROUP' })).toBeNull()
         })
+    })
+
+    it('treats duplicates as empty when duplicates data is null after checkDuplicates', async () => {
+        duplicatesExecuteMock.mockImplementation(async () => {
+            duplicatesDataRef.value = null
+        })
+
+        await renderSuspended(StepReview, {
+            props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
+        })
+
+        await waitFor(() => expect(screen.getByPlaceholderText('Title for ULCX')).toBeTruthy())
+        expect(screen.queryByText('Duplicates found on this tracker')).toBeNull()
+        expect(screen.queryByText('Existing releases will be trumped')).toBeNull()
     })
 
     it('treats violations as empty when rules data is null after checkRules', async () => {

@@ -3,7 +3,7 @@ import StepNavigationButtons from './StepNavigationButtons.vue'
 import { useGetSettings } from '~/composables/useGetSettings'
 import { usePostTrackerTitle } from '~/composables/usePostTrackerTitle'
 import { usePostTrackerRules, type RuleViolation } from '~/composables/usePostTrackerRules'
-import { useTrackerDuplicates, type DuplicateEntry } from '~/composables/useTrackerDuplicates'
+import { usePostTrackerDuplicates, type DuplicateEntry } from '~/composables/usePostTrackerDuplicates'
 
 const props = defineProps<{
     selectedTrackers: string[]
@@ -27,8 +27,8 @@ const trackerCode = ref('')
 const toast = useToast()
 const { pending: settingsLoading, data: settings } = useGetSettings()
 const { pending: titleLoading, data: title, execute: generateTitle } = usePostTrackerTitle(trackerCode, props.metadata!)
-const { pending: rulesLoading, data: ruleViolations, execute: checkRules } = usePostTrackerRules(trackerCode, props.metadata!)
-const { getDuplicates, loading: duplicatesLoading } = useTrackerDuplicates()
+const { pending: rulesLoading, data: ruleViolations, execute: checkViolations } = usePostTrackerRules(trackerCode, props.metadata!)
+const { pending: duplicatesLoading, data: duplicatesData, execute: checkDuplicates } = usePostTrackerDuplicates(trackerCode, props.metadata!)
 
 watch(
     settings,
@@ -47,20 +47,20 @@ onMounted(async () => {
 async function loadTrackerItems() {
     if (!props.metadata || props.selectedTrackers.length === 0) return
 
-    const metadata = props.metadata
-
     for (const code of props.selectedTrackers) {
         trackerCode.value = code
 
         await generateTitle()
         trackerItems.value = [...trackerItems.value, { code, title: title.value?.title ?? '', titleModified: false, anonymous: false, modQueueOptIn: false }]
 
-        await checkRules()
+        await checkViolations()
         const violations = ruleViolations.value?.violations ?? []
-        const duplicates = await getDuplicates(code, metadata)
 
         trackerViolations.value = { ...trackerViolations.value, [code]: violations }
         if (violations.length > 0) acceptedViolations.value = { ...acceptedViolations.value, [code]: false }
+
+        await checkDuplicates()
+        const duplicates = duplicatesData.value?.duplicates ?? []
 
         trackerDuplicates.value = { ...trackerDuplicates.value, [code]: duplicates }
         if (duplicates.filter((d) => !d.trumpable).length > 0) acceptedDuplicates.value = { ...acceptedDuplicates.value, [code]: false }
