@@ -95,7 +95,7 @@ Unit tests should cover non-route modules (for example repositories and utilitie
 
 Examples:
 
-- `server/api/setup/status.get.ts` -> `test/e2e/server/api/setup/status.get.test.ts`
+- `server/api/tracker/requests/index.post.ts` -> `test/e2e/server/api/tracker/requests.test.ts`
 - `server/repositories/user-repository.ts` -> `test/unit/server/repositories/user-repository.test.ts`
 - `server/utils/db.ts` -> `test/unit/server/utils/db.test.ts`
 
@@ -122,6 +122,10 @@ Coverage expectations:
 ## Shared Types
 
 Types exported from `shared/types/` are auto-imported by Nuxt 4 and available globally in both the app (`app/`) and server (`server/`) layers. Do not add explicit import statements for them — no `import type { TrackerRequest } from '../../shared/types/tracker-request'` or similar.
+
+## Frontend Composables
+
+Composables under `app/composables/` wrap `useFetch` with `immediate: false, watch: false` and return `{ pending, error, data, execute }`. Name them with a verb prefix matching the HTTP method: `useGet*` for GET requests, `usePost*` for POST requests. Do not expose a manual `loading` ref — use `pending` from `useFetch`.
 
 ## HTTP Clients
 
