@@ -17,7 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const trackerNames = ref<Record<string, string>>({})
-const trackerItems = ref<TrackerItem[]>([])
+const trackerItems = ref<Record<string, TrackerItem>>({})
 const trackerViolations = ref<Record<string, RuleViolation[]>>({})
 const acceptedViolations = ref<Record<string, boolean>>({})
 const trackerDuplicates = ref<Record<string, DuplicateEntry[]>>({})
@@ -26,9 +26,11 @@ const trackerCode = ref('')
 
 const toast = useToast()
 const { pending: settingsLoading, data: settings } = useGetSettings()
-const { pending: titleLoading, data: title, execute: generateTitle } = usePostTrackerTitle(trackerCode, props.metadata!)
-const { pending: rulesLoading, data: ruleViolations, execute: checkViolations } = usePostTrackerRules(trackerCode, props.metadata!)
-const { pending: duplicatesLoading, data: duplicatesData, execute: checkDuplicates } = usePostTrackerDuplicates(trackerCode, props.metadata!)
+const { pending: titleLoading, data: title, error: titleError, execute: generateTitle } = usePostTrackerTitle(trackerCode, props.metadata!)
+const { pending: rulesLoading, data: ruleViolations, error: rulesError, execute: checkViolations } = usePostTrackerRules(trackerCode, props.metadata!)
+const { pending: duplicatesLoading, data: duplicatesData, error: duplicatesError, execute: checkDuplicates } = usePostTrackerDuplicates(trackerCode, props.metadata!)
+
+const trackerLoadErrors = ref<Record<string, string[]>>({})
 
 watch(
     settings,
@@ -50,31 +52,57 @@ async function loadTrackerItems() {
     for (const code of props.selectedTrackers) {
         trackerCode.value = code
 
-        await generateTitle()
-        trackerItems.value = [...trackerItems.value, { code, title: title.value?.title ?? '', titleModified: false, anonymous: false, modQueueOptIn: false }]
+        await Promise.all([generateTitle(), checkViolations(), checkDuplicates()])
 
-        await checkViolations()
-        const violations = ruleViolations.value?.violations ?? []
+        const errors: string[] = []
 
-        trackerViolations.value = { ...trackerViolations.value, [code]: violations }
-        if (violations.length > 0) acceptedViolations.value = { ...acceptedViolations.value, [code]: false }
+        trackerItems.value[code] = { code, title: '', titleModified: false, anonymous: false, modQueueOptIn: false }
+        trackerViolations.value[code] = []
+        trackerDuplicates.value[code] = []
 
-        await checkDuplicates()
-        const duplicates = duplicatesData.value?.duplicates ?? []
+        if (titleError.value) {
+            errors.push('Failed to generate title')
+        } else {
+            trackerItems.value[code].title = title.value!.title
+        }
 
-        trackerDuplicates.value = { ...trackerDuplicates.value, [code]: duplicates }
-        if (duplicates.filter((d) => !d.trumpable).length > 0) acceptedDuplicates.value = { ...acceptedDuplicates.value, [code]: false }
+        if (rulesError.value) {
+            errors.push('Failed to check rule violations')
+        } else {
+            const violations = ruleViolations.value!.violations
+            trackerViolations.value[code] = violations
+
+            if (violations.length > 0) {
+                acceptedViolations.value[code] = false
+            }
+        }
+
+        if (duplicatesError.value) {
+            errors.push('Failed to check duplicates')
+        } else {
+            const duplicates = duplicatesData.value!.duplicates
+            trackerDuplicates.value[code] = duplicates
+
+            if (duplicates.filter((d) => !d.trumpable).length > 0) {
+                acceptedDuplicates.value[code] = false
+            }
+        }
+
+        if (errors.length > 0) {
+            trackerLoadErrors.value[code] = errors
+        }
     }
 }
 
 const uploadableTrackers = computed(() =>
-    trackerItems.value.filter((item) => {
+    Object.values(trackerItems.value).filter((item) => {
+        if (trackerLoadErrors.value[item.code]?.length) return false
         if (!item.title.trim()) return false
 
-        const violations = trackerViolations.value[item.code] ?? []
+        const violations = trackerViolations.value[item.code]!
         if (violations.length > 0 && !acceptedViolations.value[item.code]) return false
 
-        const duplicates = trackerDuplicates.value[item.code] ?? []
+        const duplicates = trackerDuplicates.value[item.code]!
         const nonTrumpable = duplicates.filter((d) => !d.trumpable)
         if (nonTrumpable.length > 0 && !acceptedDuplicates.value[item.code]) return false
 
@@ -138,7 +166,17 @@ async function onSubmit() {
             <div v-for="item in trackerItems" :key="item.code" class="rounded-xl border border-default/70 bg-elevated/30 p-4 shadow-xs space-y-4">
                 <h3 class="text-sm font-semibold text-highlighted">{{ trackerNames[item.code] ?? item.code }}</h3>
 
-                <template v-for="violations in [trackerViolations[item.code] ?? []]" :key="violations.length">
+                <div v-if="trackerLoadErrors[item.code]?.length" class="space-y-1">
+                    <UAlert color="error" variant="soft" title="Failed to load tracker data — this tracker will be skipped">
+                        <template #description>
+                            <ul class="list-disc pl-4">
+                                <li v-for="err in trackerLoadErrors[item.code]" :key="err">{{ err }}</li>
+                            </ul>
+                        </template>
+                    </UAlert>
+                </div>
+
+                <template v-for="violations in [trackerViolations[item.code] as RuleViolation[]]" :key="violations.length">
                     <div v-if="violations.length" class="space-y-3">
                         <UAlert
                             :color="acceptedViolations[item.code] ? 'warning' : 'error'"
@@ -160,7 +198,7 @@ async function onSubmit() {
                     </div>
                 </template>
 
-                <template v-for="dupes in [trackerDuplicates[item.code] ?? []]" :key="dupes.length">
+                <template v-for="dupes in [trackerDuplicates[item.code] as DuplicateEntry[]]" :key="dupes.length">
                     <div v-if="dupes.length" class="space-y-3">
                         <template v-if="dupes.every((d) => d.trumpable)">
                             <UAlert

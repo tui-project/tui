@@ -14,14 +14,17 @@ const fetchTitleMock = vi.fn()
 let capturedTrackerCode: Ref<string> | null = null
 const titleDataRef = ref<{ title: string } | null>(null)
 const titleLoadingRef = ref(false)
+const titleErrorRef = ref<Error | null>(null)
 const fetchRulesMock = vi.fn()
 let capturedRulesTrackerCode: Ref<string> | null = null
 const rulesDataRef = ref<{ violations: { rule: string; message: string }[] } | null>(null)
 const rulesLoadingRef = ref(false)
+const rulesErrorRef = ref<Error | null>(null)
 const duplicatesExecuteMock = vi.fn()
 let capturedDuplicatesTrackerCode: Ref<string> | null = null
 const duplicatesDataRef = ref<{ duplicates: Array<{ name: string; url?: string; trumpable: boolean }> } | null>(null)
 const duplicatesLoadingRef = ref(false)
+const duplicatesErrorRef = ref<Error | null>(null)
 const settingsLoading = ref(false)
 const settingsData = ref<{ trackers: Array<{ code: string; name: string }> } | null>(null)
 
@@ -46,7 +49,7 @@ vi.mock('~/composables/usePostTrackerTitle', () => ({
         return {
             pending: titleLoadingRef,
             data: titleDataRef,
-            error: ref(null),
+            error: titleErrorRef,
             execute: fetchTitleMock,
         }
     },
@@ -58,7 +61,7 @@ vi.mock('~/composables/usePostTrackerRules', () => ({
         return {
             pending: rulesLoadingRef,
             data: rulesDataRef,
-            error: ref(null),
+            error: rulesErrorRef,
             execute: fetchRulesMock,
         }
     },
@@ -70,7 +73,7 @@ vi.mock('~/composables/usePostTrackerDuplicates', () => ({
         return {
             pending: duplicatesLoadingRef,
             data: duplicatesDataRef,
-            error: ref(null),
+            error: duplicatesErrorRef,
             execute: duplicatesExecuteMock,
         }
     },
@@ -135,9 +138,12 @@ describe('StepReview', () => {
         capturedDuplicatesTrackerCode = null
         titleDataRef.value = { title: DEFAULT_TITLE }
         titleLoadingRef.value = false
+        titleErrorRef.value = null
         rulesLoadingRef.value = false
+        rulesErrorRef.value = null
         rulesDataRef.value = null
         duplicatesLoadingRef.value = false
+        duplicatesErrorRef.value = null
         duplicatesDataRef.value = null
         fetchTitleMock.mockResolvedValue(undefined)
         fetchRulesMock.mockImplementation(async () => {
@@ -348,14 +354,16 @@ describe('StepReview', () => {
         expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0)
     })
 
-    it('uses empty string as title when server returns no data', async () => {
-        titleDataRef.value = null
+    it('shows load error and skips tracker when title generation fails', async () => {
+        titleErrorRef.value = new Error('title error')
 
         await renderSuspended(StepReview, {
             props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
         })
 
-        await waitFor(() => expect(screen.getByPlaceholderText('Title for ULCX')).toHaveProperty('value', ''))
+        await waitFor(() => expect(screen.getByText('Failed to load tracker data — this tracker will be skipped')).toBeTruthy())
+        expect(screen.getByText('Failed to generate title')).toBeTruthy()
+        expect(screen.getByRole('button', { name: 'Submit Upload' })).toHaveProperty('disabled', true)
     })
 
     it('falls back to tracker code when tracker name is not in settings', async () => {
@@ -687,29 +695,31 @@ describe('StepReview', () => {
         })
     })
 
-    it('treats duplicates as empty when duplicates data is null after checkDuplicates', async () => {
-        duplicatesExecuteMock.mockImplementation(async () => {
-            duplicatesDataRef.value = null
-        })
+    it('shows load error and skips tracker when duplicates check fails', async () => {
+        duplicatesErrorRef.value = new Error('duplicates error')
 
         await renderSuspended(StepReview, {
             props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
         })
 
-        await waitFor(() => expect(screen.getByPlaceholderText('Title for ULCX')).toBeTruthy())
+        await waitFor(() => expect(screen.getByText('Failed to load tracker data — this tracker will be skipped')).toBeTruthy())
+        expect(screen.getByText('Failed to check duplicates')).toBeTruthy()
         expect(screen.queryByText('Duplicates found on this tracker')).toBeNull()
         expect(screen.queryByText('Existing releases will be trumped')).toBeNull()
+        expect(screen.getByRole('button', { name: 'Submit Upload' })).toHaveProperty('disabled', true)
     })
 
-    it('treats violations as empty when rules data is null after checkRules', async () => {
-        fetchRulesMock.mockResolvedValue(undefined)
+    it('shows load error and skips tracker when violations check fails', async () => {
+        rulesErrorRef.value = new Error('rules error')
 
         await renderSuspended(StepReview, {
             props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
         })
 
-        await waitFor(() => expect(screen.getByPlaceholderText('Title for ULCX')).toBeTruthy())
+        await waitFor(() => expect(screen.getByText('Failed to load tracker data — this tracker will be skipped')).toBeTruthy())
+        expect(screen.getByText('Failed to check rule violations')).toBeTruthy()
         expect(screen.queryByText('Rule violations detected')).toBeNull()
+        expect(screen.getByRole('button', { name: 'Submit Upload' })).toHaveProperty('disabled', true)
     })
 
     it('does not populate trackerNames when getSettings returns null', async () => {
