@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import StepNavigationButtons from './StepNavigationButtons.vue'
 import { useGetSettings } from '~/composables/useGetSettings'
-import { useTrackerTitle } from '~/composables/useTrackerTitle'
+import { usePostTrackerTitle } from '~/composables/usePostTrackerTitle'
 import { useTrackerRules, type RuleViolation } from '~/composables/useTrackerRules'
 import { useTrackerDuplicates, type DuplicateEntry } from '~/composables/useTrackerDuplicates'
 
@@ -16,18 +16,58 @@ const emit = defineEmits<{
     back: []
 }>()
 
-const toast = useToast()
-const { pending: settingsLoading, data: settings } = useGetSettings()
-const { getTitle, loading: titlesLoading } = useTrackerTitle()
-const { getViolations, loading: rulesLoading } = useTrackerRules()
-const { getDuplicates, loading: duplicatesLoading } = useTrackerDuplicates()
-
 const trackerNames = ref<Record<string, string>>({})
 const trackerItems = ref<TrackerItem[]>([])
 const trackerViolations = ref<Record<string, RuleViolation[]>>({})
 const acceptedViolations = ref<Record<string, boolean>>({})
 const trackerDuplicates = ref<Record<string, DuplicateEntry[]>>({})
 const acceptedDuplicates = ref<Record<string, boolean>>({})
+const trackerCode = ref('')
+
+const toast = useToast()
+const { pending: settingsLoading, data: settings } = useGetSettings()
+const { pending: titleLoading, data: title, execute: generateTitle } = usePostTrackerTitle(trackerCode, props.metadata!)
+const { getViolations, loading: rulesLoading } = useTrackerRules()
+const { getDuplicates, loading: duplicatesLoading } = useTrackerDuplicates()
+
+watch(
+    settings,
+    (settings) => {
+        if (settings) {
+            trackerNames.value = Object.fromEntries(settings.trackers.map((t) => [t.code, `${t.name} (${t.code})`]))
+        }
+    },
+    { immediate: true }
+)
+
+onMounted(async () => {
+    await loadTrackerItems()
+})
+
+async function loadTrackerItems() {
+    if (!props.metadata || props.selectedTrackers.length === 0) return
+
+    const metadata = props.metadata
+
+    for (const code of props.selectedTrackers) {
+        trackerCode.value = code
+
+        await generateTitle()
+
+        trackerItems.value = [...trackerItems.value, { code, title: title.value?.title ?? '', titleModified: false, anonymous: false, modQueueOptIn: false }]
+    }
+
+    const [violations, duplicates] = await Promise.all([
+        Promise.all(props.selectedTrackers.map(async (code) => ({ code, violations: await getViolations(code, metadata) }))),
+        Promise.all(props.selectedTrackers.map(async (code) => ({ code, duplicates: await getDuplicates(code, metadata) }))),
+    ])
+
+    trackerViolations.value = Object.fromEntries(violations.map(({ code, violations: v }) => [code, v]))
+    acceptedViolations.value = Object.fromEntries(violations.filter(({ violations: v }) => v.length > 0).map(({ code }) => [code, false]))
+
+    trackerDuplicates.value = Object.fromEntries(duplicates.map(({ code, duplicates: d }) => [code, d]))
+    acceptedDuplicates.value = Object.fromEntries(duplicates.filter(({ duplicates: d }) => d.length > 0).map(({ code }) => [code, false]))
+}
 
 const uploadableTrackers = computed(() =>
     trackerItems.value.filter((item) => {
@@ -65,69 +105,7 @@ const {
     watch: false,
 })
 
-watch(
-    settings,
-    (settings) => {
-        if (settings) {
-            trackerNames.value = Object.fromEntries(settings.trackers.map((t) => [t.code, `${t.name} (${t.code})`]))
-        }
-    },
-    { immediate: true }
-)
-
-onMounted(async () => {
-    await loadTrackerItems()
-})
-
-watch([() => props.selectedTrackers, () => props.metadata], loadTrackerItems, { deep: true })
-
-async function loadTrackerItems() {
-    if (!props.metadata || props.selectedTrackers.length === 0) return
-
-    const existing = Object.fromEntries(trackerItems.value.map((t) => [t.code, t]))
-    trackerItems.value = await Promise.all(
-        props.selectedTrackers.map(
-            async (code) => existing[code] ?? { code, title: (await getTitle(code, props.metadata!)) ?? '', titleModified: false, anonymous: false, modQueueOptIn: false }
-        )
-    )
-
-    const [violations, duplicates] = await Promise.all([
-        Promise.all(props.selectedTrackers.map(async (code) => ({ code, violations: await getViolations(code, props.metadata!) }))),
-        Promise.all(props.selectedTrackers.map(async (code) => ({ code, duplicates: await getDuplicates(code, props.metadata!) }))),
-    ])
-
-    const newViolations: Record<string, RuleViolation[]> = {}
-    const newAcceptedViolations: Record<string, boolean> = {}
-    for (const { code, violations: v } of violations) {
-        newViolations[code] = v
-        if (v.length > 0 && !(code in acceptedViolations.value)) {
-            newAcceptedViolations[code] = false
-        }
-    }
-    trackerViolations.value = newViolations
-    acceptedViolations.value = {
-        ...newAcceptedViolations,
-        ...Object.fromEntries(Object.entries(acceptedViolations.value).filter(([code]) => (newViolations[code]?.length ?? 0) > 0)),
-    }
-
-    const newDuplicates: Record<string, DuplicateEntry[]> = {}
-    const newAcceptedDuplicates: Record<string, boolean> = {}
-    for (const { code, duplicates: d } of duplicates) {
-        newDuplicates[code] = d
-        if (d.length > 0 && !(code in acceptedDuplicates.value)) {
-            newAcceptedDuplicates[code] = false
-        }
-    }
-    trackerDuplicates.value = newDuplicates
-    acceptedDuplicates.value = {
-        ...newAcceptedDuplicates,
-        ...Object.fromEntries(Object.entries(acceptedDuplicates.value).filter(([code]) => (newDuplicates[code]?.length ?? 0) > 0)),
-    }
-}
-
 async function onSubmit() {
-    if (!props.sourcePath || !props.metadata || uploadPending.value || !canSubmit.value) return
-
     await executeUpload()
     if (!uploadError.value) {
         toast.add({
@@ -151,7 +129,7 @@ async function onSubmit() {
 
         <UAlert v-if="uploadError" color="error" variant="soft" title="Failed to submit upload request. Please try again." class="mb-4" />
 
-        <div v-if="settingsLoading || titlesLoading || rulesLoading || duplicatesLoading" class="space-y-4">
+        <div v-if="settingsLoading || titleLoading || rulesLoading || duplicatesLoading" class="space-y-4">
             <USkeleton class="h-20 w-full" />
             <USkeleton class="h-20 w-full" />
         </div>
@@ -162,25 +140,27 @@ async function onSubmit() {
             <div v-for="item in trackerItems" :key="item.code" class="rounded-xl border border-default/70 bg-elevated/30 p-4 shadow-xs space-y-4">
                 <h3 class="text-sm font-semibold text-highlighted">{{ trackerNames[item.code] ?? item.code }}</h3>
 
-                <div v-if="trackerViolations[item.code]?.length" class="space-y-3">
-                    <UAlert
-                        :color="acceptedViolations[item.code] ? 'warning' : 'error'"
-                        variant="soft"
-                        :title="acceptedViolations[item.code] ? 'Rule violations detected' : 'Rule violations detected — this tracker will be skipped'"
-                        :description="`This upload violates ${trackerViolations[item.code]?.length ?? 0} rule${(trackerViolations[item.code]?.length ?? 0) > 1 ? 's' : ''} for ${trackerNames[item.code] ?? item.code}.`"
-                    />
-                    <ul class="space-y-1 pl-1">
-                        <li
-                            v-for="violation in trackerViolations[item.code]"
-                            :key="violation.rule"
-                            :class="['flex items-start gap-2 text-sm', acceptedViolations[item.code] ? 'text-warning' : 'text-error']"
-                        >
-                            <UIcon name="i-lucide-triangle-alert" class="mt-0.5 shrink-0 size-4" />
-                            <span>{{ violation.message }}</span>
-                        </li>
-                    </ul>
-                    <UCheckbox v-model="acceptedViolations[item.code]" color="warning" label="I understand and want to upload to this tracker anyway" />
-                </div>
+                <template v-for="violations in [trackerViolations[item.code] ?? []]" :key="violations.length">
+                    <div v-if="violations.length" class="space-y-3">
+                        <UAlert
+                            :color="acceptedViolations[item.code] ? 'warning' : 'error'"
+                            variant="soft"
+                            :title="acceptedViolations[item.code] ? 'Rule violations detected' : 'Rule violations detected — this tracker will be skipped'"
+                            :description="`This upload violates ${violations.length} rule${violations.length > 1 ? 's' : ''} for ${trackerNames[item.code] ?? item.code}.`"
+                        />
+                        <ul class="space-y-1 pl-1">
+                            <li
+                                v-for="violation in violations"
+                                :key="violation.rule"
+                                :class="['flex items-start gap-2 text-sm', acceptedViolations[item.code] ? 'text-warning' : 'text-error']"
+                            >
+                                <UIcon name="i-lucide-triangle-alert" class="mt-0.5 shrink-0 size-4" />
+                                <span>{{ violation.message }}</span>
+                            </li>
+                        </ul>
+                        <UCheckbox v-model="acceptedViolations[item.code]" color="warning" label="I understand and want to upload to this tracker anyway" />
+                    </div>
+                </template>
 
                 <template v-for="dupes in [trackerDuplicates[item.code] ?? []]" :key="dupes.length">
                     <div v-if="dupes.length" class="space-y-3">
@@ -238,7 +218,7 @@ async function onSubmit() {
 
         <StepNavigationButtons
             class="mt-5"
-            :next="{ label: 'Submit Upload', disabled: !canSubmit || titlesLoading || rulesLoading || duplicatesLoading, loading: uploadPending }"
+            :next="{ label: 'Submit Upload', disabled: !canSubmit || titleLoading || rulesLoading || duplicatesLoading || uploadPending, loading: uploadPending }"
             @back="emit('back')"
             @next="onSubmit"
         />

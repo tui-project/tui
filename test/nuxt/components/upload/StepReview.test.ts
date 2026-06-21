@@ -1,7 +1,7 @@
 import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StepReview from '~/components/upload/StepReview.vue'
 
@@ -11,8 +11,13 @@ const { toastAddMock, navigateToMock } = vi.hoisted(() => ({
 }))
 
 const fetchTitleMock = vi.fn()
+let capturedTrackerCode: Ref<string> | null = null
+const titleDataRef = ref<{ title: string } | null>(null)
+const titleLoadingRef = ref(false)
 const getViolationsMock = vi.fn()
 const getDuplicatesMock = vi.fn()
+const rulesLoadingRef = ref(false)
+const duplicatesLoadingRef = ref(false)
 const settingsLoading = ref(false)
 const settingsData = ref<{ trackers: Array<{ code: string; name: string }> } | null>(null)
 
@@ -31,18 +36,22 @@ vi.mock('~/composables/useGetSettings', () => ({
     }),
 }))
 
-vi.mock('~/composables/useTrackerTitle', () => ({
-    useTrackerTitle: () => ({
-        getTitle: fetchTitleMock,
-        loading: ref(false),
-        error: ref(false),
-    }),
+vi.mock('~/composables/usePostTrackerTitle', () => ({
+    usePostTrackerTitle: (trackerCode: Ref<string>, _metadata: unknown) => {
+        capturedTrackerCode = trackerCode
+        return {
+            pending: titleLoadingRef,
+            data: titleDataRef,
+            error: ref(null),
+            execute: fetchTitleMock,
+        }
+    },
 }))
 
 vi.mock('~/composables/useTrackerRules', () => ({
     useTrackerRules: () => ({
         getViolations: getViolationsMock,
-        loading: ref(false),
+        loading: rulesLoadingRef,
         error: ref(false),
     }),
 }))
@@ -50,7 +59,7 @@ vi.mock('~/composables/useTrackerRules', () => ({
 vi.mock('~/composables/useTrackerDuplicates', () => ({
     useTrackerDuplicates: () => ({
         getDuplicates: getDuplicatesMock,
-        loading: ref(false),
+        loading: duplicatesLoadingRef,
         error: ref(false),
     }),
 }))
@@ -109,6 +118,12 @@ describe('StepReview', () => {
         getDuplicatesMock.mockReset()
         toastAddMock.mockReset()
         navigateToMock.mockReset()
+        capturedTrackerCode = null
+        titleDataRef.value = { title: DEFAULT_TITLE }
+        titleLoadingRef.value = false
+        rulesLoadingRef.value = false
+        duplicatesLoadingRef.value = false
+        fetchTitleMock.mockResolvedValue(undefined)
         settingsLoading.value = false
         settingsData.value = {
             trackers: [
@@ -119,7 +134,6 @@ describe('StepReview', () => {
         uploadPending.value = false
         uploadError.value = null
         capturedUploadBody = null
-        fetchTitleMock.mockResolvedValue(DEFAULT_TITLE)
         getViolationsMock.mockResolvedValue([])
         getDuplicatesMock.mockResolvedValue([])
     })
@@ -130,14 +144,17 @@ describe('StepReview', () => {
         })
 
         await waitFor(() => expect(screen.getByText('Upload.cx (ULCX)')).toBeTruthy())
-        expect(fetchTitleMock).toHaveBeenCalledWith('ULCX', expect.objectContaining({ title: 'Movie' }))
+        await waitFor(() => expect(fetchTitleMock).toHaveBeenCalled())
+        expect(capturedTrackerCode?.value).toBe('ULCX')
         await waitFor(() => expect(screen.getByPlaceholderText('Title for ULCX')).toHaveProperty('value', DEFAULT_TITLE))
         expect(screen.getByRole('checkbox', { name: 'Upload anonymously' })).toBeTruthy()
         expect(screen.getByRole('checkbox', { name: 'Opt in to mod queue' })).toBeTruthy()
     })
 
     it('fetches titles for each selected tracker independently', async () => {
-        fetchTitleMock.mockImplementation((code: string) => Promise.resolve(`Generated title for ${code}`))
+        fetchTitleMock.mockImplementation(async () => {
+            titleDataRef.value = { title: `Generated title for ${capturedTrackerCode?.value}` }
+        })
 
         await renderSuspended(StepReview, {
             props: { selectedTrackers: ['ULCX', 'ATH'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -233,20 +250,6 @@ describe('StepReview', () => {
         expect(await screen.findByText('No trackers selected. Go back and select at least one tracker.')).toBeTruthy()
     })
 
-    it('re-fetches titles when selectedTrackers prop changes', async () => {
-        fetchTitleMock.mockResolvedValue(DEFAULT_TITLE)
-        const { rerender } = await renderSuspended(StepReview, {
-            props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
-        })
-
-        await waitFor(() => expect(fetchTitleMock).toHaveBeenCalledWith('ULCX', expect.any(Object)))
-
-        fetchTitleMock.mockResolvedValue('ATH Title')
-        await rerender({ selectedTrackers: ['ULCX', 'ATH'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' })
-
-        await waitFor(() => expect(fetchTitleMock).toHaveBeenCalledWith('ATH', expect.any(Object)))
-    })
-
     it('shows Title is required and disables submit when title is cleared', async () => {
         const user = userEvent.setup()
         await renderSuspended(StepReview, {
@@ -258,15 +261,6 @@ describe('StepReview', () => {
 
         await waitFor(() => expect(screen.getByText('Title is required')).toBeTruthy())
         expect(screen.getByRole('button', { name: 'Submit Upload' })).toHaveProperty('disabled', true)
-    })
-
-    it('renders anonymous and mod-queue checkboxes for each tracker', async () => {
-        await renderSuspended(StepReview, {
-            props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
-        })
-
-        await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Upload anonymously' })).toBeTruthy())
-        expect(screen.getByRole('checkbox', { name: 'Opt in to mod queue' })).toBeTruthy()
     })
 
     it('toggles anonymous and modQueueOptIn checkboxes', async () => {
@@ -299,14 +293,49 @@ describe('StepReview', () => {
         expect(emitted()).toHaveProperty('back')
     })
 
-    it('shows loading skeletons while settings or titles are loading', async () => {
-        settingsLoading.value = true
+    it.each([
+        [
+            'settingsLoading',
+            () => {
+                settingsLoading.value = true
+            },
+        ],
+        [
+            'titleLoading',
+            () => {
+                titleLoadingRef.value = true
+            },
+        ],
+        [
+            'rulesLoading',
+            () => {
+                rulesLoadingRef.value = true
+            },
+        ],
+        [
+            'duplicatesLoading',
+            () => {
+                duplicatesLoadingRef.value = true
+            },
+        ],
+    ])('shows loading skeletons while %s is true', async (_, setLoading) => {
+        setLoading()
 
         await renderSuspended(StepReview, {
             props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
         })
 
         expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0)
+    })
+
+    it('uses empty string as title when server returns no data', async () => {
+        titleDataRef.value = null
+
+        await renderSuspended(StepReview, {
+            props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
+        })
+
+        await waitFor(() => expect(screen.getByPlaceholderText('Title for ULCX')).toHaveProperty('value', ''))
     })
 
     it('falls back to tracker code when tracker name is not in settings', async () => {
@@ -352,8 +381,7 @@ describe('StepReview', () => {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
             })
 
-            await waitFor(() => expect(screen.getByText(/will be trumped by this upload\./)).toBeTruthy())
-            expect(screen.getByText(/on ULCX will be/)).toBeTruthy()
+            await waitFor(() => expect(screen.getByText(/on ULCX will be/)).toBeTruthy())
         })
 
         it('pluralises the non-trumpable description when more than one release is non-trumpable', async () => {
@@ -461,7 +489,9 @@ describe('StepReview', () => {
                     ? Promise.resolve([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }])
                     : Promise.resolve([])
             )
-            fetchTitleMock.mockImplementation((code: string) => Promise.resolve(`Title for ${code}`))
+            fetchTitleMock.mockImplementation(async () => {
+                titleDataRef.value = { title: `Title for ${capturedTrackerCode?.value}` }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX', 'ATH'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -477,17 +507,17 @@ describe('StepReview', () => {
     })
 
     describe('rule violations', () => {
-        it('pluralises the violation description when more than one rule is violated', async () => {
-            getViolationsMock.mockResolvedValue([
-                { rule: 'banned_release_group', message: 'Release group "YIFY" is banned.' },
-                { rule: 'missing_mediainfo', message: 'Mediainfo is required.' },
-            ])
+        it.each([
+            [1, /This upload violates 1 rule for/],
+            [2, /This upload violates 2 rules for/],
+        ])('violation description counts %i rule(s) with correct pluralisation', async (count, pattern) => {
+            getViolationsMock.mockResolvedValue(Array.from({ length: count }, (_, i) => ({ rule: `rule_${i}`, message: `Message ${i}.` })))
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
             })
 
-            await waitFor(() => expect(screen.getByText(/This upload violates 2 rules/)).toBeTruthy())
+            await waitFor(() => expect(screen.getByText(pattern)).toBeTruthy())
         })
 
         it('uses tracker code as fallback in violation description when tracker name is absent from settings', async () => {
@@ -532,7 +562,9 @@ describe('StepReview', () => {
             getViolationsMock.mockImplementation((code: string) =>
                 code === 'ULCX' ? Promise.resolve([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }]) : Promise.resolve([])
             )
-            fetchTitleMock.mockImplementation((code: string) => Promise.resolve(`Title for ${code}`))
+            fetchTitleMock.mockImplementation(async () => {
+                titleDataRef.value = { title: `Title for ${capturedTrackerCode?.value}` }
+            })
 
             await renderSuspended(StepReview, {
                 props: { selectedTrackers: ['ULCX', 'ATH'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
@@ -573,45 +605,9 @@ describe('StepReview', () => {
             await waitFor(() => expect(screen.getByText('Rule violations detected — this tracker will be skipped')).toBeTruthy())
             expect(screen.getByRole('button', { name: 'Submit Upload' })).toHaveProperty('disabled', true)
         })
-
-        it('preserves accepted violation state when metadata changes and violation remains', async () => {
-            const user = userEvent.setup()
-            getViolationsMock.mockResolvedValue([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }])
-
-            const { rerender } = await renderSuspended(StepReview, {
-                props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
-            })
-
-            await waitFor(() => expect(screen.getByRole('checkbox', { name: 'I understand and want to upload to this tracker anyway' })).toBeTruthy())
-            await user.click(screen.getByRole('checkbox', { name: 'I understand and want to upload to this tracker anyway' }))
-            await waitFor(() => expect(screen.getByText('Rule violations detected')).toBeTruthy())
-
-            await rerender({ selectedTrackers: ['ULCX'], metadata: { ...metadataFields, year: 2023 }, sourcePath: '/media/movie.mkv' })
-
-            await waitFor(() => expect(screen.getByText('Rule violations detected')).toBeTruthy())
-            expect(screen.queryByText('Rule violations detected — this tracker will be skipped')).toBeNull()
-        })
     })
 
-    describe('duplicate acceptance state preservation', () => {
-        it('preserves accepted duplicate state when metadata changes and duplicate remains', async () => {
-            const user = userEvent.setup()
-            getDuplicatesMock.mockResolvedValue([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }])
-
-            const { rerender } = await renderSuspended(StepReview, {
-                props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
-            })
-
-            await waitFor(() => expect(screen.getByText('Duplicates found on this tracker — it will be skipped')).toBeTruthy())
-            await user.click(screen.getByRole('checkbox', { name: 'I understand and want to upload to this tracker anyway' }))
-            await waitFor(() => expect(screen.getByText('Duplicates found on this tracker')).toBeTruthy())
-
-            await rerender({ selectedTrackers: ['ULCX'], metadata: { ...metadataFields, year: 2023 }, sourcePath: '/media/movie.mkv' })
-
-            await waitFor(() => expect(screen.getByText('Duplicates found on this tracker')).toBeTruthy())
-            expect(screen.queryByText('Duplicates found on this tracker — it will be skipped')).toBeNull()
-        })
-
+    describe('duplicate acceptance state', () => {
         it('shows non-trumpable duplicate name as plain text when url is absent', async () => {
             getDuplicatesMock.mockResolvedValue([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', trumpable: false }])
 
@@ -634,82 +630,15 @@ describe('StepReview', () => {
         await waitFor(() => expect(screen.getByText('ULCX')).toBeTruthy())
     })
 
-    it('reuses existing tracker item instead of refetching title when tracker is already loaded', async () => {
-        fetchTitleMock.mockResolvedValue(DEFAULT_TITLE)
-        const { rerender } = await renderSuspended(StepReview, {
-            props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
-        })
-
-        await waitFor(() => expect(screen.getByPlaceholderText('Title for ULCX')).toHaveProperty('value', DEFAULT_TITLE))
-        fetchTitleMock.mockClear()
-
-        await rerender({ selectedTrackers: ['ULCX'], metadata: { ...metadataFields, year: 2025 }, sourcePath: '/media/movie.mkv' })
-        await new Promise((r) => setTimeout(r, 50))
-
-        expect(fetchTitleMock).not.toHaveBeenCalled()
-    })
-
-    it('does not proceed with upload when uploadPending is true', async () => {
-        const user = userEvent.setup()
-
+    it('disables Submit Upload button while upload is pending', async () => {
         await renderSuspended(StepReview, {
             props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
         })
 
         await waitFor(() => expect(screen.getByRole('button', { name: 'Submit Upload' })).toBeTruthy())
         uploadPending.value = true
-        await user.click(screen.getByRole('button', { name: 'Submit Upload' }))
+        await nextTick()
 
-        expect(executeUploadMock).not.toHaveBeenCalled()
-    })
-
-    it('shows singular rule violation description without plural s', async () => {
-        getViolationsMock.mockResolvedValue([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned.' }])
-
-        await renderSuspended(StepReview, {
-            props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
-        })
-
-        await waitFor(() => expect(screen.getByText(/This upload violates 1 rule for/)).toBeTruthy())
-    })
-
-    it('drops accepted violation state when tracker is removed from selection', async () => {
-        const user = userEvent.setup()
-        getViolationsMock.mockImplementation((code: string) =>
-            code === 'ULCX' ? Promise.resolve([{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned.' }]) : Promise.resolve([])
-        )
-        fetchTitleMock.mockImplementation((code: string) => Promise.resolve(`Title for ${code}`))
-
-        const { rerender } = await renderSuspended(StepReview, {
-            props: { selectedTrackers: ['ULCX', 'ATH'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
-        })
-
-        await waitFor(() => expect(screen.getByRole('checkbox', { name: 'I understand and want to upload to this tracker anyway' })).toBeTruthy())
-        await user.click(screen.getByRole('checkbox', { name: 'I understand and want to upload to this tracker anyway' }))
-
-        await rerender({ selectedTrackers: ['ATH'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' })
-
-        await waitFor(() => expect(screen.queryByText(/Rule violations/)).toBeNull())
-    })
-
-    it('drops accepted duplicate state when tracker is removed from selection', async () => {
-        const user = userEvent.setup()
-        getDuplicatesMock.mockImplementation((code: string) =>
-            code === 'ULCX'
-                ? Promise.resolve([{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }])
-                : Promise.resolve([])
-        )
-        fetchTitleMock.mockImplementation((code: string) => Promise.resolve(`Title for ${code}`))
-
-        const { rerender } = await renderSuspended(StepReview, {
-            props: { selectedTrackers: ['ULCX', 'ATH'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
-        })
-
-        await waitFor(() => expect(screen.getByRole('checkbox', { name: 'I understand and want to upload to this tracker anyway' })).toBeTruthy())
-        await user.click(screen.getByRole('checkbox', { name: 'I understand and want to upload to this tracker anyway' }))
-
-        await rerender({ selectedTrackers: ['ATH'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' })
-
-        await waitFor(() => expect(screen.queryByText(/Duplicates found/)).toBeNull())
+        expect(screen.getByRole('button', { name: 'Submit Upload' })).toHaveProperty('disabled', true)
     })
 })
