@@ -125,4 +125,29 @@ describe('StepSelectTrackers', () => {
         await user.click(nextButton)
         expect(emitted()['next']).toBeTruthy()
     })
+
+    it('emits back when Back button is clicked', async () => {
+        const user = userEvent.setup()
+        settingsData.value = buildTrackerSettings([{ selected: true, code: 'ULCX', name: 'Upload.cx' }])
+
+        const { emitted } = await renderSuspended(StepSelectTrackers, {
+            props: { modelValue: [] },
+        })
+
+        await user.click(await screen.findByRole('button', { name: 'Back' }))
+        expect(emitted()['back']).toBeTruthy()
+    })
+
+    it('filters out pre-selected tracker codes that are no longer in settings', async () => {
+        settingsData.value = buildTrackerSettings([{ selected: true, code: 'BHD', name: 'BeyondHD' }])
+
+        const { emitted } = await renderSuspended(StepSelectTrackers, {
+            props: { modelValue: ['ULCX', 'BHD'] },
+        })
+
+        await waitFor(() => {
+            const updateEvents = emitted()['update:modelValue'] as string[][] | undefined
+            expect(updateEvents?.at(-1)?.[0]).toEqual(['BHD'])
+        })
+    })
 })

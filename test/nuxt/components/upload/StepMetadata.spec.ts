@@ -199,6 +199,18 @@ describe('StepMetadata', () => {
             expect(screen.getByRole('textbox', { name: 'Title' }).getAttribute('value')).toBe('Prefetched Title')
         })
 
+        it('renders empty form when execute completes but returns no data', async () => {
+            mockExecute.mockImplementation(() => {
+                mockData.value = null
+            })
+
+            await renderSuspended(StepMetadata, { props: { selectedPath } })
+
+            expect(mockExecute).toHaveBeenCalledTimes(1)
+            expect(screen.getByText('Basic Details')).toBeDefined()
+            expect(screen.getByRole('textbox', { name: 'Title' }).getAttribute('value')).toBeNull()
+        })
+
         it('clears modelValue when selected path changes', async () => {
             const model = createMetadata({ title: 'Existing Title' })
             const onUpdateModelValue = vi.fn()
@@ -215,6 +227,25 @@ describe('StepMetadata', () => {
 
             await waitFor(() => {
                 expect(onUpdateModelValue).toHaveBeenCalledWith(undefined)
+            })
+        })
+
+        it('clears prefetched when selected path changes', async () => {
+            const prefetched = createMetadata({ title: 'Prefetched Title' })
+            const onUpdatePrefetched = vi.fn()
+
+            const { rerender } = await renderSuspended(StepMetadata, {
+                props: { selectedPath, prefetched, 'onUpdate:prefetched': onUpdatePrefetched },
+            })
+
+            await rerender({
+                selectedPath: { label: '/media/other.mkv', value: '/media/other.mkv', icon: 'i-lucide-file', folder: false },
+                prefetched,
+                'onUpdate:prefetched': onUpdatePrefetched,
+            })
+
+            await waitFor(() => {
+                expect(onUpdatePrefetched).toHaveBeenCalledWith(undefined)
             })
         })
     })
