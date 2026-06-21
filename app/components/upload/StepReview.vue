@@ -4,6 +4,7 @@ import { useGetSettings } from '~/composables/useGetSettings'
 import { usePostTrackerTitle } from '~/composables/usePostTrackerTitle'
 import { usePostTrackerRules, type RuleViolation } from '~/composables/usePostTrackerRules'
 import { usePostTrackerDuplicates, type DuplicateEntry } from '~/composables/usePostTrackerDuplicates'
+import { usePostTrackerRequests } from '~/composables/usePostTrackerRequests'
 
 const props = defineProps<{
     selectedTrackers: string[]
@@ -22,6 +23,7 @@ const trackerViolations = ref<Record<string, RuleViolation[]>>({})
 const acceptedViolations = ref<Record<string, boolean>>({})
 const trackerDuplicates = ref<Record<string, DuplicateEntry[]>>({})
 const acceptedDuplicates = ref<Record<string, boolean>>({})
+const trackerLoadErrors = ref<Record<string, string[]>>({})
 const trackerCode = ref('')
 
 const toast = useToast()
@@ -29,8 +31,6 @@ const { pending: settingsLoading, data: settings } = useGetSettings()
 const { pending: titleLoading, data: title, error: titleError, execute: generateTitle } = usePostTrackerTitle(trackerCode, props.metadata!)
 const { pending: rulesLoading, data: ruleViolations, error: rulesError, execute: checkViolations } = usePostTrackerRules(trackerCode, props.metadata!)
 const { pending: duplicatesLoading, data: duplicatesData, error: duplicatesError, execute: checkDuplicates } = usePostTrackerDuplicates(trackerCode, props.metadata!)
-
-const trackerLoadErrors = ref<Record<string, string[]>>({})
 
 watch(
     settings,
@@ -110,29 +110,22 @@ const uploadableTrackers = computed(() =>
     })
 )
 
+const uploadBody = computed(() => ({
+    filepath: props.sourcePath!,
+    metadata: props.metadata!,
+    description: props.description!,
+    trackers: uploadableTrackers.value,
+}))
+const { pending: uploadPending, error: uploadError, execute: executeUpload } = usePostTrackerRequests(uploadBody)
+
 const canSubmit = computed(() => {
     if (props.selectedTrackers.length === 0 || !props.sourcePath?.trim() || !props.metadata) return false
     return uploadableTrackers.value.length > 0
 })
 
-const {
-    pending: uploadPending,
-    error: uploadError,
-    execute: executeUpload,
-} = useFetch('/api/tracker/requests', {
-    immediate: false,
-    method: 'POST',
-    body: computed(() => ({
-        filepath: props.sourcePath,
-        metadata: props.metadata,
-        description: props.description,
-        trackers: uploadableTrackers.value,
-    })),
-    watch: false,
-})
-
 async function onSubmit() {
     await executeUpload()
+
     if (!uploadError.value) {
         toast.add({
             title: 'Upload request submitted.',
