@@ -49,7 +49,7 @@ beforeEach(() => {
 
 // Navigate to the metadata step and wait until the form is fully populated.
 async function advanceToMetadata() {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     await renderSuspended(UploadPage)
 
     await user.click(await screen.findByRole('combobox'))
@@ -126,7 +126,7 @@ describe('upload page', () => {
                 return null
             })
 
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             await renderSuspended(UploadPage)
 
             await user.click(await screen.findByRole('combobox'))

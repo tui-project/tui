@@ -46,7 +46,7 @@ describe('default layout', () => {
     })
 
     it('opens and closes logout modal with cancel', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(DefaultLayout)
 
@@ -61,7 +61,7 @@ describe('default layout', () => {
 
     it('calls logout and navigates to login when confirmed', async () => {
         logoutMock.mockResolvedValue(undefined)
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(DefaultLayout)
         await user.click(screen.getAllByRole('button', { name: 'Log out' })[0] as HTMLElement)
@@ -74,7 +74,7 @@ describe('default layout', () => {
     })
 
     it('closes the logout modal when Escape key is pressed', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(DefaultLayout)
         await user.click(screen.getAllByRole('button', { name: 'Log out' })[0] as HTMLElement)
@@ -86,7 +86,7 @@ describe('default layout', () => {
 
     it('keeps logout confirm button disabled while logout is loading', async () => {
         logoutState.loading = true
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(DefaultLayout)
         await user.click(screen.getAllByRole('button', { name: 'Log out' })[0] as HTMLElement)

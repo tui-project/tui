@@ -52,7 +52,7 @@ describe('login page', () => {
             userId: 'user-1',
             expiresAt: '2030-01-01T01:00:00.000Z',
         })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(LoginPage)
         await user.type(screen.getByPlaceholderText('enter your username'), 'admin')
@@ -65,7 +65,7 @@ describe('login page', () => {
 
     it('does not navigate when login fails', async () => {
         loginMock.mockResolvedValue(null)
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(LoginPage)
         await user.type(screen.getByPlaceholderText('enter your username'), 'admin')

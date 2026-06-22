@@ -191,7 +191,7 @@ describe('StepReview', () => {
     })
 
     it('marks title as modified when user changes it from the fetched default', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         await renderSuspended(StepReview, {
             props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
         })
@@ -205,7 +205,7 @@ describe('StepReview', () => {
     })
 
     it('submits with overrides and navigates to dashboard on success', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         executeUploadMock.mockResolvedValue(undefined)
 
         await renderSuspended(StepReview, {
@@ -242,7 +242,7 @@ describe('StepReview', () => {
     })
 
     it('shows an error alert and stays on the page when submission fails', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         executeUploadMock.mockImplementation(async () => {
             uploadError.value = true
         })
@@ -277,7 +277,7 @@ describe('StepReview', () => {
     })
 
     it('shows Title is required and disables submit when title is cleared', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         await renderSuspended(StepReview, {
             props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
         })
@@ -290,7 +290,7 @@ describe('StepReview', () => {
     })
 
     it('toggles anonymous and modQueueOptIn checkboxes', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         executeUploadMock.mockResolvedValue(undefined)
 
         await renderSuspended(StepReview, {
@@ -309,7 +309,7 @@ describe('StepReview', () => {
     })
 
     it('emits back when the Back button is clicked', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         const { emitted } = await renderSuspended(StepReview, {
             props: { selectedTrackers: ['ULCX'], metadata: metadata.metadata, sourcePath: '/media/movie.mkv' },
         })
@@ -492,7 +492,7 @@ describe('StepReview', () => {
         })
 
         it('hides the skipped notice when user accepts duplicates', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             duplicatesExecuteMock.mockImplementation(async () => {
                 duplicatesDataRef.value = { duplicates: [{ name: 'Movie.2024.1080p.WEB-DL.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }] }
             })
@@ -538,7 +538,7 @@ describe('StepReview', () => {
         })
 
         it('submits only trackers without unaccepted non-trumpable duplicates', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             executeUploadMock.mockResolvedValue(undefined)
             duplicatesExecuteMock.mockImplementation(async () => {
                 duplicatesDataRef.value = {
@@ -609,7 +609,7 @@ describe('StepReview', () => {
         })
 
         it('hides the skipped notice after user accepts the violation', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             fetchRulesMock.mockImplementation(async () => {
                 rulesDataRef.value = { violations: [{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }] }
             })
@@ -624,7 +624,7 @@ describe('StepReview', () => {
         })
 
         it('submits only trackers without unaccepted violations', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             executeUploadMock.mockResolvedValue(undefined)
             fetchRulesMock.mockImplementation(async () => {
                 rulesDataRef.value = {
@@ -648,7 +648,7 @@ describe('StepReview', () => {
         })
 
         it('includes a tracker with violations once the user accepts', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             executeUploadMock.mockResolvedValue(undefined)
             fetchRulesMock.mockImplementation(async () => {
                 rulesDataRef.value = { violations: [{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }] }

@@ -256,7 +256,7 @@ describe('StepMetadata', () => {
             ['proper', 'Proper'],
             ['rerip', 'ReRip'],
         ] as const)('toggles %s: hides number input on uncheck, shows on re-check', async (field, label) => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ [field]: 1 })
             })
@@ -325,7 +325,7 @@ describe('StepMetadata', () => {
         })
 
         it('toggles Hi10P checkbox on and off', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ videoCodec: 'AVC', hi10p: false })
             })
@@ -360,7 +360,7 @@ describe('StepMetadata', () => {
         })
 
         it('toggles English Subs checkbox off', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ originalLanguage: 'ko', hasEnglishSubs: true })
             })
@@ -392,7 +392,7 @@ describe('StepMetadata', () => {
         })
 
         it('toggles TrueHD Compatibility Track checkbox on and off', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ audioCodec: 'TrueHD', hasTrueHDCompatibilityTrack: true })
             })
@@ -412,7 +412,7 @@ describe('StepMetadata', () => {
 
     describe('TV features', () => {
         it('shows Last Episode input when multi-episode toggle is enabled', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ mediaType: 'tv', season: 1, episode: 3, tvdbId: 999 })
             })
@@ -440,7 +440,7 @@ describe('StepMetadata', () => {
         })
 
         it('hides Last Episode input when toggle is turned off but preserves the value', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ mediaType: 'tv', season: 0, episode: 3, episodeEnd: 8, tvdbId: 311711 })
             })
@@ -479,7 +479,7 @@ describe('StepMetadata', () => {
         })
 
         it('allows typing into the Last Episode input', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ mediaType: 'tv', season: 1, episode: 1, tvdbId: 999 })
             })
@@ -519,7 +519,7 @@ describe('StepMetadata', () => {
         })
 
         it('updates season, episode, tmdb and tvdb inputs for TV media type', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ mediaType: 'tv', season: undefined, episode: undefined, tvdbId: undefined, tmdbId: undefined })
             })
@@ -545,7 +545,7 @@ describe('StepMetadata', () => {
         }, 10000)
 
         it('updates flag checkboxes and TVDB field for tv metadata', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ mediaType: 'tv', season: 3, tvdbId: undefined, repack: 0, proper: 0, hybrid: false })
             })
@@ -582,7 +582,7 @@ describe('StepMetadata', () => {
             ['Audio Channels', '7.1'],
             ['Audio Metadata', 'Auro3D'],
         ] as const)('allows changing %s dropdown', async (comboboxName, optionName) => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             await renderSuspended(StepMetadata, { props: { selectedPath } })
 
             await user.click(screen.getByRole('combobox', { name: comboboxName }))
@@ -591,7 +591,7 @@ describe('StepMetadata', () => {
         })
 
         it('updates tmdb input for movie media type', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ tmdbId: undefined })
             })
@@ -608,7 +608,7 @@ describe('StepMetadata', () => {
         it('covers single-select dropdown v-model handlers in basic and source-release sections', async () => {
             // All interactions in one test: one renderSuspended, one cleanup — avoids multi-test
             // pointer-event accumulation that degrades the happy-dom environment over time.
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             await renderSuspended(StepMetadata, { props: { selectedPath } })
 
             // Service must be clicked before Source changes away from Web
@@ -641,7 +641,7 @@ describe('StepMetadata', () => {
         }, 20000)
 
         it('covers HDR and Language multi-select v-model handlers', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ hdr: [], language: [] })
             })
@@ -681,7 +681,7 @@ describe('StepMetadata', () => {
         })
 
         it('allows typing into the TVDB ID input', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ mediaType: 'tv', season: 1, episode: 1, tvdbId: undefined })
             })
@@ -770,7 +770,7 @@ describe('StepMetadata', () => {
         })
 
         it('clears episodeEnd on submit when multi-episode toggle is off', async () => {
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
             const onUpdateModelValue = vi.fn()
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ mediaType: 'tv', season: 0, episode: 3, episodeEnd: 8, tvdbId: 311711 })

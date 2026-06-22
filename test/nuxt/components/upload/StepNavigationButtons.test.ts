@@ -6,7 +6,7 @@ import StepNavigationButtons from '~/components/upload/StepNavigationButtons.vue
 
 describe('StepNavigationButtons', () => {
     it('renders defaults and emits back/next clicks', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         const { emitted } = await renderSuspended(StepNavigationButtons)
 
         const backButton = await screen.findByRole('button', { name: 'Back' })

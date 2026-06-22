@@ -78,7 +78,7 @@ Nuxt component/page tests under `test/nuxt` should prefer Testing Library patter
 
 - Use `renderSuspended` from `@nuxt/test-utils/runtime`.
 - Use queries from `@testing-library/vue` (`screen.getByRole`, `getByText`, `getByPlaceholderText`, etc.).
-- Use `@testing-library/user-event` for realistic user interactions.
+- Use `@testing-library/user-event` for realistic user interactions. Always pass `{ delay: null }` to `userEvent.setup()` — the default keystroke delay adds significant wall-clock time. Exception: `test/nuxt/components/upload/StepSelectMedia.test.ts` relies on the default delay so open-dropdown DOM is cleaned up between renders.
 - Avoid broad assertions on wrapper text; prefer targeted selector-based assertions.
 - Prefer selector-based element targeting over index-based access. Avoid patterns like `findAll(...)[0]` when a stable selector (`getByRole`, `getByLabelText`, `get`, `locator`, etc.) can be used.
 - Prefer `renderSuspended` + selector-driven interactions over Vue Test Utils component-instance access (`findComponent`, `vm.$emit`) for `test/nuxt` tests.

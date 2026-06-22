@@ -77,7 +77,7 @@ describe('settings page', () => {
     })
 
     it('adds/removes paths and submits updated settings', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
         await user.type(screen.getByPlaceholderText('/path/to/media/folder'), '/media/a')
@@ -90,7 +90,7 @@ describe('settings page', () => {
 
     it('shows success message after saving settings', async () => {
         loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'] })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
         await user.click(screen.getByRole('button', { name: /save/i }))
@@ -107,7 +107,7 @@ describe('settings page', () => {
             ffmpegPath: '/usr/local/bin/ffmpeg',
             ffprobePath: '/usr/local/bin/ffprobe',
         })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
 
@@ -135,7 +135,7 @@ describe('settings page', () => {
             mediaPaths: ['/media/a'],
             trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'old-api-key', passKey: 'old-pass-key' }],
         })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
 
@@ -171,7 +171,7 @@ describe('settings page', () => {
         'removes $label from payload when unticked',
         async ({ settings, checkboxLabel, expected }) => {
             loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'], ...settings })
-            const user = userEvent.setup()
+            const user = userEvent.setup({ delay: null })
 
             await renderSuspended(SettingsPage)
             await user.click(screen.getByRole('checkbox', { name: checkboxLabel }))
@@ -193,7 +193,7 @@ describe('settings page', () => {
                 imageHostProviders: [{ selected: false, code: 'imgbb', name: 'ImgBB' }],
             })
         })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
         await user.click(screen.getByRole('checkbox', { name: 'ImgBB' }))
@@ -216,7 +216,7 @@ describe('settings page', () => {
         },
     ])('shows inline $label validation errors and blocks submit when missing', async ({ checkboxLabel, errors }) => {
         loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'] })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
         await user.click(screen.getByRole('checkbox', { name: checkboxLabel }))
@@ -232,7 +232,7 @@ describe('settings page', () => {
             mediaPaths: ['/media/a'],
             trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'saved-api-key', passKey: 'saved-pass-key' }],
         })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
         await user.click(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' }))
@@ -244,7 +244,7 @@ describe('settings page', () => {
 
     it('blocks submit when TMDB API key is empty', async () => {
         loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'], tmdbApiKey: '' })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
         await user.click(screen.getByRole('button', { name: /save/i }))
@@ -257,7 +257,7 @@ describe('settings page', () => {
 
     it('submits updated TMDB API key', async () => {
         loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'], tmdbApiKey: 'old-key' })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
         await user.clear(screen.getByPlaceholderText('Enter TMDB API key'))
@@ -274,7 +274,7 @@ describe('settings page', () => {
         { name: 'mediainfoPath', settings: { mediainfoPath: '' }, error: 'Mediainfo Path is required.' },
     ])('blocks submit when $name is empty', async ({ settings, error }) => {
         loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'], ...settings })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
         await user.click(screen.getByRole('button', { name: /save/i }))
@@ -285,7 +285,7 @@ describe('settings page', () => {
 
     it('clears the media paths validation error after adding a path', async () => {
         loadedDataRef.value = buildSettings()
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
         await user.click(screen.getByRole('button', { name: /save/i }))
@@ -302,7 +302,7 @@ describe('settings page', () => {
 
     it('marks the first invalid settings input after schema validation fails', async () => {
         loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'] })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
         await user.click(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' }))
@@ -319,7 +319,7 @@ describe('settings page', () => {
         saveSettingsMock.mockImplementation(async () => {
             savedDataRef.value = buildSettings({ mediaPaths: ['/media/a'], movieScreenshotCount: 8, episodePackScreenshotCount: 4 })
         })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
 
@@ -385,7 +385,7 @@ describe('settings page', () => {
         saveSettingsMock.mockImplementation(async () => {
             saveErrorRef.value = 'Media path does not exist: /missing'
         })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
         await user.click(screen.getByRole('button', { name: /save/i }))
@@ -462,7 +462,7 @@ describe('settings page', () => {
 
     it('submits updated mediainfo path', async () => {
         loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'] })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
         await user.clear(screen.getByPlaceholderText('mediainfo'))
@@ -491,7 +491,7 @@ describe('settings page', () => {
             mediaPaths: ['/media/a'],
             torrentClients: [{ selected: false, code: 'QUI', name: 'qui', url: '', apiKey: '' }],
         })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
         await user.click(screen.getByRole('checkbox', { name: 'qui' }))
@@ -513,7 +513,7 @@ describe('settings page', () => {
             mediaPaths: ['/media/a'],
             torrentClients: [{ selected: true, code: 'QUI', name: 'qui', url: '', apiKey: '' }],
         })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
         await user.click(screen.getByRole('button', { name: /save/i }))
@@ -551,7 +551,7 @@ describe('settings page', () => {
                 { selected: true, code: 'OTHER', name: 'Other', url: 'http://localhost:8080', apiKey: 'key2' },
             ],
         })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
 
         await renderSuspended(SettingsPage)
         await user.click(screen.getByRole('button', { name: /save/i }))

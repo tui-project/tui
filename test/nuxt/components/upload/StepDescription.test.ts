@@ -61,7 +61,7 @@ describe('StepDescription', () => {
     })
 
     it('renders the write state and inserts toolbar tags around a selection', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         await renderSuspended(StepDescription)
 
         const textarea = screen.getByRole('textbox', { name: 'Description' }) as HTMLTextAreaElement
@@ -76,7 +76,7 @@ describe('StepDescription', () => {
     })
 
     it('renders preview content and applies image loading state', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         await renderSuspended(StepDescription, {
             props: {
                 modelValue: '[img=500]https://thumb[/img]',
@@ -90,7 +90,7 @@ describe('StepDescription', () => {
     })
 
     it('switches back to the write tab after previewing', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         await renderSuspended(StepDescription, {
             props: {
                 modelValue: 'Body copy',
@@ -105,7 +105,7 @@ describe('StepDescription', () => {
     })
 
     it('shows preview placeholder and bbcode error alert state', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         bbcodeError.value = 'parse failed'
 
         await renderSuspended(StepDescription)
@@ -126,7 +126,7 @@ describe('StepDescription', () => {
     })
 
     it('adds formatted screenshots and hdr disclaimer to the description', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         executeScreenshotsMock.mockImplementation(async () => {
             screenshotData.value = {
                 screenshots: [
@@ -158,7 +158,7 @@ describe('StepDescription', () => {
     })
 
     it('adds screenshots without a leading newline when the description is empty', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         executeScreenshotsMock.mockImplementation(async () => {
             screenshotData.value = { screenshots: [{ order: 1, url: 'https://one', thumbnailUrl: 'https://thumb-one' }] }
         })
@@ -181,7 +181,7 @@ describe('StepDescription', () => {
     })
 
     it('keeps the description unchanged when screenshot generation returns nothing', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         executeScreenshotsMock.mockResolvedValue(undefined)
 
         await renderSuspended(StepDescription, {

@@ -48,7 +48,7 @@ describe('setup page', () => {
 
     it('submits setup form and navigates to login on success', async () => {
         initializeMock.mockResolvedValue({ id: 'user-1', username: 'admin' })
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         await renderSuspended(SetupPage)
         await user.type(screen.getByPlaceholderText('choose a username'), 'admin')
         await user.type(screen.getByPlaceholderText('choose a password'), 'Admin@123')
@@ -60,7 +60,7 @@ describe('setup page', () => {
 
     it('does not navigate when setup submit fails', async () => {
         initializeMock.mockResolvedValue(null)
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         await renderSuspended(SetupPage)
         await user.type(screen.getByPlaceholderText('choose a username'), 'admin')
         await user.type(screen.getByPlaceholderText('choose a password'), 'Admin@123')

@@ -45,7 +45,7 @@ describe('StepSelectTrackers', () => {
     })
 
     it('loads only selected trackers from settings and toggles upload targets', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         settingsData.value = buildTrackerSettings([
             { selected: true, code: 'ULCX', name: 'Upload.cx' },
             { selected: false, code: 'ATH', name: 'Aither' },
@@ -109,7 +109,7 @@ describe('StepSelectTrackers', () => {
     })
 
     it('Next button is disabled until at least one tracker is selected', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         settingsData.value = buildTrackerSettings([{ selected: true, code: 'ULCX', name: 'Upload.cx' }])
 
         const { emitted } = await renderSuspended(StepSelectTrackers, {
@@ -127,7 +127,7 @@ describe('StepSelectTrackers', () => {
     })
 
     it('emits back when Back button is clicked', async () => {
-        const user = userEvent.setup()
+        const user = userEvent.setup({ delay: null })
         settingsData.value = buildTrackerSettings([{ selected: true, code: 'ULCX', name: 'Upload.cx' }])
 
         const { emitted } = await renderSuspended(StepSelectTrackers, {
