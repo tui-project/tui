@@ -11,7 +11,7 @@ const loadErrorRef = ref<Error | null>(null)
 const loadedDataRef = ref<AppSettings | null>(null)
 const savedDataRef = ref<AppSettings | null>(null)
 const saveErrorRef = ref('')
-let capturedSaveBody: { value: AppSettings | undefined } | undefined
+let capturedSaveBody: AppSettings | undefined
 
 const { saveSettingsMock, toastAddMock } = vi.hoisted(() => ({
     saveSettingsMock: vi.fn(),
@@ -32,13 +32,15 @@ mockNuxtImport('useGetSettings', () => {
 })
 
 mockNuxtImport('usePostSettings', () => {
-    return (body: { value: AppSettings | undefined }) => {
-        capturedSaveBody = body
+    return () => {
         return {
             pending: ref(false),
             data: savedDataRef,
             errorMessage: saveErrorRef,
-            execute: saveSettingsMock,
+            execute: (body: AppSettings) => {
+                capturedSaveBody = body
+                return saveSettingsMock(body)
+            },
         }
     }
 })
@@ -85,7 +87,7 @@ describe('settings page', () => {
         await user.click(screen.getByRole('button', { name: /save/i }))
 
         expect(saveSettingsMock).toHaveBeenCalled()
-        expect(capturedSaveBody?.value).toEqual(buildSaveSettingsRequest({ mediaPaths: ['/media/a'] }))
+        expect(capturedSaveBody).toEqual(buildSaveSettingsRequest({ mediaPaths: ['/media/a'] }))
     })
 
     it('shows success message after saving settings', async () => {
@@ -120,7 +122,7 @@ describe('settings page', () => {
         await user.click(screen.getByRole('button', { name: /save/i }))
 
         expect(saveSettingsMock).toHaveBeenCalled()
-        expect(capturedSaveBody?.value).toEqual(
+        expect(capturedSaveBody).toEqual(
             buildSaveSettingsRequest({
                 mediaPaths: ['/media/a'],
                 imageHostProviders: [{ selected: true, code: 'imgbb', name: 'ImgBB', apiKey: 'new-imgbb-key' }],
@@ -146,7 +148,7 @@ describe('settings page', () => {
         await user.click(screen.getByRole('button', { name: /save/i }))
 
         expect(saveSettingsMock).toHaveBeenCalled()
-        expect(capturedSaveBody?.value).toEqual(
+        expect(capturedSaveBody).toEqual(
             buildSaveSettingsRequest({
                 mediaPaths: ['/media/a'],
                 trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx', apiKey: 'new-api-key', passKey: 'new-pass-key' }],
@@ -178,7 +180,7 @@ describe('settings page', () => {
             await user.click(screen.getByRole('button', { name: /save/i }))
 
             expect(saveSettingsMock).toHaveBeenCalled()
-            expect(capturedSaveBody?.value).toEqual(buildSaveSettingsRequest({ mediaPaths: ['/media/a'], ...expected }))
+            expect(capturedSaveBody).toEqual(buildSaveSettingsRequest({ mediaPaths: ['/media/a'], ...expected }))
         }
     )
 
@@ -265,7 +267,7 @@ describe('settings page', () => {
         await user.click(screen.getByRole('button', { name: /save/i }))
 
         expect(saveSettingsMock).toHaveBeenCalled()
-        expect(capturedSaveBody?.value?.tmdbApiKey).toBe('new-key')
+        expect(capturedSaveBody?.tmdbApiKey).toBe('new-key')
     })
 
     it.each([
@@ -330,7 +332,7 @@ describe('settings page', () => {
         await user.click(screen.getByRole('button', { name: /save/i }))
 
         expect(saveSettingsMock).toHaveBeenCalled()
-        expect(capturedSaveBody?.value).toEqual(buildSaveSettingsRequest({ mediaPaths: ['/media/a'], movieScreenshotCount: 8, episodePackScreenshotCount: 4 }))
+        expect(capturedSaveBody).toEqual(buildSaveSettingsRequest({ mediaPaths: ['/media/a'], movieScreenshotCount: 8, episodePackScreenshotCount: 4 }))
 
         await waitFor(() => {
             expect((screen.getByLabelText('Movie / Single Episode Screenshot Count') as HTMLInputElement).value).toBe('8')
@@ -470,7 +472,7 @@ describe('settings page', () => {
         await user.click(screen.getByRole('button', { name: /save/i }))
 
         expect(saveSettingsMock).toHaveBeenCalled()
-        expect(capturedSaveBody?.value?.mediainfoPath).toBe('/usr/bin/mediainfo')
+        expect(capturedSaveBody?.mediainfoPath).toBe('/usr/bin/mediainfo')
     })
 
     it('submits updated log level', async () => {
@@ -483,7 +485,7 @@ describe('settings page', () => {
         await vm.onSubmit({ data: vm.formState })
 
         expect(saveSettingsMock).toHaveBeenCalled()
-        expect(capturedSaveBody?.value?.logLevel).toBe(4)
+        expect(capturedSaveBody?.logLevel).toBe(4)
     })
 
     it('submits torrent client url and api key when credentials are filled after selecting the client', async () => {
@@ -500,7 +502,7 @@ describe('settings page', () => {
         await user.click(screen.getByRole('button', { name: /save/i }))
 
         expect(saveSettingsMock).toHaveBeenCalled()
-        expect(capturedSaveBody?.value).toEqual(
+        expect(capturedSaveBody).toEqual(
             buildSaveSettingsRequest({
                 mediaPaths: ['/media/a'],
                 torrentClients: [{ selected: true, code: 'QUI', name: 'qui', url: 'http://localhost:7474', apiKey: 'my-api-key' }],

@@ -5,10 +5,8 @@ import type { AppSettings } from '../composables/useGetSettings'
 
 type SettingsFormState = z.output<typeof schema>
 
-const saveBody = ref<AppSettings | undefined>(undefined)
-
 const { pending, data: settings, error: loadError } = useGetSettings()
-const { pending: savePending, data: savedSettings, errorMessage: saveError, execute: saveSettings } = usePostSettings(saveBody)
+const { pending: savePending, data: savedSettings, errorMessage: saveError, execute: saveSettings } = usePostSettings()
 const toast = useToast()
 
 const formState = reactive<AppSettings>({
@@ -126,8 +124,7 @@ async function onError(event: FormErrorEvent) {
 }
 
 async function onSubmit(event: FormSubmitEvent<SettingsFormState>) {
-    saveBody.value = buildSaveSettingsRequest(event.data)
-    await saveSettings()
+    await saveSettings(buildSaveSettingsRequest(event.data))
 
     if (saveError.value) {
         toast.add({

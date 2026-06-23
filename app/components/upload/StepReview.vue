@@ -24,13 +24,11 @@ const acceptedViolations = ref<Record<string, boolean>>({})
 const trackerDuplicates = ref<Record<string, DuplicateEntry[]>>({})
 const acceptedDuplicates = ref<Record<string, boolean>>({})
 const trackerLoadErrors = ref<Record<string, string[]>>({})
-const trackerCode = ref('')
-
 const toast = useToast()
 const { pending: settingsLoading, data: settings } = useGetSettings()
-const { pending: titleLoading, data: title, error: titleError, execute: generateTitle } = usePostTrackerTitle(trackerCode, props.metadata!)
-const { pending: rulesLoading, data: ruleViolations, error: rulesError, execute: checkViolations } = usePostTrackerRules(trackerCode, props.metadata!)
-const { pending: duplicatesLoading, data: duplicatesData, error: duplicatesError, execute: checkDuplicates } = usePostTrackerDuplicates(trackerCode, props.metadata!)
+const { pending: titleLoading, data: title, error: titleError, generateTitle } = usePostTrackerTitle()
+const { pending: rulesLoading, data: ruleViolations, error: rulesError, execute: checkViolations } = usePostTrackerRules()
+const { pending: duplicatesLoading, data: duplicatesData, error: duplicatesError, execute: checkDuplicates } = usePostTrackerDuplicates()
 
 watch(
     settings,
@@ -50,9 +48,7 @@ async function loadTrackerItems() {
     if (!props.metadata || props.selectedTrackers.length === 0) return
 
     for (const code of props.selectedTrackers) {
-        trackerCode.value = code
-
-        await Promise.all([generateTitle(), checkViolations(), checkDuplicates()])
+        await Promise.all([generateTitle(code, props.metadata!), checkViolations(code, props.metadata!), checkDuplicates(code, props.metadata!)])
 
         const errors: string[] = []
 
@@ -110,13 +106,7 @@ const uploadableTrackers = computed(() =>
     })
 )
 
-const uploadBody = computed(() => ({
-    filepath: props.sourcePath!,
-    metadata: props.metadata!,
-    description: props.description!,
-    trackers: uploadableTrackers.value,
-}))
-const { pending: uploadPending, error: uploadError, execute: executeUpload } = usePostTrackerRequests(uploadBody)
+const { pending: uploadPending, error: uploadError, execute: executeUpload } = usePostTrackerRequests()
 
 const canSubmit = computed(() => {
     if (props.selectedTrackers.length === 0 || !props.sourcePath?.trim() || !props.metadata) return false
@@ -124,7 +114,7 @@ const canSubmit = computed(() => {
 })
 
 async function onSubmit() {
-    await executeUpload()
+    await executeUpload({ filepath: props.sourcePath!, metadata: props.metadata!, description: props.description!, trackers: uploadableTrackers.value })
 
     if (!uploadError.value) {
         toast.add({

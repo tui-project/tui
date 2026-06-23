@@ -1,13 +1,16 @@
-import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { defineComponent, ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const fetchMock = vi.fn()
+const executeMock = vi.fn()
+const pendingRef = ref(false)
+const dataRef = ref<{ duplicates: DuplicateEntry[] } | null>(null)
+const errorRef = ref<unknown>(null)
+let capturedUrlGetter: (() => string) | undefined
 
-beforeEach(() => {
-    vi.clearAllMocks()
-    vi.stubGlobal('$fetch', fetchMock)
-    fetchMock.mockResolvedValue({ duplicates: [] })
+mockNuxtImport('useFetch', () => (url: (() => string) | string) => {
+    capturedUrlGetter = typeof url === 'function' ? url : () => String(url)
+    return { pending: pendingRef, data: dataRef, error: errorRef, execute: executeMock }
 })
 
 const metadata: Metadata = {
@@ -41,12 +44,11 @@ const metadata: Metadata = {
     tvdbId: undefined,
 }
 
-function makeWrapper(trackerCode = 'ULCX') {
-    const codeRef = ref(trackerCode)
+function makeWrapper() {
     let composable: ReturnType<typeof usePostTrackerDuplicates>
     const Wrapper = defineComponent({
         setup() {
-            composable = usePostTrackerDuplicates(codeRef, metadata)
+            composable = usePostTrackerDuplicates()
         },
         template: '<div />',
     })
@@ -54,56 +56,69 @@ function makeWrapper(trackerCode = 'ULCX') {
 }
 
 describe('usePostTrackerDuplicates', () => {
-    it('does not fetch on mount', async () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        capturedUrlGetter = undefined
+        dataRef.value = null
+        errorRef.value = null
+        pendingRef.value = false
+        executeMock.mockResolvedValue(undefined)
+    })
+
+    it('does not call execute on mount', async () => {
         const { Wrapper } = makeWrapper()
         await renderSuspended(Wrapper)
-        expect(fetchMock).not.toHaveBeenCalled()
+        expect(executeMock).not.toHaveBeenCalled()
     })
 
-    it('posts to /api/tracker/{code}/duplicates with the configured refs when execute is called', async () => {
-        const { Wrapper, getComposable } = makeWrapper('ATH')
-        await renderSuspended(Wrapper)
-
-        await getComposable().execute()
-
-        expect(fetchMock).toHaveBeenCalledWith('/api/tracker/ATH/duplicates', expect.objectContaining({ method: 'POST' }))
-    })
-
-    it('populates data after execute resolves', async () => {
-        const duplicates = [{ name: 'Movie.2024.1080p.BluRay.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }]
-        fetchMock.mockResolvedValue({ duplicates })
-
+    it('builds the correct URL for the tracker code when execute is called', async () => {
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
-        await getComposable().execute()
+
+        await getComposable().execute('ATH', metadata)
+
+        expect(capturedUrlGetter?.()).toBe('/api/tracker/ATH/duplicates')
+        expect(executeMock).toHaveBeenCalled()
+    })
+
+    it('uses the tracker code passed to execute', async () => {
+        const { Wrapper, getComposable } = makeWrapper()
+        await renderSuspended(Wrapper)
+
+        await getComposable().execute('ULCX', metadata)
+        expect(capturedUrlGetter?.()).toBe('/api/tracker/ULCX/duplicates')
+
+        await getComposable().execute('ATH', metadata)
+        expect(capturedUrlGetter?.()).toBe('/api/tracker/ATH/duplicates')
+    })
+
+    it('exposes data from useFetch', async () => {
+        const duplicates = [{ name: 'Movie.2024.1080p.BluRay.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }]
+        executeMock.mockImplementation(async () => {
+            dataRef.value = { duplicates }
+        })
+        const { Wrapper, getComposable } = makeWrapper()
+        await renderSuspended(Wrapper)
+        await getComposable().execute('ULCX', metadata)
 
         expect(getComposable().data.value).toEqual({ duplicates })
     })
 
-    it('sets error when fetch throws', async () => {
-        fetchMock.mockRejectedValue(new Error('network error'))
-
+    it('exposes error from useFetch', async () => {
+        executeMock.mockImplementation(async () => {
+            errorRef.value = new Error('network error')
+        })
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
-        await getComposable().execute()
+        await getComposable().execute('ULCX', metadata)
 
         expect(getComposable().error.value).toBeDefined()
     })
 
-    it('pending is false before and after execute', async () => {
+    it('exposes pending from useFetch', async () => {
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
 
         expect(getComposable().pending.value).toBe(false)
-        await getComposable().execute()
-        expect(getComposable().pending.value).toBe(false)
-    })
-
-    it('uses updated trackerCode ref when code changes between calls', async () => {
-        const { Wrapper, getComposable } = makeWrapper('ULCX')
-        await renderSuspended(Wrapper)
-        await getComposable().execute()
-
-        expect(fetchMock).toHaveBeenLastCalledWith('/api/tracker/ULCX/duplicates', expect.anything())
     })
 })

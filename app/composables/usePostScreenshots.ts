@@ -7,10 +7,17 @@ export type ScreenshotResponse = {
     }>
 }
 
-export function usePostScreenshots(body: Ref<ScreenshotBody>) {
-    const { pending, data, error, execute } = useFetch<ScreenshotResponse>('/api/screenshots', {
+export function usePostScreenshots() {
+    const bodyRef = ref<ScreenshotBody>()
+
+    const {
+        pending,
+        data,
+        error,
+        execute: _execute,
+    } = useFetch<ScreenshotResponse>('/api/screenshots', {
         method: 'POST',
-        body,
+        body: bodyRef,
         immediate: false,
         watch: false,
         transform: (res: ScreenshotResponse): ScreenshotResponse => ({
@@ -29,6 +36,12 @@ export function usePostScreenshots(body: Ref<ScreenshotBody>) {
 
         return err ? 'Failed to generate screenshots.' : ''
     })
+
+    function execute(body: ScreenshotBody) {
+        bodyRef.value = body
+
+        return _execute()
+    }
 
     return { pending, errorMessage, data, execute }
 }

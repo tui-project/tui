@@ -33,7 +33,7 @@ const isWebSource = computed(() => state?.source === SOURCES.WEB)
 const selectedPathLabel = computed(() => (props.selectedPath?.folder ? 'Folder' : 'File'))
 const selectedPathValue = computed(() => props.selectedPath?.value)
 
-const { pending, data, error, execute } = useGetMetadata(selectedPathValue)
+const { pending, data, error, execute } = useGetMetadata()
 
 onMounted(async () => {
     if (metadata.value) {
@@ -45,7 +45,7 @@ onMounted(async () => {
         Object.assign(state, prefetched.value.metadata)
         showMultiEpisode.value = state.episodeEnd !== undefined
     } else if (selectedPathValue.value) {
-        await execute()
+        await execute(selectedPathValue.value)
 
         if (data.value) {
             Object.assign(state, data.value.metadata)
@@ -86,7 +86,7 @@ function onSubmit(event: FormSubmitEvent<Metadata>) {
                     </div>
                 </div>
                 <p v-if="selectedPathValue && !pending && !error" class="text-xs text-muted" aria-label="selected-file-or-folder">
-                    {{ selectedPathLabel }}: <span class="font-medium">{{ metadata?.filename ?? filename ?? 'Unknown file' }}</span>
+                    {{ selectedPathLabel }}: <span class="font-medium">{{ metadata?.filename ?? filename }}</span>
                 </p>
             </div>
         </template>

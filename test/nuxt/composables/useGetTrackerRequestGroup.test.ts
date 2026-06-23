@@ -4,27 +4,27 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const executeMock = vi.fn()
 const pendingRef = ref(false)
-const dataRef = ref<{ filename: string; metadata: PartialMetadata } | null>(null)
+const dataRef = ref<{ items: TrackerRequest[]; total: number } | null>(null)
 const errorRef = ref<unknown>(null)
-let capturedQuery: { path: Ref<string | undefined> } | undefined
+let capturedQuery: { groupId: Ref<string | undefined> } | undefined
 
-mockNuxtImport('useFetch', () => (_url: string, options?: { query?: { path: Ref<string | undefined> } }) => {
+mockNuxtImport('useFetch', () => (_url: string, options?: { query?: { groupId: Ref<string | undefined> } }) => {
     capturedQuery = options?.query
     return { pending: pendingRef, data: dataRef, error: errorRef, execute: executeMock }
 })
 
 function makeWrapper() {
-    let composable: ReturnType<typeof useGetMetadata>
+    let composable: ReturnType<typeof useGetTrackerRequestGroup>
     const Wrapper = defineComponent({
         setup() {
-            composable = useGetMetadata()
+            composable = useGetTrackerRequestGroup()
         },
         template: '<div />',
     })
     return { Wrapper, getComposable: () => composable }
 }
 
-describe('useGetMetadata', () => {
+describe('useGetTrackerRequestGroup', () => {
     beforeEach(() => {
         vi.clearAllMocks()
         capturedQuery = undefined
@@ -40,37 +40,37 @@ describe('useGetMetadata', () => {
         expect(executeMock).not.toHaveBeenCalled()
     })
 
-    it('sets the path query param and calls execute when execute is called', async () => {
+    it('sets the groupId query param and calls execute when execute is called', async () => {
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
 
-        await getComposable().execute('/some/path')
+        await getComposable().execute('group-abc')
 
-        expect(capturedQuery?.path.value).toBe('/some/path')
+        expect(capturedQuery?.groupId.value).toBe('group-abc')
         expect(executeMock).toHaveBeenCalled()
     })
 
-    it('updates the path for each execute call', async () => {
+    it('updates the groupId for each execute call', async () => {
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
 
-        await getComposable().execute('/first/path')
-        expect(capturedQuery?.path.value).toBe('/first/path')
+        await getComposable().execute('group-1')
+        expect(capturedQuery?.groupId.value).toBe('group-1')
 
-        await getComposable().execute('/second/path')
-        expect(capturedQuery?.path.value).toBe('/second/path')
+        await getComposable().execute('group-2')
+        expect(capturedQuery?.groupId.value).toBe('group-2')
     })
 
     it('exposes data from useFetch', async () => {
-        const response = { filename: 'movie.mkv', metadata: { title: 'My Movie' } as PartialMetadata }
+        const items: TrackerRequest[] = [{ id: '1', filepath: '/media/movie.mkv', metadata: {} as Metadata, description: '', status: 'pending', trackers: [] }]
         executeMock.mockImplementation(async () => {
-            dataRef.value = response
+            dataRef.value = { items, total: 1 }
         })
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
-        await getComposable().execute('/some/path')
+        await getComposable().execute('group-abc')
 
-        expect(getComposable().data.value).toEqual(response)
+        expect(getComposable().data.value).toEqual({ items, total: 1 })
     })
 
     it('exposes error from useFetch', async () => {
@@ -79,7 +79,7 @@ describe('useGetMetadata', () => {
         })
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
-        await getComposable().execute('/some/path')
+        await getComposable().execute('group-abc')
 
         expect(getComposable().error.value).toBeDefined()
     })

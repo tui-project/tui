@@ -29,12 +29,7 @@ const preview = ref<HTMLDivElement>()
 const { toHtml, error } = useBbcodeRender()
 const { applyImageLoading } = usePreviewImageLoadingState()
 
-const screenshotBody = computed(() => ({
-    path: props.selectedPath!.value,
-    hdr: props.isHdr,
-    tv: props.isTv,
-}))
-const { pending: isGeneratingScreenshots, errorMessage: screenshotErrorMessage, data: screenshotResult, execute: generateScreenshots } = usePostScreenshots(screenshotBody)
+const { pending: isGeneratingScreenshots, errorMessage: screenshotErrorMessage, data: screenshotResult, execute: generateScreenshots } = usePostScreenshots()
 
 const toolbarActions: ToolbarAction[] = [
     { label: 'Bold', icon: 'i-lucide-bold', openTag: '[b]', closeTag: '[/b]' },
@@ -105,7 +100,7 @@ async function addScreenshots() {
         return
     }
 
-    await generateScreenshots()
+    await generateScreenshots({ path: props.selectedPath!.value, hdr: props.isHdr ?? false, tv: props.isTv ?? false })
 
     const response = screenshotResult.value
     if (!response) {

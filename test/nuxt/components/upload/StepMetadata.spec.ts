@@ -786,4 +786,26 @@ describe('StepMetadata', () => {
             })
         }, 10000)
     })
+
+    describe('conditional flags', () => {
+        it('shows English Subs checkbox when original language is not English', async () => {
+            mockExecute.mockImplementation(() => {
+                mockData.value = createMetadata({ originalLanguage: 'fr' })
+            })
+
+            await renderSuspended(StepMetadata, { props: { selectedPath } })
+
+            await waitFor(() => expect(screen.getByRole('checkbox', { name: 'English Subs' })).toBeTruthy())
+        })
+
+        it('shows TrueHD Compatibility Track checkbox when audio codec is TrueHD', async () => {
+            mockExecute.mockImplementation(() => {
+                mockData.value = createMetadata({ audioCodec: 'TrueHD' })
+            })
+
+            await renderSuspended(StepMetadata, { props: { selectedPath } })
+
+            await waitFor(() => expect(screen.getByRole('checkbox', { name: 'TrueHD Compatibility Track' })).toBeTruthy())
+        })
+    })
 })

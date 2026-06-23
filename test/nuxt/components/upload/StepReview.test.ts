@@ -11,17 +11,17 @@ const { toastAddMock, navigateToMock } = vi.hoisted(() => ({
 }))
 
 const fetchTitleMock = vi.fn()
-let capturedTrackerCode: Ref<string> | null = null
+let capturedTrackerCode: { value: string } | null = null
 const titleDataRef = ref<{ title: string } | null>(null)
 const titleLoadingRef = ref(false)
 const titleErrorRef = ref<Error | null>(null)
 const fetchRulesMock = vi.fn()
-let capturedRulesTrackerCode: Ref<string> | null = null
+let capturedRulesTrackerCode: { value: string } | null = null
 const rulesDataRef = ref<{ violations: { rule: string; message: string }[] } | null>(null)
 const rulesLoadingRef = ref(false)
 const rulesErrorRef = ref<Error | null>(null)
 const duplicatesExecuteMock = vi.fn()
-let capturedDuplicatesTrackerCode: Ref<string> | null = null
+let capturedDuplicatesTrackerCode: { value: string } | null = null
 const duplicatesDataRef = ref<{ duplicates: Array<{ name: string; url?: string; trumpable: boolean }> } | null>(null)
 const duplicatesLoadingRef = ref(false)
 const duplicatesErrorRef = ref<Error | null>(null)
@@ -44,39 +44,39 @@ vi.mock('~/composables/useGetSettings', () => ({
 }))
 
 vi.mock('~/composables/usePostTrackerTitle', () => ({
-    usePostTrackerTitle: (trackerCode: Ref<string>, _metadata: unknown) => {
-        capturedTrackerCode = trackerCode
-        return {
-            pending: titleLoadingRef,
-            data: titleDataRef,
-            error: titleErrorRef,
-            execute: fetchTitleMock,
-        }
-    },
+    usePostTrackerTitle: () => ({
+        pending: titleLoadingRef,
+        data: titleDataRef,
+        error: titleErrorRef,
+        generateTitle: (code: string, _metadata: Metadata) => {
+            capturedTrackerCode = { value: code }
+            return fetchTitleMock()
+        },
+    }),
 }))
 
 vi.mock('~/composables/usePostTrackerRules', () => ({
-    usePostTrackerRules: (trackerCode: Ref<string>) => {
-        capturedRulesTrackerCode = trackerCode
-        return {
-            pending: rulesLoadingRef,
-            data: rulesDataRef,
-            error: rulesErrorRef,
-            execute: fetchRulesMock,
-        }
-    },
+    usePostTrackerRules: () => ({
+        pending: rulesLoadingRef,
+        data: rulesDataRef,
+        error: rulesErrorRef,
+        execute: (code: string, _metadata: Metadata) => {
+            capturedRulesTrackerCode = { value: code }
+            return fetchRulesMock()
+        },
+    }),
 }))
 
 vi.mock('~/composables/usePostTrackerDuplicates', () => ({
-    usePostTrackerDuplicates: (trackerCode: Ref<string>) => {
-        capturedDuplicatesTrackerCode = trackerCode
-        return {
-            pending: duplicatesLoadingRef,
-            data: duplicatesDataRef,
-            error: duplicatesErrorRef,
-            execute: duplicatesExecuteMock,
-        }
-    },
+    usePostTrackerDuplicates: () => ({
+        pending: duplicatesLoadingRef,
+        data: duplicatesDataRef,
+        error: duplicatesErrorRef,
+        execute: (code: string, _metadata: Metadata) => {
+            capturedDuplicatesTrackerCode = { value: code }
+            return duplicatesExecuteMock()
+        },
+    }),
 }))
 
 mockNuxtImport('useToast', () => () => ({ add: toastAddMock }))

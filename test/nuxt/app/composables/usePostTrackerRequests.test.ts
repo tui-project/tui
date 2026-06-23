@@ -1,28 +1,30 @@
-import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { defineComponent, ref } from 'vue'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
+import { defineComponent, ref, type Ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { TrackerRequestBody } from '../../../../app/composables/usePostTrackerRequests'
 
-const fetchMock = vi.fn()
+const executeMock = vi.fn()
+const pendingRef = ref(false)
+const errorRef = ref<unknown>(null)
+let capturedBodyRef: Ref<TrackerRequestBody | undefined> | undefined
 
-beforeEach(() => {
-    vi.clearAllMocks()
-    vi.stubGlobal('$fetch', fetchMock)
-    fetchMock.mockResolvedValue(null)
+mockNuxtImport('useFetch', () => (_url: string, options?: { body?: Ref<TrackerRequestBody | undefined> }) => {
+    capturedBodyRef = options?.body
+    return { pending: pendingRef, error: errorRef, execute: executeMock }
 })
 
-const defaultBody = {
+const defaultBody: TrackerRequestBody = {
     filepath: '/media/movie.mkv',
     metadata: {} as Metadata,
     description: 'A great film.',
     trackers: [{ code: 'TRK', title: 'Movie', titleModified: false, anonymous: false, modQueueOptIn: false }],
 }
 
-function makeWrapper(body = defaultBody) {
-    const bodyRef = ref(body)
+function makeWrapper() {
     let composable: ReturnType<typeof usePostTrackerRequests>
     const Wrapper = defineComponent({
         setup() {
-            composable = usePostTrackerRequests(bodyRef)
+            composable = usePostTrackerRequests()
         },
         template: '<div />',
     })
@@ -30,51 +32,53 @@ function makeWrapper(body = defaultBody) {
 }
 
 describe('usePostTrackerRequests', () => {
-    it('does not fetch on mount', async () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        capturedBodyRef = undefined
+        errorRef.value = null
+        pendingRef.value = false
+        executeMock.mockResolvedValue(undefined)
+    })
+
+    it('does not call execute on mount', async () => {
         const { Wrapper } = makeWrapper()
         await renderSuspended(Wrapper)
-        expect(fetchMock).not.toHaveBeenCalled()
+        expect(executeMock).not.toHaveBeenCalled()
     })
 
-    it('posts to /api/tracker/requests with the body ref when execute is called', async () => {
+    it('sets the body ref and calls execute when execute is called', async () => {
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
 
-        await getComposable().execute()
+        await getComposable().execute(defaultBody)
 
-        expect(fetchMock).toHaveBeenCalledWith(
-            '/api/tracker/requests',
-            expect.objectContaining({
-                method: 'POST',
-                body: defaultBody,
-            })
-        )
+        expect(capturedBodyRef?.value).toEqual(defaultBody)
+        expect(executeMock).toHaveBeenCalled()
     })
 
-    it('error is null after a successful execute', async () => {
+    it('exposes error from useFetch', async () => {
+        executeMock.mockImplementation(async () => {
+            errorRef.value = new Error('network error')
+        })
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
-        await getComposable().execute()
-
-        expect(getComposable().error.value).toBeFalsy()
-    })
-
-    it('sets error when fetch throws', async () => {
-        fetchMock.mockRejectedValue(new Error('network error'))
-
-        const { Wrapper, getComposable } = makeWrapper()
-        await renderSuspended(Wrapper)
-        await getComposable().execute()
+        await getComposable().execute(defaultBody)
 
         expect(getComposable().error.value).toBeTruthy()
     })
 
-    it('pending is false before and after execute', async () => {
+    it('error is falsy after a successful execute', async () => {
+        const { Wrapper, getComposable } = makeWrapper()
+        await renderSuspended(Wrapper)
+        await getComposable().execute(defaultBody)
+
+        expect(getComposable().error.value).toBeFalsy()
+    })
+
+    it('exposes pending from useFetch', async () => {
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
 
-        expect(getComposable().pending.value).toBe(false)
-        await getComposable().execute()
         expect(getComposable().pending.value).toBe(false)
     })
 })
