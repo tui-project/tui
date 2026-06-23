@@ -40,11 +40,13 @@ const VALID_METADATA = {
     hybrid: false,
     hi10p: false,
     resolution: '1080p',
+    hdr: [],
     videoCodec: 'AVC',
     audioCodec: 'TrueHD',
     audioChannels: '7.1',
     tmdbId: 12345,
     imdbId: 'tt1234567',
+    hasEnglishSubs: false,
 }
 
 const VALID_TRACKER_ITEM = {
@@ -72,7 +74,7 @@ describe('tracker upload requests', async () => {
             headers: { cookie },
         })
 
-        expect(requests).toEqual([])
+        expect(requests).toEqual({ items: [], total: 0 })
     })
 
     it('GET returns 401 without a valid session', async () => {
@@ -115,22 +117,54 @@ describe('tracker upload requests', async () => {
             ignoreResponseError: true,
         })
 
-        const requests = await $fetch<Array<{ id: string }>>('/api/tracker/requests', {
+        const requests = await $fetch<{ items: Array<{ id: string }>; total: number }>('/api/tracker/requests', {
             headers: { cookie },
         })
 
-        expect(requests.some((r) => r.id === created.id)).toBe(true)
+        expect(requests.items.some((r) => r.id === created.id)).toBe(true)
+        expect(requests.total).toBeGreaterThanOrEqual(1)
     })
 
     it('GET respects the optional page and size query parameters', async () => {
         const cookie = await getSessionCookie()
 
-        const requests = await $fetch<unknown[]>('/api/tracker/requests', {
+        const requests = await $fetch<{ items: unknown[]; total: number }>('/api/tracker/requests', {
             query: { page: 1, size: 1 },
             headers: { cookie },
         })
 
-        expect(requests.length).toBeLessThanOrEqual(1)
+        expect(requests.items.length).toBeLessThanOrEqual(1)
+    })
+
+    it('GET returns all requests in a group when a groupId is provided', async () => {
+        const cookie = await getSessionCookie()
+
+        const created = await $fetch<{ id: string }>('/api/tracker/requests', {
+            method: 'POST',
+            headers: { cookie },
+            body: {
+                filepath: '/grouped/movie.mkv',
+                metadata: VALID_METADATA,
+                description: 'Grouped upload',
+                trackers: [VALID_TRACKER_ITEM],
+            },
+            ignoreResponseError: true,
+        })
+
+        const list = await $fetch<{ items: Array<{ id: string; groupId: string }> }>('/api/tracker/requests', {
+            query: { withGroupCount: 'true' },
+            headers: { cookie },
+        })
+        const groupId = list.items.find((r) => r.id === created.id)!.groupId
+
+        const group = await $fetch<{ items: Array<{ id: string }>; total: number }>('/api/tracker/requests', {
+            query: { groupId },
+            headers: { cookie },
+        })
+
+        expect(group.total).toBeGreaterThanOrEqual(1)
+        expect(group.items.every((r) => r.id)).toBe(true)
+        expect(group.items.some((r) => r.id === created.id)).toBe(true)
     })
 
     it('POST rejects an invalid body with 400', async () => {

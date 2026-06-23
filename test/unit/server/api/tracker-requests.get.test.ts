@@ -6,6 +6,7 @@ const logger = {
 }
 
 const getTrackerRequests = vi.fn()
+const getTrackerRequestsByGroup = vi.fn()
 const parseValidatedQuery = vi.fn()
 
 beforeEach(() => {
@@ -17,6 +18,7 @@ beforeEach(() => {
 async function loadHandler() {
     vi.doMock('../../../../server/repositories/tracker-request-repository', () => ({
         getTrackerRequests,
+        getTrackerRequestsByGroup,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({ logger }))
     vi.doMock('../../../../server/utils/request-validator', () => ({ parseValidatedQuery }))
@@ -26,40 +28,68 @@ async function loadHandler() {
 }
 
 describe('GET /api/tracker/requests route handler', () => {
-    it('returns recent upload requests for the given page and size', async () => {
-        parseValidatedQuery.mockReturnValue({ page: 1, size: 6 })
-        getTrackerRequests.mockResolvedValue([
-            {
-                id: 'upload-2',
-                filepath: '/media/Show.S01E01.mkv',
-                status: 'torrent_creation',
-                trackers: [{ code: 'ULCX', title: 'Title', titleModified: false, anonymous: false }],
-                torrentCreationProgress: 42,
-                createdAt: new Date('2026-05-10T00:00:00.000Z'),
-                updatedAt: new Date('2026-05-10T00:00:30.000Z'),
-            },
-        ])
+    it('returns a paginated list of requests for the given page and size', async () => {
+        parseValidatedQuery.mockReturnValue({ page: 1, size: 6, groupId: undefined, withGroupCount: false })
+        getTrackerRequests.mockResolvedValue({
+            items: [{ id: 'upload-2', filepath: '/media/Show.S01E01.mkv', groupId: 'group-1', status: 'torrent_creation', trackers: [] }],
+            total: 1,
+        })
 
         const handler = await loadHandler()
         const mockEvent = {}
 
-        await expect(handler(mockEvent)).resolves.toEqual([
-            {
-                id: 'upload-2',
-                filepath: '/media/Show.S01E01.mkv',
-                status: 'torrent_creation',
-                trackers: [{ code: 'ULCX', title: 'Title', titleModified: false, anonymous: false }],
-                torrentCreationProgress: 42,
-                createdAt: new Date('2026-05-10T00:00:00.000Z'),
-                updatedAt: new Date('2026-05-10T00:00:30.000Z'),
-            },
-        ])
-        expect(getTrackerRequests).toHaveBeenCalledWith(1, 6)
+        await expect(handler(mockEvent)).resolves.toEqual({
+            items: [{ id: 'upload-2', filepath: '/media/Show.S01E01.mkv', groupId: 'group-1', status: 'torrent_creation', trackers: [] }],
+            total: 1,
+        })
+        expect(getTrackerRequests).toHaveBeenCalledWith(1, 6, false)
+        expect(getTrackerRequestsByGroup).not.toHaveBeenCalled()
         expect(parseValidatedQuery).toHaveBeenCalledWith(mockEvent, expect.any(Object), {
             errorMessage: 'invalid_query',
             onInvalid: expect.any(Function),
         })
-        // logger.debug call is intentionally commented out in the route handler
+    })
+
+    it('forwards withGroupCount to the repository', async () => {
+        parseValidatedQuery.mockReturnValue({ page: 2, size: 10, groupId: undefined, withGroupCount: true })
+        getTrackerRequests.mockResolvedValue({
+            items: [
+                { id: 'a', groupId: 'group-a', trackers: [], groupCount: 3 },
+                { id: 'b', groupId: 'group-b', trackers: [], groupCount: 1 },
+            ],
+            total: 2,
+        })
+
+        const handler = await loadHandler()
+
+        await expect(handler({})).resolves.toEqual({
+            items: [
+                { id: 'a', groupId: 'group-a', trackers: [], groupCount: 3 },
+                { id: 'b', groupId: 'group-b', trackers: [], groupCount: 1 },
+            ],
+            total: 2,
+        })
+        expect(getTrackerRequests).toHaveBeenCalledWith(2, 10, true)
+    })
+
+    it('returns the full group when a groupId is provided', async () => {
+        parseValidatedQuery.mockReturnValue({ page: 1, size: 12, groupId: 'group-1', withGroupCount: false })
+        getTrackerRequestsByGroup.mockResolvedValue([
+            { id: 'upload-2', groupId: 'group-1', status: 'success', trackers: [] },
+            { id: 'upload-1', groupId: 'group-1', status: 'fail', trackers: [] },
+        ])
+
+        const handler = await loadHandler()
+
+        await expect(handler({})).resolves.toEqual({
+            items: [
+                { id: 'upload-2', groupId: 'group-1', status: 'success', trackers: [] },
+                { id: 'upload-1', groupId: 'group-1', status: 'fail', trackers: [] },
+            ],
+            total: 2,
+        })
+        expect(getTrackerRequestsByGroup).toHaveBeenCalledWith('group-1')
+        expect(getTrackerRequests).not.toHaveBeenCalled()
     })
 
     it('logs a warning when the query parameters are invalid', async () => {
@@ -76,13 +106,13 @@ describe('GET /api/tracker/requests route handler', () => {
     })
 
     it('uses default page and size when not provided in query', async () => {
-        parseValidatedQuery.mockReturnValue({ page: 1, size: 12 })
-        getTrackerRequests.mockResolvedValue([])
+        parseValidatedQuery.mockReturnValue({ page: 1, size: 12, groupId: undefined, withGroupCount: false })
+        getTrackerRequests.mockResolvedValue({ items: [], total: 0 })
 
         const handler = await loadHandler()
 
         await handler({})
 
-        expect(getTrackerRequests).toHaveBeenCalledWith(1, 12)
+        expect(getTrackerRequests).toHaveBeenCalledWith(1, 12, false)
     })
 })

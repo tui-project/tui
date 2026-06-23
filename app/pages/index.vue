@@ -2,7 +2,10 @@
 const REFRESH_INTERVAL_MS = 2_000
 const FINAL_STATUSES = new Set<string>([STATUS.SUCCESS, STATUS.PARTIAL_SUCCESS, STATUS.FAIL])
 
-const { pending, data: requests, error, refresh } = useFetch('/api/tracker/requests')
+const { pending, data, error, refresh } = useGetTrackerRequests()
+const { formatStatus, getRequestLabel, getStatusColor, getStatusIcon, getTrackerUploadStatusColor } = useTrackerRequestStatus()
+
+const requests = computed(() => data.value?.items ?? [])
 
 const retryId = ref<string | null>(null)
 const { execute: executeRetry } = useFetch(() => `/api/tracker/requests/${retryId.value}`, {
@@ -15,17 +18,6 @@ const { execute: executeRetry } = useFetch(() => `/api/tracker/requests/${retryI
 const refreshTimer = globalThis.setInterval(refresh, REFRESH_INTERVAL_MS)
 onBeforeUnmount(() => clearInterval(refreshTimer))
 
-function formatStatus(status: Status) {
-    return status
-        .split('_')
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ')
-}
-
-function getRequestLabel(filepath: string) {
-    return filepath.split('/').filter(Boolean).at(-1)
-}
-
 function shouldShowProgress(status: Status) {
     return status === STATUS.TORRENT_CREATION
 }
@@ -34,53 +26,12 @@ function hasFinalStatus(status: Status) {
     return FINAL_STATUSES.has(status)
 }
 
-function getStatusColor(status: Status) {
-    switch (status) {
-        case STATUS.FAIL:
-            return 'error'
-        case STATUS.SUCCESS:
-            return 'success'
-        case STATUS.PARTIAL_SUCCESS:
-            return 'warning'
-        default:
-            return 'neutral'
-    }
-}
-
-function getStatusIcon(status: Status) {
-    switch (status) {
-        case STATUS.SUCCESS:
-            return 'i-heroicons-check-circle'
-        case STATUS.FAIL:
-            return 'i-heroicons-x-circle'
-        case STATUS.PARTIAL_SUCCESS:
-            return 'i-heroicons-exclamation-triangle'
-        case STATUS.PENDING:
-            return 'i-heroicons-clock'
-        case STATUS.TORRENT_CREATION:
-            return 'i-heroicons-cog-6-tooth'
-        case STATUS.UPLOADING:
-            return 'i-heroicons-arrow-up-tray'
-    }
-}
-
 function shouldAnimateIcon(status: Status) {
     return status === STATUS.TORRENT_CREATION
 }
 
 function isRetryable(status: Status) {
     return status === STATUS.FAIL || status === STATUS.PARTIAL_SUCCESS
-}
-
-function getTrackerUploadStatusColor(uploadStatus?: UploadStatus) {
-    switch (uploadStatus) {
-        case 'success':
-            return 'success'
-        case 'failed':
-            return 'error'
-        default:
-            return 'neutral'
-    }
 }
 
 function getInjectionBadgeProps(torrentClientInjected?: boolean): { color: 'warning'; label: string } | null {
@@ -92,11 +43,11 @@ function getInjectionBadgeProps(torrentClientInjected?: boolean): { color: 'warn
     }
 }
 
-function hasInjectionFailure(request: TrackerRequest) {
+function hasInjectionFailure(request: TrackerRequestResponse) {
     return request.trackers.some((t) => t.torrentClientInjected === false)
 }
 
-async function handleRetry(request: TrackerRequest) {
+async function handleRetry(request: TrackerRequestResponse) {
     retryId.value = request.id
     await executeRetry()
     await refresh()
@@ -109,13 +60,13 @@ async function handleRetry(request: TrackerRequest) {
         <UCard title="Recent Uploads" description="The latest upload requests and their current status." variant="subtle">
             <UAlert v-if="error" color="error" variant="soft" title="Unable to load recent upload requests." description="Please try again in a moment." />
 
-            <div v-else-if="pending && !requests" class="space-y-2">
+            <div v-else-if="pending && !data" class="space-y-2">
                 <USkeleton class="h-20 w-full" />
                 <USkeleton class="h-20 w-full" />
                 <USkeleton class="h-20 w-full" />
             </div>
 
-            <div v-else-if="!requests?.length" class="text-sm text-muted">No upload requests yet.</div>
+            <div v-else-if="!requests.length" class="text-sm text-muted">No upload requests yet.</div>
 
             <div v-else class="grid gap-3 sm:grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 h-full">
                 <UCard v-for="request in requests" :key="request.id" variant="outline">

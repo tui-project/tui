@@ -7,6 +7,7 @@ import type { GenericTorrentCache } from '../model/generic-torrent-cache'
 import type { Settings } from '../model/settings'
 import type { Language } from '../model/language'
 import type { User } from '../model/user'
+import type { TrackerRequest } from '../model/tracker-request'
 import { logger } from './logger'
 
 export type UserDocument = Document<User>

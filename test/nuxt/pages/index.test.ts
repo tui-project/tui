@@ -1,10 +1,11 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { renderSuspended, mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import IndexPage from '../../../app/pages/index.vue'
 
-const useFetchData = ref<Partial<TrackerRequest>[] | null>(null)
+const useFetchData = ref<Partial<TrackerRequestResponse>[] | null>(null)
+const useFetchListData = computed(() => (useFetchData.value === null ? null : { items: useFetchData.value, total: useFetchData.value.length }))
 const useFetchError = ref<Error | null>(null)
 const useFetchPending = ref(false)
 const refreshMock = vi.fn()
@@ -18,7 +19,7 @@ mockNuxtImport('useFetch', () => {
             return { execute: executeRetryMock, status: ref('idle'), error: ref(null) }
         }
         return {
-            data: useFetchData,
+            data: useFetchListData,
             error: useFetchError,
             pending: useFetchPending,
             refresh: refreshMock,
@@ -27,7 +28,7 @@ mockNuxtImport('useFetch', () => {
 })
 
 const BASE_REQUEST = {
-    metadata: { title: 'Movie', mediaType: 'movie' as const, year: 2024 } as TrackerRequest['metadata'],
+    metadata: { title: 'Movie', mediaType: 'movie' as const, year: 2024 } as TrackerRequestResponse['metadata'],
     description: '',
 }
 

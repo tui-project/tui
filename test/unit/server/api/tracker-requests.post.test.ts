@@ -173,7 +173,6 @@ describe('POST /api/tracker/requests route handler', () => {
             metadata: buildRequest().metadata,
             trackers: [{ code: 'ULCX', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP', titleModified: false, anonymous: false, modQueueOptIn: false }],
             status: 'pending',
-            torrentCreationProgress: 0,
         })
         expect(updateTrackerRequestStatus).toHaveBeenNthCalledWith(1, 'upload-1', 'torrent_creation')
         expect(updateTrackerRequestTorrentCreationProgress).toHaveBeenNthCalledWith(1, 'upload-1', 25)

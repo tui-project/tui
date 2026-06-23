@@ -100,7 +100,7 @@ async function addScreenshots() {
         return
     }
 
-    await generateScreenshots({ path: props.selectedPath!.value, hdr: props.isHdr ?? false, tv: props.isTv ?? false })
+    await generateScreenshots({ path: props.selectedPath!.value, hdr: !!props.isHdr, tv: !!props.isTv })
 
     const response = screenshotResult.value
     if (!response) {

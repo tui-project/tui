@@ -39,7 +39,6 @@ export default defineEventHandler(async (event) => {
         description: request.description,
         trackers: request.trackers,
         status: STATUS.PENDING,
-        torrentCreationProgress: 0,
     })
 
     logger.info('Tracker upload request queued.', {

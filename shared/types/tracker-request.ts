@@ -1,3 +1,5 @@
+import type { TrackerRequest } from '~~/server/model/tracker-request'
+
 export const UPLOAD_STATUS = {
     SUCCESS: 'success',
     FAILED: 'failed',
@@ -25,15 +27,6 @@ export interface TrackerItem {
     torrentClientInjected?: boolean
 }
 
-export interface TrackerRequest {
-    id: string
-    filepath: string
-    metadata: Metadata
-    description: string
-    status: Status
-    trackers: TrackerItem[]
-    torrentCreationProgress?: number
-    failedTrackerCodes?: string[]
-    createdAt?: Date | string
-    updatedAt?: Date | string
+export interface TrackerRequestResponse extends TrackerRequest {
+    groupCount?: number
 }

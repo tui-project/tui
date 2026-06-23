@@ -68,7 +68,7 @@ beforeEach(() => {
 describe('StepMetadata', () => {
     describe('no path selected', () => {
         it('shows select path alert and does not call execute', async () => {
-            await renderSuspended(StepMetadata)
+            await renderSuspended(StepMetadata, { props: { selectedPath: { label: '', value: '', icon: '', folder: false } } })
 
             expect(screen.getByText('Select a source path first')).toBeDefined()
             expect(mockExecute).not.toHaveBeenCalled()

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const executeMock = vi.fn()
 const pendingRef = ref(false)
-const dataRef = ref<{ items: TrackerRequest[]; total: number } | null>(null)
+const dataRef = ref<{ items: TrackerRequestResponse[]; total: number } | null>(null)
 const errorRef = ref<unknown>(null)
 let capturedQuery: { groupId: Ref<string | undefined> } | undefined
 
@@ -62,7 +62,9 @@ describe('useGetTrackerRequestGroup', () => {
     })
 
     it('exposes data from useFetch', async () => {
-        const items: TrackerRequest[] = [{ id: '1', filepath: '/media/movie.mkv', metadata: {} as Metadata, description: '', status: 'pending', trackers: [] }]
+        const items: TrackerRequestResponse[] = [
+            { id: '1', groupId: 'g-1', filepath: '/media/movie.mkv', metadata: {} as Metadata, description: '', status: 'pending', trackers: [] },
+        ]
         executeMock.mockImplementation(async () => {
             dataRef.value = { items, total: 1 }
         })

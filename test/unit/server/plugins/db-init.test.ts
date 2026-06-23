@@ -6,6 +6,7 @@ describe('db init plugin', () => {
 
         const initDatastores = vi.fn()
         const refreshLanguages = vi.fn().mockResolvedValue(undefined)
+        const backfillTrackerRequestGroupIds = vi.fn().mockResolvedValue(undefined)
         const logger = {
             info: vi.fn(),
         }
@@ -30,6 +31,10 @@ describe('db init plugin', () => {
             refreshLanguages,
         }))
 
+        vi.doMock('../../../../server/repositories/tracker-request-repository', () => ({
+            backfillTrackerRequestGroupIds,
+        }))
+
         vi.doMock('../../../../server/utils/logger', () => ({
             logger,
         }))
@@ -43,6 +48,7 @@ describe('db init plugin', () => {
         resolveInit?.()
         await pluginPromise
 
+        expect(backfillTrackerRequestGroupIds).toHaveBeenCalledWith()
         expect(logger.info).toHaveBeenCalledWith('Database initialised.')
     })
 })
