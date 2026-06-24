@@ -125,7 +125,9 @@ Types exported from `shared/types/` are auto-imported by Nuxt 4 and available gl
 
 ## Frontend Composables
 
-Composables under `app/composables/` wrap `useFetch` with `immediate: false, watch: false` and return `{ pending, error, data, execute }`. Name them with a verb prefix matching the HTTP method: `useGet*` for GET requests, `usePost*` for POST requests. Do not expose a manual `loading` ref — use `pending` from `useFetch`.
+Composables under `app/composables/` wrap `useFetch` with `immediate: false, watch: false` and return `{ pending, error, data, execute }`. Name them with a verb prefix matching the HTTP method: `useGet*` for GET, `usePost*` for POST, `usePatch*` for PATCH. Do not expose a manual `loading` ref — use `pending` from `useFetch`.
+
+Non-HTTP utility composables (e.g. `useBbcodeRender`, `useDescriptionFooter`, `useTrackerRequestStatus`) do not wrap `useFetch` and are named descriptively without a method prefix.
 
 ## HTTP Clients
 

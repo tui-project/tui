@@ -88,9 +88,9 @@ Application code must go through repositories, not import collections directly.
 2. `upload` in [server/services/tracker-upload.ts](./server/services/tracker-upload.ts) transitions the request through statuses: `pending → torrent_creation → uploading → success | partial_success | fail`.
 3. **`server/services/torrent.ts`** creates a generic `.torrent` (no announce URL) using `create-torrent`, saves it under `config/torrents/`, and reports progress back via the `onProgress` callback which writes to the DB. Piece length is calculated automatically from total source size.
 4. A `GenericTorrentCache` entry is saved so re-uploads of the same filepath reuse the existing `.torrent` file.
-5. **`GET /api/tracker/requests`** — returns paginated requests sorted newest-first; accepts `page` and `size` query params (both default to sensible values).
-6. **`PATCH /api/tracker/requests/[id]`** — allows manual status updates to an existing request.
-7. The dashboard (`app/pages/index.vue`) polls this endpoint every 2 seconds to show live status cards.
+5. **`GET /api/tracker/requests`** — returns paginated requests sorted newest-first; accepts `page`, `size`, `groupId`, and `withGroupCount` query params (`page` and `size` default to sensible values). When `groupId` is provided, returns all requests in that group instead of paginating.
+6. **`PATCH /api/tracker/requests/[id]`** — allows manual status updates to an existing request (e.g. `action: 'retry'`).
+7. The dashboard (`app/pages/index.vue`) polls this endpoint every 2 seconds to show live status cards. `app/pages/history.vue` shows upload history grouped by batch with pagination. `app/pages/about.vue` shows version, integrations, and stack info.
 
 Per-tracker pre-flight endpoints (all under `server/api/tracker/[trackerCode]/`):
 
@@ -116,7 +116,11 @@ A single document with `id: 'app-settings'` is stored in `settings.db`. Key fiel
 
 ### Frontend composables pattern
 
-Composables under `app/composables/` are built on Nuxt's `useFetch` with `immediate: false` and `watch: false`. They expose `pending`, `error`, `data`, and `execute` from `useFetch`. Naming follows a verb-prefix convention matching the HTTP method: `useGet*` for GET requests, `usePost*` for POST requests. Examples: `usePostTrackerRequests`, `useGetSettings`, `usePostSettings`.
+Composables under `app/composables/` are built on Nuxt's `useFetch` with `immediate: false` and `watch: false`. They expose `pending`, `error`, `data`, and `execute` from `useFetch`. Naming follows a verb-prefix convention matching the HTTP method: `useGet*` for GET, `usePost*` for POST, `usePatch*` for PATCH. Examples: `usePostTrackerRequests`, `useGetSettings`, `usePostSettings`, `usePatchTrackerRequest`.
+
+Non-HTTP utility composables (e.g. `useBbcodeRender`, `useDescriptionFooter`, `useTrackerRequestStatus`, `usePreviewImageLoadingState`) do not wrap `useFetch` and are named descriptively without a method prefix.
+
+`useRuntimeConfig().public` exposes `version` (from `package.json`) and `projectUrl` (the GitHub repo URL) for use in pages and composables.
 
 ### Test isolation
 
