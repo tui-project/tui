@@ -3,9 +3,6 @@
 A self-hosted web application for uploading media to private BitTorrent trackers. Select a file or folder, review auto-detected metadata, write a BBCode description, and submit — tui handles torrent creation, duplicate checking, rule validation, and uploading in the background.
 
 > **Current state:** Early development (v0.1.0). Core upload flow is functional. Tracker support is limited to UNIT3D-based trackers. Breaking changes between versions should be expected.
-
-<!-- TODO: Add a banner/hero screenshot once the UI is stable -->
-
 ---
 
 ## Table of Contents
@@ -107,8 +104,6 @@ docker run -d \
   ghcr.io/tui-project/tui:latest
 ```
 
-<!-- TODO: Confirm the correct Docker image registry/org and update the image name above -->
-
 Open `http://localhost:4000` and complete the first-run setup wizard to create your admin account.
 
 ### Docker Compose
@@ -128,8 +123,6 @@ services:
       - /path/to/media:/media
     restart: unless-stopped
 ```
-
-<!-- TODO: Confirm the correct Docker image registry/org and update the image name above -->
 
 Then start it:
 
@@ -154,8 +147,8 @@ The `./config` directory on your host will hold the database, generated torrents
 #### 1. Clone and install
 
 ```bash
-git clone https://github.com/tui-project/tui-v2.git
-cd tui-v2
+git clone https://github.com/tui-project/tui.git
+cd tui
 pnpm install
 ```
 
@@ -263,18 +256,32 @@ pnpm test:coverage  # full coverage report
 - Composables follow the verb-prefix naming convention (`useGet*`, `usePost*`, `usePatch*`).
 - See [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for detailed conventions on routes, repositories, logging, and tests.
 
+### Branching strategy
+
+| Branch type | Target | When to use |
+|---|---|---|
+| `fix/<name>` | `main` | Bug fixes — merged directly so they ship immediately |
+| `feat/<name>` | `release` | New features — batched on `release` until ready to ship |
+| `chore/<name>` | `main` | Dependencies, tooling, config |
+| `docs/<name>` | `main` | Documentation only |
+| `ci/<name>` | `main` | CI/CD changes |
+
+After every fix lands on `main`, rebase the `release` branch onto `main` to keep it current.
+
+When the features on `release` are ready to ship, open a PR from `release` → `main`. Merging triggers the release workflow which publishes a new Docker image.
+
 ### Opening a pull request
 
-1. Fork the repository and create a branch from `main`.
+1. Fork the repository and create a `fix/*` or `feat/*` branch following the strategy above.
 2. Make your changes with tests.
 3. Run `pnpm typecheck && pnpm test:coverage` — both must pass cleanly.
-4. Open a PR against `main` with a clear description of what changed and why.
+4. Open a PR with a clear description of what changed and why. CI runs automatically and must pass before merging.
 
 ---
 
 ## Reporting Bugs & Feature Requests
 
-Use [GitHub Issues](https://github.com/tui-project/tui-v2/issues) for both.
+Use [GitHub Issues](https://github.com/tui-project/tui/issues) for both.
 
 <!-- TODO: Update the GitHub org/repo URL above to the correct public repo path -->
 
