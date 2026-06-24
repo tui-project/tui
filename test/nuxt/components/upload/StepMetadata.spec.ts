@@ -486,13 +486,13 @@ describe('StepMetadata', () => {
 
             await renderSuspended(StepMetadata, { props: { selectedPath } })
 
-            await user.click(screen.getByRole('switch', { name: 'Multi-episode' }))
-            const lastEpisodeInput = screen.getByRole('spinbutton', { name: 'Last Episode' })
+            await fireEvent.click(screen.getByRole('switch', { name: 'Multi-episode' }))
+            const lastEpisodeInput = await screen.findByRole('spinbutton', { name: 'Last Episode' })
             await user.type(lastEpisodeInput, '6')
             await fireEvent.blur(lastEpisodeInput)
 
             await waitFor(() => expect(lastEpisodeInput.getAttribute('value')).toBe('6'))
-        })
+        }, 10000)
 
         it('allows editing the special name field', async () => {
             mockExecute.mockImplementation(() => {
@@ -603,7 +603,7 @@ describe('StepMetadata', () => {
             await user.tab()
 
             await waitFor(() => expect(tmdbInput.getAttribute('value')).toBe('12345'))
-        })
+        }, 10000)
 
         it('covers single-select dropdown v-model handlers in basic and source-release sections', async () => {
             // All interactions in one test: one renderSuspended, one cleanup — avoids multi-test

@@ -3,6 +3,7 @@
 A self-hosted web application for uploading media to private BitTorrent trackers. Select a file or folder, review auto-detected metadata, write a BBCode description, and submit — tui handles torrent creation, duplicate checking, rule validation, and uploading in the background.
 
 > **Current state:** Early development (v0.1.0). Core upload flow is functional. Tracker support is limited to UNIT3D-based trackers. Breaking changes between versions should be expected.
+
 ---
 
 ## Table of Contents
@@ -12,9 +13,9 @@ A self-hosted web application for uploading media to private BitTorrent trackers
 - [Supported Trackers](#supported-trackers)
 - [Supported Integrations](#supported-integrations)
 - [Getting Started](#getting-started)
-  - [Docker (recommended)](#docker-recommended)
-  - [Docker Compose](#docker-compose)
-  - [Local Setup](#local-setup)
+    - [Docker (recommended)](#docker-recommended)
+    - [Docker Compose](#docker-compose)
+    - [Local Setup](#local-setup)
 - [Configuration](#configuration)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
@@ -44,20 +45,25 @@ A self-hosted web application for uploading media to private BitTorrent trackers
 ## Screenshots
 
 ### Setup
+
 <a href="docs/screenshots/setup.png"><img src="docs/screenshots/setup.png" width="49%" /></a>
 
 ### Dashboard
+
 <a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" width="49%" /></a>
 
 ### Upload Flow
+
 <a href="docs/screenshots/upload-select-media.png"><img src="docs/screenshots/upload-select-media.png" width="49%" /></a> <a href="docs/screenshots/upload-edit-metadata.png"><img src="docs/screenshots/upload-edit-metadata.png" width="49%" /></a>
 <a href="docs/screenshots/upload-edit-description.png"><img src="docs/screenshots/upload-edit-description.png" width="49%" /></a> <a href="docs/screenshots/upload-description-preview.png"><img src="docs/screenshots/upload-description-preview.png" width="49%" /></a>
 <a href="docs/screenshots/upload-select-trackers.png"><img src="docs/screenshots/upload-select-trackers.png" width="49%" /></a> <a href="docs/screenshots/upload-review.png"><img src="docs/screenshots/upload-review.png" width="49%" /></a>
 
 ### History
+
 <a href="docs/screenshots/history.png"><img src="docs/screenshots/history.png" width="49%" /></a>
 
 ### Settings
+
 <a href="docs/screenshots/settings.png"><img src="docs/screenshots/settings.png" width="49%" /></a>
 
 ---
@@ -66,21 +72,21 @@ A self-hosted web application for uploading media to private BitTorrent trackers
 
 All current trackers run on the [UNIT3D](https://github.com/HDInnovations/UNIT3D-Community-Edition) platform. Each tracker has its own title format, rule validation, and duplicate detection logic built in.
 
-| Tracker | Code | Platform |
-|---|---|---|
-| Aither | `ATH` | UNIT3D |
-| Upload.cx | `ULCX` | UNIT3D |
+| Tracker   | Code   | Platform |
+| --------- | ------ | -------- |
+| Aither    | `ATH`  | UNIT3D   |
+| Upload.cx | `ULCX` | UNIT3D   |
 
 ## Supported Integrations
 
-| Category | Integration | Notes |
-|---|---|---|
-| **Metadata** | TMDB | Movie/show info, language lookup |
-| **Metadata** | TVDB | TV show metadata |
-| **Image hosting** | ImgBB | Screenshot upload |
-| **Torrent clients** | QUI | Cross-seed injection via the QUI API |
-| **Media analysis** | ffmpeg / ffprobe | Screenshot capture, stream probing |
-| **Media analysis** | mediainfo | Detailed codec/format info |
+| Category            | Integration      | Notes                                |
+| ------------------- | ---------------- | ------------------------------------ |
+| **Metadata**        | TMDB             | Movie/show info, language lookup     |
+| **Metadata**        | TVDB             | TV show metadata                     |
+| **Image hosting**   | ImgBB            | Screenshot upload                    |
+| **Torrent clients** | QUI              | Cross-seed injection via the QUI API |
+| **Media analysis**  | ffmpeg / ffprobe | Screenshot capture, stream probing   |
+| **Media analysis**  | mediainfo        | Detailed codec/format info           |
 
 ---
 
@@ -112,16 +118,16 @@ Create a `docker-compose.yml`:
 
 ```yaml
 services:
-  tui:
-    image: ghcr.io/tui-project/tui:latest
-    # or build from source:
-    # build: .
-    ports:
-      - '4000:4000'
-    volumes:
-      - ./config:/app/config
-      - /path/to/media:/media
-    restart: unless-stopped
+    tui:
+        image: ghcr.io/tui-project/tui:latest
+        # or build from source:
+        # build: .
+        ports:
+            - '4000:4000'
+        volumes:
+            - ./config:/app/config
+            - /path/to/media:/media
+        restart: unless-stopped
 ```
 
 Then start it:
@@ -134,13 +140,13 @@ The `./config` directory on your host will hold the database, generated torrents
 
 #### Volume layout
 
-| Host path | Container path | Contents |
-|---|---|---|
-| `./config/database/` | `/app/config/database/` | NeDB database files |
-| `./config/torrents/` | `/app/config/torrents/` | Generated `.torrent` files |
-| `./config/logs/` | `/app/config/logs/` | Rotating server log (JSON) |
-| `./config/tmp/` | `/app/config/tmp/` | Temporary screenshot files |
-| `/path/to/media` | `/media` | Source media files (add to Media Paths in Settings) |
+| Host path            | Container path          | Contents                                            |
+| -------------------- | ----------------------- | --------------------------------------------------- |
+| `./config/database/` | `/app/config/database/` | NeDB database files                                 |
+| `./config/torrents/` | `/app/config/torrents/` | Generated `.torrent` files                          |
+| `./config/logs/`     | `/app/config/logs/`     | Rotating server log (JSON)                          |
+| `./config/tmp/`      | `/app/config/tmp/`      | Temporary screenshot files                          |
+| `/path/to/media`     | `/media`                | Source media files (add to Media Paths in Settings) |
 
 ### Local Setup
 
@@ -182,16 +188,16 @@ The server listens on `0.0.0.0:3000` by default. Set `HOST` and `PORT` environme
 
 All settings are managed through the **Settings** page in the UI. Nothing requires editing config files by hand.
 
-| Setting | Description |
-|---|---|
-| **Media paths** | Directories the file browser exposes for source media selection |
-| **TMDB API key** | Required for automatic metadata lookup and language lists |
-| **Trackers** | URL, API key, and passkey for each supported tracker |
-| **Image host** | ImgBB API key for screenshot uploads |
-| **Torrent client** | URL and API key for optional post-upload injection |
-| **ffmpeg / ffprobe / mediainfo** | Paths to binaries (leave empty to use `PATH`) |
-| **Screenshot counts** | How many screenshots to capture for movies vs. episode packs |
-| **Log level** | Runtime verbosity (trace → error) |
+| Setting                          | Description                                                     |
+| -------------------------------- | --------------------------------------------------------------- |
+| **Media paths**                  | Directories the file browser exposes for source media selection |
+| **TMDB API key**                 | Required for automatic metadata lookup and language lists       |
+| **Trackers**                     | URL, API key, and passkey for each supported tracker            |
+| **Image host**                   | ImgBB API key for screenshot uploads                            |
+| **Torrent client**               | URL and API key for optional post-upload injection              |
+| **ffmpeg / ffprobe / mediainfo** | Paths to binaries (leave empty to use `PATH`)                   |
+| **Screenshot counts**            | How many screenshots to capture for movies vs. episode packs    |
+| **Log level**                    | Runtime verbosity (trace → error)                               |
 
 ### Required API keys
 
@@ -258,13 +264,13 @@ pnpm test:coverage  # full coverage report
 
 ### Branching strategy
 
-| Branch type | Target | When to use |
-|---|---|---|
-| `fix/<name>` | `main` | Bug fixes — merged directly so they ship immediately |
-| `feat/<name>` | `release` | New features — batched on `release` until ready to ship |
-| `chore/<name>` | `main` | Dependencies, tooling, config |
-| `docs/<name>` | `main` | Documentation only |
-| `ci/<name>` | `main` | CI/CD changes |
+| Branch type    | Target    | When to use                                             |
+| -------------- | --------- | ------------------------------------------------------- |
+| `fix/<name>`   | `main`    | Bug fixes — merged directly so they ship immediately    |
+| `feat/<name>`  | `release` | New features — batched on `release` until ready to ship |
+| `chore/<name>` | `main`    | Dependencies, tooling, config                           |
+| `docs/<name>`  | `main`    | Documentation only                                      |
+| `ci/<name>`    | `main`    | CI/CD changes                                           |
 
 After every fix lands on `main`, rebase the `release` branch onto `main` to keep it current.
 
@@ -283,9 +289,8 @@ When the features on `release` are ready to ship, open a PR from `release` → `
 
 Use [GitHub Issues](https://github.com/tui-project/tui/issues) for both.
 
-<!-- TODO: Update the GitHub org/repo URL above to the correct public repo path -->
-
 **Bug reports** — include:
+
 - tui version (visible on the About page)
 - Steps to reproduce
 - What you expected vs. what happened
