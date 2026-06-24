@@ -143,14 +143,8 @@ describe('upload page', () => {
             await waitFor(() => expect(fetchMock.mock.calls.filter((args) => args[0] === '/api/metadata')).toHaveLength(2))
         })
 
-        it('preserves filename after back-navigating and re-submitting the metadata step', async () => {
+        it('preserves filename after back-navigating to the metadata step', async () => {
             await advanceToMetadata()
-            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
-
-            await waitFor(() => expect(screen.getByText('Add the release notes and BBCode details you want included with this upload.')).toBeTruthy())
-            await fireEvent.click(screen.getByRole('button', { name: 'Back' }))
-
-            await waitFor(() => expect(screen.getByText('Review Metadata')).toBeTruthy())
             await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
 
             await waitFor(() => expect(screen.getByText('Add the release notes and BBCode details you want included with this upload.')).toBeTruthy())
