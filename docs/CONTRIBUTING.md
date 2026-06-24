@@ -98,11 +98,11 @@ Composables under `app/composables/` wrap `useFetch` with `immediate: false, wat
 
 Name them with a verb prefix matching the HTTP method:
 
-| Prefix | Method |
-|---|---|
-| `useGet*` | GET |
-| `usePost*` | POST |
-| `usePatch*` | PATCH |
+| Prefix      | Method |
+| ----------- | ------ |
+| `useGet*`   | GET    |
+| `usePost*`  | POST   |
+| `usePatch*` | PATCH  |
 
 Do not expose a manual `loading` ref — use `pending` from `useFetch`.
 
@@ -135,22 +135,22 @@ Never log passwords, password hashes, tokens, or any secrets.
 
 Test files mirror the source tree:
 
-| Source | Test |
-|---|---|
-| `server/api/...` | `test/e2e/server/api/...` |
-| `server/repositories/...` | `test/unit/server/repositories/...` |
-| `server/utils/...` | `test/unit/server/utils/...` |
-| `app/composables/...` | `test/unit/app/composables/...` |
-| `app/components/...` or `app/pages/...` | `test/nuxt/...` |
+| Source                                  | Test                                |
+| --------------------------------------- | ----------------------------------- |
+| `server/api/...`                        | `test/e2e/server/api/...`           |
+| `server/repositories/...`               | `test/unit/server/repositories/...` |
+| `server/utils/...`                      | `test/unit/server/utils/...`        |
+| `app/composables/...`                   | `test/unit/app/composables/...`     |
+| `app/components/...` or `app/pages/...` | `test/nuxt/...`                     |
 
 ### Unit tests
 
 - Cover non-route modules (repositories, utilities, services) under `test/unit/`.
 - Do not import Nitro route handlers directly in unit tests.
 - When testing modules that initialize the database:
-  1. Call `vi.resetModules()` before importing the module under test.
-  2. Set `process.env.DATABASE_DIR` to a temp directory before import.
-  3. Remove the temp directory and delete env vars in `afterEach`.
+    1. Call `vi.resetModules()` before importing the module under test.
+    2. Set `process.env.DATABASE_DIR` to a temp directory before import.
+    3. Remove the temp directory and delete env vars in `afterEach`.
 
 ### Nuxt component tests
 
