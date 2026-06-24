@@ -116,3 +116,20 @@ describe('GET /api/tracker/requests route handler', () => {
         expect(getTrackerRequests).toHaveBeenCalledWith(1, 12, false)
     })
 })
+
+it('transforms withGroupCount via the schema passed to parseValidatedQuery', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let capturedSchema: any
+    parseValidatedQuery.mockImplementation((_event: unknown, schema: unknown) => {
+        capturedSchema = schema
+        return { page: 1, size: 12, groupId: undefined, withGroupCount: false }
+    })
+    getTrackerRequests.mockResolvedValue({ items: [], total: 0 })
+
+    const handler = await loadHandler()
+    await handler({})
+
+    expect(capturedSchema.parse({ withGroupCount: 'true' }).withGroupCount).toBe(true)
+    expect(capturedSchema.parse({}).withGroupCount).toBe(false)
+    expect(capturedSchema.parse({ withGroupCount: 'false' }).withGroupCount).toBe(false)
+})

@@ -12,10 +12,10 @@ mockNuxtImport('useFetch', () => {
 })
 
 describe('useGetTrackerRequests', () => {
-    it('defaults to page 1 without size or group count when no options are given', () => {
+    it('passes undefined for all query params when no options are given', () => {
         useGetTrackerRequests()
 
-        expect(capturedQuery?.value).toEqual({ page: 1, size: undefined, withGroupCount: undefined })
+        expect(capturedQuery?.value).toEqual({ page: undefined, size: undefined, withGroupCount: undefined })
     })
 
     it('forwards page, size and the group-count flag when provided', () => {

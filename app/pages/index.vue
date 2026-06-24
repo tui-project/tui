@@ -7,13 +7,7 @@ const { formatStatus, getRequestLabel, getStatusColor, getStatusIcon, getTracker
 
 const requests = computed(() => data.value?.items ?? [])
 
-const retryId = ref<string | null>(null)
-const { execute: executeRetry } = useFetch(() => `/api/tracker/requests/${retryId.value}`, {
-    immediate: false,
-    method: 'PATCH',
-    body: { action: 'retry' },
-    watch: false,
-})
+const { execute: executeRetry } = usePatchTrackerRequest()
 
 const refreshTimer = globalThis.setInterval(refresh, REFRESH_INTERVAL_MS)
 onBeforeUnmount(() => clearInterval(refreshTimer))
@@ -48,8 +42,7 @@ function hasInjectionFailure(request: TrackerRequestResponse) {
 }
 
 async function handleRetry(request: TrackerRequestResponse) {
-    retryId.value = request.id
-    await executeRetry()
+    await executeRetry(request.id)
     await refresh()
 }
 </script>

@@ -46,7 +46,7 @@ function isExpanded(requestId: string) {
 }
 
 function formatDate(value?: Date) {
-    return value ? new Date(value).toLocaleString() : '-'
+    return value ? new Date(value).toLocaleString() : '—'
 }
 </script>
 
