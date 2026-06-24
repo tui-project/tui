@@ -41,6 +41,12 @@ const screenshotErrorMessage = computed(() => {
     return err ? 'Failed to generate screenshots.' : ''
 })
 
+vi.mock('~/composables/useDescriptionFooter', () => ({
+    useDescriptionFooter: () => ({
+        withFooter: (desc: string) => (desc ? `${desc}\n\n[right]Uploaded using Tui v test[/right]` : '[right]Uploaded using Tui v test[/right]'),
+    }),
+}))
+
 vi.mock('~/composables/usePostScreenshots', () => ({
     usePostScreenshots: () => ({
         execute: executeScreenshotsMock,
@@ -85,7 +91,7 @@ describe('StepDescription', () => {
 
         await user.click(screen.getByRole('button', { name: 'Preview' }))
 
-        expect(screen.getByText(/Uploaded using Tui v beta/)).toBeDefined()
+        expect(screen.getByText(/Uploaded using Tui v test/)).toBeDefined()
         expect(applyImageLoadingMock).toHaveBeenCalledWith(expect.any(HTMLDivElement), true, true)
     })
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const {
-    public: { version },
+    public: { version, projectUrl },
 } = useRuntimeConfig()
 
 const trackers = [
@@ -54,7 +54,7 @@ const stack = [
                     </div>
                     <div>
                         <UButton
-                            to="https://github.com/tui-project/tui-v2"
+                            :to="projectUrl"
                             target="_blank"
                             rel="noopener noreferrer"
                             variant="outline"

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { StepperItem } from '@nuxt/ui'
 
+const { withFooter } = useDescriptionFooter()
+
 const stepItems: StepperItem[] = [
     {
         title: 'Select Media',
@@ -36,6 +38,7 @@ const selectedTrackers = ref<string[]>([])
 const reviewedMetadata = ref<{ filename: string; metadata: Metadata }>()
 const prefetchedMetadata = ref<{ filename: string; metadata: PartialMetadata }>()
 const description = ref('')
+const fullDescription = computed(() => withFooter(description.value))
 
 watch(
     () => selectedPath.value?.value?.trim() ?? '',
@@ -85,7 +88,7 @@ function goToPrevStep() {
                     :selected-trackers="selectedTrackers"
                     :metadata="reviewedMetadata?.metadata"
                     :source-path="selectedPath?.value"
-                    :description="description"
+                    :description="fullDescription"
                     @back="goToPrevStep"
                 />
             </template>

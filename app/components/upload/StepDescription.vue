@@ -28,8 +28,8 @@ const preview = ref<HTMLDivElement>()
 
 const { toHtml, error } = useBbcodeRender()
 const { applyImageLoading } = usePreviewImageLoadingState()
-
 const { pending: isGeneratingScreenshots, errorMessage: screenshotErrorMessage, data: screenshotResult, execute: generateScreenshots } = usePostScreenshots()
+const { withFooter } = useDescriptionFooter()
 
 const toolbarActions: ToolbarAction[] = [
     { label: 'Bold', icon: 'i-lucide-bold', openTag: '[b]', closeTag: '[/b]' },
@@ -39,14 +39,9 @@ const toolbarActions: ToolbarAction[] = [
     { label: 'Quote', icon: 'i-lucide-quote', openTag: '[quote]', closeTag: '[/quote]' },
     { label: 'Code', icon: 'i-lucide-code', openTag: '[code]', closeTag: '[/code]' },
 ]
-
-const tuiVersion = 'beta'
-const tuiProjectUrl = 'https://github.com/tui-project/tui'
-const previewFooter = `[right][url=${tuiProjectUrl}]Uploaded using Tui v ${tuiVersion}[/url][/right]`
-
 const hasDescription = computed(() => description.value.trim().length > 0)
 const previewBody = computed(() => (hasDescription.value ? description.value : 'Preview your BBCode description here before uploading.'))
-const previewContent = computed(() => `${previewBody.value}\n\n${previewFooter}`)
+const previewContent = computed(() => withFooter(previewBody.value))
 const renderedPreview = computed(() => toHtml(previewContent.value))
 
 watch([activeTab, renderedPreview], async () => {

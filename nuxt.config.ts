@@ -8,6 +8,7 @@ export default defineNuxtConfig({
     runtimeConfig: {
         public: {
             version: pkg.version,
+            projectUrl: 'https://github.com/tui-project/tui-v2',
         },
     },
     compatibilityDate: '2025-07-15',
