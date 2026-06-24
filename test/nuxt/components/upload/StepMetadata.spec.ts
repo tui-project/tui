@@ -489,7 +489,7 @@ describe('StepMetadata', () => {
             await user.click(screen.getByRole('switch', { name: 'Multi-episode' }))
             const lastEpisodeInput = screen.getByRole('spinbutton', { name: 'Last Episode' })
             await user.type(lastEpisodeInput, '6')
-            await user.tab()
+            await fireEvent.blur(lastEpisodeInput)
 
             await waitFor(() => expect(lastEpisodeInput.getAttribute('value')).toBe('6'))
         })
