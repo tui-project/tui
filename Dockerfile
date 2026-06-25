@@ -6,7 +6,7 @@ RUN corepack enable && corepack prepare pnpm@11.9.0 --activate
 # ---- build stage ----
 FROM base AS build
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm nuxt prepare && NODE_OPTIONS=--max-old-space-size=3072 pnpm nuxt build
