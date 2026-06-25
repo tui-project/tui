@@ -1,0 +1,14 @@
+allowBuilds:
+    '@parcel/watcher': true
+    esbuild: true
+    sharp: true
+    unrs-resolver: true
+    vue-demi: true
+minimumReleaseAgeExclude:
+    - '@iconify-json/material-symbols@1.2.80'
+onlyBuiltDependencies:
+    - '@parcel/watcher'
+    - esbuild
+    - sharp
+    - unrs-resolver
+    - vue-demi
