@@ -24,8 +24,9 @@ export default defineConfig({
                     name: 'e2e',
                     include: ['test/e2e/**/*.{test,spec}.ts'],
                     environment: 'node',
-                    fileParallelism: false,
-                    maxWorkers: 1,
+                    pool: 'forks',
+                    maxWorkers: 3,
+                    sequence: { groupOrder: 1 },
                 },
             },
             await defineVitestProject({
