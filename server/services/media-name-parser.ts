@@ -192,10 +192,15 @@ function parseService(tokens: string[]): Service {
     const normalizedServices = Object.values(SERVICES) as string[]
     const serviceByToken = new Map<string, string>(normalizedServices.map((service) => [service.toUpperCase(), service]))
 
-    for (const token of [...tokens].reverse()) {
+    for (let i = tokens.length - 1; i >= 0; i--) {
+        const token = tokens[i]!
         const service = serviceByToken.get(token)
         if (service) {
+            // 'MA' in 'DTS-HD MA' is an audio codec qualifier, not a service
+            if (token === 'MA' && tokens[i - 1] === 'HD') continue
+
             logger.debug('Matched media service token.', { token, service })
+
             return service as Service
         }
     }

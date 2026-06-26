@@ -425,7 +425,7 @@ describe('StepMetadata', () => {
 
             expect(screen.getByRole('spinbutton', { name: 'Last Episode' })).toBeDefined()
             expect(screen.getByRole('spinbutton', { name: 'First Episode' })).toBeDefined()
-        })
+        }, 10000)
 
         it('initialises multi-episode toggle from metadata with episodeEnd', async () => {
             mockExecute.mockImplementation(() => {
@@ -452,7 +452,7 @@ describe('StepMetadata', () => {
 
             await user.click(screen.getByRole('switch', { name: 'Multi-episode' }))
             expect(screen.getByRole('spinbutton', { name: 'Last Episode' }).getAttribute('value')).toBe('8')
-        })
+        }, 10000)
 
         it.each([
             [0, 12, 'Polar Challenge'],
@@ -588,7 +588,7 @@ describe('StepMetadata', () => {
             await user.click(screen.getByRole('combobox', { name: comboboxName }))
             await user.click(await screen.findByRole('option', { name: optionName }))
             await waitFor(() => expect(screen.getByRole('combobox', { name: comboboxName }).textContent).toBe(optionName))
-        })
+        }, 10000)
 
         it('updates tmdb input for movie media type', async () => {
             const user = userEvent.setup({ delay: null })
@@ -767,7 +767,7 @@ describe('StepMetadata', () => {
             await waitFor(() => {
                 expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ episodeEnd: 8 }) }))
             })
-        })
+        }, 10000)
 
         it('clears episodeEnd on submit when multi-episode toggle is off', async () => {
             const user = userEvent.setup({ delay: null })

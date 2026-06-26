@@ -1,6 +1,6 @@
 {
     "name": "tui",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "type": "module",
     "private": true,
     "scripts": {
@@ -13,10 +13,10 @@
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "format": "exec prettier . --write",
-        "test": "vitest run",
+        "test": "NODE_OPTIONS=--max-old-space-size=5120 vitest run",
         "test:unit": "vitest run --project unit",
-        "test:e2e": "vitest run --project e2e",
-        "test:coverage": "vitest run --project unit --project nuxt --coverage"
+        "test:e2e": "NODE_OPTIONS=--max-old-space-size=5120 vitest run --project e2e",
+        "test:coverage": "NODE_OPTIONS=--max-old-space-size=5120 vitest run --project unit --project nuxt --coverage"
     },
     "dependencies": {
         "@bbob/html": "4.3.1",
