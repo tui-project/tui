@@ -581,14 +581,18 @@ describe('StepMetadata', () => {
             ['Audio Codec', 'DTS-HD MA'],
             ['Audio Channels', '7.1'],
             ['Audio Metadata', 'Auro3D'],
-        ] as const)('allows changing %s dropdown', async (comboboxName, optionName) => {
-            const user = userEvent.setup({ delay: null })
-            await renderSuspended(StepMetadata, { props: { selectedPath } })
+        ] as const)(
+            'allows changing %s dropdown',
+            async (comboboxName, optionName) => {
+                const user = userEvent.setup({ delay: null })
+                await renderSuspended(StepMetadata, { props: { selectedPath } })
 
-            await user.click(screen.getByRole('combobox', { name: comboboxName }))
-            await user.click(await screen.findByRole('option', { name: optionName }))
-            await waitFor(() => expect(screen.getByRole('combobox', { name: comboboxName }).textContent).toBe(optionName))
-        }, 10000)
+                await user.click(screen.getByRole('combobox', { name: comboboxName }))
+                await user.click(await screen.findByRole('option', { name: optionName }))
+                await waitFor(() => expect(screen.getByRole('combobox', { name: comboboxName }).textContent).toBe(optionName))
+            },
+            10000
+        )
 
         it('updates tmdb input for movie media type', async () => {
             const user = userEvent.setup({ delay: null })

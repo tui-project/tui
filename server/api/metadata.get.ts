@@ -52,7 +52,7 @@ async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataF
     const { videoStandard, frameRate, ...mediainfoFields } = metadataFromMediainfo
     const metadata: PartialMetadata = {
         ...metadataFromFilename,
-        ...mediainfoFields,
+        ...withDefined(mediainfoFields),
     }
     metadata.mediaType = metadata.season === undefined ? 'movie' : 'tv'
 
@@ -180,4 +180,8 @@ function isForeignMediaWithoutOriginalTitle(metadata: PartialMetadata): boolean 
 
 function isSpecialEpisode(metadata: PartialMetadata): boolean {
     return metadata.season === 0 || metadata.episode === 0
+}
+
+function withDefined<T extends object>(obj: T): T {
+    return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T
 }
