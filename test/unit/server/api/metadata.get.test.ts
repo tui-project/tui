@@ -774,4 +774,46 @@ describe('GET /api/metadata route handler', () => {
         const result = await handler({} as never)
         expect(result.metadata.source).toBe('DVD')
     })
+
+    it('uses name-parsed resolution when mediainfo cannot determine resolution', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromName.mockReturnValue({
+            title: 'Movie',
+            sourceType: 'WEB-DL',
+            source: 'Web',
+            service: undefined,
+            cut: undefined,
+            repack: 0,
+            proper: 0,
+            hybrid: false,
+            releaseGroup: '',
+            resolution: '2160p',
+        })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], resolution: undefined })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.metadata.resolution).toBe('2160p')
+    })
+
+    it('mediainfo resolution takes precedence over name-parsed resolution', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromName.mockReturnValue({
+            title: 'Movie',
+            sourceType: 'WEB-DL',
+            source: 'Web',
+            service: undefined,
+            cut: undefined,
+            repack: 0,
+            proper: 0,
+            hybrid: false,
+            releaseGroup: '',
+            resolution: '2160p',
+        })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], resolution: '1080p' })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.metadata.resolution).toBe('1080p')
+    })
 })
