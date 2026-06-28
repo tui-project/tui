@@ -33,6 +33,8 @@ export interface ParsedMediainfoMetadata {
     tvdbId?: number
 }
 
+const KNOWN_RESOLUTION_HEIGHTS = [...new Set(Object.keys(RESOLUTIONS).map((k) => parseInt(k, 10)))].sort((a, b) => a - b)
+
 export async function parseMetadataFromMediainfo(filePath: string, sourceType: SourceType): Promise<ParsedMediainfoMetadata> {
     logger.debug('Parsing metadata from mediainfo result.', { filePath, sourceType })
 
@@ -44,7 +46,7 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
 
     const height = toStringValue(video, 'Height')
     const scanType = toStringValue(video, 'ScanType')
-    const resolution = parseResolution(height, scanType)
+    const resolution = parseResolution(parseInt(height, 10), scanType)
 
     const format = toStringValue(video, 'Format')
     const formatVersion = toStringValue(video, 'Format_Version')
@@ -191,32 +193,32 @@ function toStringValue(track: MediaInfoTrack | undefined, key: string): string {
     return stringValue === '<nil>' ? '' : stringValue
 }
 
-function parseResolution(height: string, scanType: string): Resolution | undefined {
-    const normalizedScanType = scanType.trim().toLowerCase()
-    const suffix = normalizedScanType === 'interlaced' || normalizedScanType === 'mbaff' ? 'i' : 'p'
+function parseResolution(height: number, scanType: string): Resolution | undefined {
+    if (!height) return undefined
 
-    switch (height.trim()) {
-        case '4320':
-            return RESOLUTIONS['4320p']
-        case '2160':
-        case '2074':
-        case '1744':
-            return RESOLUTIONS['2160p']
-        case '1080':
-        case '1072':
-        case '1036':
-        case '1040':
-            return suffix === 'i' ? RESOLUTIONS['1080i'] : RESOLUTIONS['1080p']
-        case '720':
-            return RESOLUTIONS['720p']
-        case '576':
-            return suffix === 'i' ? RESOLUTIONS['576i'] : RESOLUTIONS['576p']
-        case '480':
-            return suffix === 'i' ? RESOLUTIONS['480i'] : RESOLUTIONS['480p']
-        default:
-            logger.warn('Unable to detect resolution from mediainfo.', { height, scanType })
-            return undefined
+    const snappedHeight = closestAbove(KNOWN_RESOLUTION_HEIGHTS, height)
+    if (!snappedHeight) return undefined
+
+    const scan = getScanSuffix(scanType)
+    const resolution = RESOLUTIONS[`${snappedHeight}${scan}` as keyof typeof RESOLUTIONS]
+    if (!resolution) {
+        logger.warn('Unable to detect resolution from mediainfo.', { height, scanType })
     }
+
+    return resolution
+}
+
+function closestAbove(list: number[], value: number): number {
+    for (const item of list) {
+        if (value <= item) return item
+    }
+
+    return 0
+}
+
+function getScanSuffix(scanType: string): 'i' | 'p' {
+    const normalized = scanType.trim().toLowerCase()
+    return normalized === 'interlaced' || normalized === 'mbaff' ? 'i' : 'p'
 }
 
 function parseVideoCodec(format: string, formatVersion: string, sourceType: SourceType): VideoCodec | undefined {

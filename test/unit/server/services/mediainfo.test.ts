@@ -110,8 +110,16 @@ describe('mediainfo service', () => {
                 expect(result.resolution).toBe(expected)
             })
 
-            it('returns undefined for unrecognised height', async () => {
-                mockTracks(videoTrack({ Height: '999' }), audioTrack())
+            it('returns undefined when height is absent', async () => {
+                mockTracks(videoTrack({ Height: '' }), audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+                expect(result.resolution).toBeUndefined()
+            })
+
+            it('returns undefined when height exceeds all known buckets', async () => {
+                mockTracks(videoTrack({ Height: '99999' }), audioTrack())
                 const { parseMetadataFromMediainfo } = await loadService()
 
                 const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')

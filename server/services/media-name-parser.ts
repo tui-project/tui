@@ -19,6 +19,7 @@ export interface ParsedNameMetadata {
     title: string
     hdr: HDR[]
     videoCodec: VideoCodec | undefined
+    resolution: Resolution | undefined
 }
 
 export function parseMetadataFromName(name: string): ParsedNameMetadata {
@@ -42,6 +43,7 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
     const releaseGroup = parseReleaseGroup(nameWithoutExtension)
     const hdr = parseHdr(nameWithoutExtension)
     const videoCodec = parseVideoCodec(nameWithoutExtension)
+    const resolution = parseResolution(nameWithoutExtension)
 
     const parsedMetadata = {
         title,
@@ -61,6 +63,7 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
         releaseGroup,
         hdr,
         videoCodec,
+        resolution,
     }
 
     logger.debug('Parsed media metadata from name.', parsedMetadata)
@@ -293,6 +296,26 @@ function parseVideoCodec(name: string): VideoCodec | undefined {
 
     for (const [re, codec] of codecMap) {
         if (re.test(name)) return codec
+    }
+
+    return undefined
+}
+
+function parseResolution(name: string): Resolution | undefined {
+    const patterns: Array<[RegExp, Resolution]> = [
+        [/\b4320p\b/i, RESOLUTIONS['4320p']],
+        [/\b2160p\b/i, RESOLUTIONS['2160p']],
+        [/\b1080p\b/i, RESOLUTIONS['1080p']],
+        [/\b1080i\b/i, RESOLUTIONS['1080i']],
+        [/\b720p\b/i, RESOLUTIONS['720p']],
+        [/\b576p\b/i, RESOLUTIONS['576p']],
+        [/\b576i\b/i, RESOLUTIONS['576i']],
+        [/\b480p\b/i, RESOLUTIONS['480p']],
+        [/\b480i\b/i, RESOLUTIONS['480i']],
+    ]
+
+    for (const [re, resolution] of patterns) {
+        if (re.test(name)) return resolution
     }
 
     return undefined
