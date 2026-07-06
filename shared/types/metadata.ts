@@ -372,6 +372,7 @@ export const [AUDIO_CODECS, AUDIO_CODEC_OPTIONS] = makeConst({
     TRUEHD: { value: 'TrueHD', label: 'TrueHD' },
     DTS: { value: 'DTS', label: 'DTS' },
     DTS_HD_MA: { value: 'DTS-HD MA', label: 'DTS-HD MA' },
+    DTS_HD_HRA: { value: 'DTS-HD HRA', label: 'DTS-HD HRA' },
     DTS_X: { value: 'DTS:X', label: 'DTS:X' },
     FLAC: { value: 'FLAC', label: 'FLAC' },
 })
