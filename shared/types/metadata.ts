@@ -514,9 +514,6 @@ export const MetadataSchema = z
                 }
             }
         }
-        if (metadata.source === SOURCES.WEB && metadata.service == null) {
-            ctx.addIssue({ code: 'custom', path: ['service'], message: 'Service is required for Web sources' })
-        }
     })
 
 export type Metadata = z.infer<typeof MetadataSchema>
