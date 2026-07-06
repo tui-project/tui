@@ -3,6 +3,7 @@ import { logger } from '../utils/logger'
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 const TMDB_API_KEY_REQUIRED_ERROR = 'tmdb api key is required'
+const NON_LATIN_SCRIPT_REGEX = /[^\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]/u
 
 export const ID_TYPES = {
     IMDB: 'imdb_id',
@@ -123,10 +124,8 @@ function sanitiseText(value: string | undefined) {
         return undefined
     }
 
-    for (const char of normalized) {
-        if (char.charCodeAt(0) > 127) {
-            return undefined
-        }
+    if (NON_LATIN_SCRIPT_REGEX.test(normalized)) {
+        return undefined
     }
 
     return normalized
