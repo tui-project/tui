@@ -319,6 +319,8 @@ function parseAudioCodec(audioFormat: string, formatCommercialIfAny: string): Au
             return AUDIO_CODECS.DTS_HD_MA
         case audioFormat === 'DTS' && formatCommercialIfAny === 'DTS-HD MA + DTS:X':
             return AUDIO_CODECS.DTS_X
+        case audioFormat === 'DTS' && formatCommercialIfAny === 'DTS-HD High Resolution Audio':
+            return AUDIO_CODECS.DTS_HD_HRA
         case audioFormat === 'DTS':
             return AUDIO_CODECS.DTS
         case audioFormat === 'FLAC':
