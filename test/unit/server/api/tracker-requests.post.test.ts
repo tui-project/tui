@@ -245,7 +245,7 @@ describe('POST /api/tracker/requests route handler', () => {
         expect(logger.warn).toHaveBeenCalled()
     })
 
-    it('rejects web metadata without a service', async () => {
+    it('accepts web metadata without a service', async () => {
         readBody.mockResolvedValue(
             buildRequest({
                 metadata: {
@@ -255,13 +255,18 @@ describe('POST /api/tracker/requests route handler', () => {
                 },
             })
         )
+        findGenericTorrentCacheByFilepath.mockResolvedValue(null)
+        saveTrackerRequest.mockResolvedValue({
+            id: 'upload-1',
+            ...buildRequest(),
+            status: 'pending',
+        })
+        createGenericTorrent.mockResolvedValue({
+            genericTorrentPath: '/repo/config/torrents/generic-1.torrent',
+        })
         const handler = await loadHandler()
 
-        await expect(handler(mockEvent())).rejects.toEqual({
-            statusCode: 400,
-            message: 'invalid_request',
-        })
-        expect(logger.warn).toHaveBeenCalled()
+        await expect(handler(mockEvent())).resolves.toEqual({ id: 'upload-1', status: 'pending' })
     })
 
     it('creates tracker-specific torrents when a configured tracker has a passKey', async () => {

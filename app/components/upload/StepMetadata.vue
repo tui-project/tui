@@ -203,7 +203,7 @@ function onSubmit(event: FormSubmitEvent<Metadata>) {
                             <USelect v-model="state.sourceType" size="xl" class="w-full" placeholder="Select type" :items="SOURCE_TYPE_OPTIONS" />
                         </UFormField>
 
-                        <UFormField v-if="isWebSource" label="Service" required>
+                        <UFormField v-if="isWebSource" label="Service">
                             <USelect v-model="state.service" size="xl" class="w-full" placeholder="Select service" :items="SERVICE_OPTIONS" />
                         </UFormField>
 
