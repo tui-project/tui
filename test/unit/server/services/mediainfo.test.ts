@@ -252,6 +252,7 @@ describe('mediainfo service', () => {
                 { format: 'AAC', commercial: '', expected: 'AAC' },
                 { format: 'DTS', commercial: 'DTS-HD Master Audio', expected: 'DTS-HD MA' },
                 { format: 'DTS', commercial: 'DTS-HD MA + DTS:X', expected: 'DTS:X' },
+                { format: 'DTS', commercial: 'DTS-HD High Resolution Audio', expected: 'DTS-HD HRA' },
                 { format: 'DTS', commercial: '', expected: 'DTS' },
                 { format: 'FLAC', commercial: '', expected: 'FLAC' },
                 { format: 'MLP FBA', commercial: '', expected: 'TrueHD' },
