@@ -125,6 +125,14 @@ describe('mediainfo service', () => {
                 const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
                 expect(result.resolution).toBeUndefined()
             })
+
+            it('returns undefined when the snapped height has no interlaced entry', async () => {
+                mockTracks(videoTrack({ Height: '720', ScanType: 'Interlaced' }), audioTrack())
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+                expect(result.resolution).toBeUndefined()
+            })
         })
 
         describe('frameRate', () => {
