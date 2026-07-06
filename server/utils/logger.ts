@@ -12,6 +12,9 @@ mkdirSync(logDir, { recursive: true })
 
 const baseLogger = createConsola({
     level: process.env.LOG_LEVEL ? Number(process.env.LOG_LEVEL) : 5,
+    formatOptions: {
+        depth: Infinity,
+    },
 })
 
 if (!logFileDisabled) {
