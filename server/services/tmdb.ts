@@ -42,7 +42,7 @@ export interface TMDbSearchResult {
 }
 
 export async function findByTitle(title: string, mediaType: MediaType): Promise<TMDbSearchResult | null> {
-    const trimmedTitle = title.trim()
+    const trimmedTitle = title.trim().normalize('NFC')
     if (!trimmedTitle) {
         logger.debug('TMDB title lookup skipped due to empty title.')
         return null
@@ -57,9 +57,11 @@ export async function findByTitle(title: string, mediaType: MediaType): Promise<
         const response = await $fetch<{ results: TMDbItem[] }>(path, {
             query: {
                 api_key: apiKey,
-                query: encodeURIComponent(trimmedTitle),
+                query: trimmedTitle,
             },
         })
+
+        logger.trace('TMDB title lookup response', { response })
 
         const results = response.results.filter((item) => item.media_type === mediaType).map((item) => toSearchResult(item, mediaType))
         const match = results[0]
@@ -150,7 +152,8 @@ function detectLocale(match: TMDbSearchResult, allResults: TMDbSearchResult[], m
 }
 
 export async function findLocale(title: string, tmdbId: number, mediaType: MediaType): Promise<string | undefined> {
-    logger.debug('TMDB locale search request prepared.', { mediaType, endpoint: 'search/multi', title, tmdbId })
+    const trimmedTitle = title.trim().normalize('NFC')
+    logger.debug('TMDB locale search request prepared.', { mediaType, endpoint: 'search/multi', trimmedTitle, tmdbId })
 
     const apiKey = await getApiKey()
     const path = `${TMDB_BASE_URL}/search/multi`
@@ -159,9 +162,12 @@ export async function findLocale(title: string, tmdbId: number, mediaType: Media
         const response = await $fetch<{ results: TMDbItem[] }>(path, {
             query: {
                 api_key: apiKey,
-                query: encodeURIComponent(title),
+                query: trimmedTitle,
             },
         })
+
+        logger.trace('TMDB locale search response', { response })
+
         const results = response.results.filter((item) => item.media_type === mediaType).map((item) => toSearchResult(item, mediaType))
         const match = results.find((item) => item.id === tmdbId)
         if (!match) return undefined
@@ -197,6 +203,8 @@ export async function findByExternalID(externalID: string, idType: IDType, media
                 external_source: idType,
             },
         })
+
+        logger.trace('TMDB external id lookup response', { response })
 
         const selected = mediaType === MEDIA_TYPES.MOVIE ? response.movie_results[0] : response.tv_results[0]
         if (!selected) {
@@ -250,6 +258,8 @@ export async function getDetails(tmdbID: string, mediaType: MediaType): Promise<
             },
         })
 
+        logger.trace('TMDB details response', { response })
+
         return toSearchResult(response, mediaType)
     } catch (error: unknown) {
         logger.warn('TMDB request failed.', { path, error })
@@ -270,11 +280,15 @@ export async function getExternalIDs(tmdbID: string, mediaType: MediaType): Prom
     logger.debug('TMDB external ids request prepared.', { mediaType, endpoint: path, tmdbID: normalizedTMDbID })
 
     try {
-        return await $fetch<TMDbExternalIDs>(path, {
+        const response = await $fetch<TMDbExternalIDs>(path, {
             query: {
                 api_key: apiKey,
             },
         })
+
+        logger.trace('TMDB external ids response', { response })
+
+        return response
     } catch (error: unknown) {
         logger.warn('TMDB request failed.', { path, error })
         return null
@@ -288,9 +302,13 @@ export async function getLanguages(): Promise<{ iso_639_1: string; english_name:
     logger.debug('TMDB languages request prepared.')
 
     try {
-        return await $fetch<{ iso_639_1: string; english_name: string }[]>(path, {
+        const response = await $fetch<{ iso_639_1: string; english_name: string }[]>(path, {
             query: { api_key: apiKey },
         })
+
+        logger.trace('TMDB languages response', { response })
+
+        return response
     } catch (error: unknown) {
         logger.warn('TMDB request failed.', { path, error })
         return null
