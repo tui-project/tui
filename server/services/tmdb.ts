@@ -70,6 +70,8 @@ export async function findByTitle(title: string, mediaType: MediaType): Promise<
             return null
         }
 
+        logger.debug('TMDB title lookup matched.', { match })
+
         if (match.media_type === MEDIA_TYPES.TV) {
             const locale = detectLocale(match, results, mediaType)
             return { ...match, locale }
