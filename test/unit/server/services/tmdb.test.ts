@@ -409,7 +409,7 @@ describe('tmdb service', () => {
         })
     })
 
-    it('sanitizes non-ascii and quoted text and handles invalid year', async () => {
+    it('sanitizes non-latin script and quoted text and handles invalid year', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByTitle } = await loadTMDbService()
 
@@ -421,7 +421,7 @@ describe('tmdb service', () => {
                         id: 2,
                         media_type: 'movie',
                         title: '  "Quoted"  ',
-                        original_title: 'Nón-ASCII',
+                        original_title: 'Плохой фильм',
                         original_language: 'en',
                         release_date: 'abcd-01-01',
                         origin_country: [],
@@ -437,6 +437,35 @@ describe('tmdb service', () => {
             original_language: 'en',
             year: undefined,
             media_type: 'movie',
+        })
+    })
+
+    it('keeps latin-script accented characters in sanitized text', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { findByTitle } = await loadTMDbService()
+
+        vi.stubGlobal(
+            '$fetch',
+            vi.fn().mockResolvedValue({
+                results: [
+                    {
+                        id: 3,
+                        media_type: 'movie',
+                        title: 'Lust och fägring stor',
+                        original_title: 'Lust och fägring stor',
+                        original_language: 'sv',
+                        release_date: '1995-01-01',
+                        origin_country: [],
+                    },
+                ],
+            })
+        )
+
+        await expect(findByTitle('Lust och fägring stor', 'movie')).resolves.toMatchObject({
+            id: 3,
+            title: 'Lust och fägring stor',
+            original_title: 'Lust och fägring stor',
+            original_language: 'sv',
         })
     })
 
