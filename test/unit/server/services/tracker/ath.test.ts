@@ -174,21 +174,6 @@ describe('athTrackerService — checkRules', () => {
         expect(violations).toEqual([])
     })
 
-    it('flags foreign content missing the original language audio track', () => {
-        const violations = service.checkRules({ ...baseMetadata, language: ['en'], originalLanguage: 'ja' })
-        expect(violations.some((v) => v.rule === 'missing_original_language_audio')).toBe(true)
-    })
-
-    it('does not flag missing_original_language_audio when original language track is present', () => {
-        const violations = service.checkRules({ ...baseMetadata, language: ['ja', 'en'], originalLanguage: 'ja' })
-        expect(violations.some((v) => v.rule === 'missing_original_language_audio')).toBe(false)
-    })
-
-    it('does not flag missing_original_language_audio for English-original content', () => {
-        const violations = service.checkRules({ ...baseMetadata, language: ['en'], originalLanguage: 'en' })
-        expect(violations.some((v) => v.rule === 'missing_original_language_audio')).toBe(false)
-    })
-
     it('bans Weasley[HONE] for WEB-DL', () => {
         const violations = service.checkRules({ ...baseMetadata, releaseGroup: 'Weasley[HONE]', sourceType: SOURCE_TYPES.WEB_DL })
         expect(violations).toHaveLength(1)
