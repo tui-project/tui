@@ -596,19 +596,8 @@ describe('ulcxTrackerService — checkRules', () => {
             expect(violations.every((v) => v.rule !== 'missing_english')).toBe(true)
         })
 
-        it('returns a missing_original_language_audio violation when foreign content lacks original language audio', () => {
-            const violations = service.checkRules({ ...foreignBase, language: ['en'], hasEnglishSubs: true })
-            expect(violations.some((v) => v.rule === 'missing_original_language_audio')).toBe(true)
-        })
-
-        it('returns no missing_original_language_audio violation when foreign content includes original language audio', () => {
-            const violations = service.checkRules({ ...foreignBase, language: ['fr', 'en'], hasEnglishSubs: false })
-            expect(violations.every((v) => v.rule !== 'missing_original_language_audio')).toBe(true)
-        })
-
-        it('does not flag missing_original_language_audio for English content', () => {
-            const violations = service.checkRules({ ...baseMetadata, originalLanguage: 'en', language: ['en'] })
-            expect(violations.every((v) => v.rule !== 'missing_original_language_audio')).toBe(true)
+        it('returns no violation for an English-dubbed foreign release without original-language audio', () => {
+            expect(service.checkRules({ ...foreignBase, language: ['en'], hasEnglishSubs: false })).toHaveLength(0)
         })
     })
 
