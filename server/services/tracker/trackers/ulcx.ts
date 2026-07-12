@@ -197,13 +197,6 @@ function checkRules(metadata: Metadata): RuleViolation[] {
                 message: 'Foreign-language content must include at least English subtitles or an English audio dub.',
             })
         }
-
-        if (!metadata.language.includes(metadata.originalLanguage)) {
-            violations.push({
-                rule: 'missing_original_language_audio',
-                message: 'Foreign-language content should include the original language audio track.',
-            })
-        }
     }
 
     if (!hasEnglishAudio(metadata) && !metadata.language.includes(metadata.originalLanguage)) {
