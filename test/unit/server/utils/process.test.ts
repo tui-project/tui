@@ -20,13 +20,15 @@ describe('runCommand', () => {
         })
     })
 
-    it('rejects when execFile returns an error', async () => {
+    it('rejects with the command error unchanged', async () => {
+        const error = new Error('boom')
         execFile.mockImplementation((_command, _args, _options, callback) => {
-            callback(new Error('boom'), '', '')
+            callback(error, '', 'stderr already represented by the command error')
         })
 
         const { runCommand } = await import('../../../../server/utils/process')
 
-        await expect(runCommand('ffmpeg', ['-version'])).rejects.toThrow('boom')
+        await expect(runCommand('ffmpeg', ['-version'])).rejects.toBe(error)
+        expect(error.message).toBe('boom')
     })
 })

@@ -37,8 +37,8 @@ export async function generateScreenshotsWithFfmpeg(filePath: string, outputDir:
 
         try {
             await runCommand(ffmpegPath, args)
-        } catch {
-            logger.warn('Failed to generate screenshot with FFmpeg.', { ffmpegPath, filePath, timestamp: job.timestamp })
+        } catch (error) {
+            logger.warn('Failed to generate screenshot with FFmpeg.', error, { ffmpegPath, filePath, timestamp: job.timestamp })
             throw createError({
                 statusCode: 500,
                 message: 'screenshot_generation_failed',
