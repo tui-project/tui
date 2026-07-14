@@ -84,14 +84,15 @@ describe('ffmpeg screenshot service', () => {
 
     it('wraps ffmpeg failures in an h3 error', async () => {
         vi.spyOn(crypto, 'randomUUID').mockReturnValue('broken')
-        runCommand.mockRejectedValue(new Error('ffmpeg failed'))
+        const error = new Error('ffmpeg failed')
+        runCommand.mockRejectedValue(error)
         const { generateScreenshotsWithFfmpeg } = await loadService()
 
         await expect(generateScreenshotsWithFfmpeg('/media/movie.mkv', '/tmp/screens', [10], false)).rejects.toEqual({
             statusCode: 500,
             message: 'screenshot_generation_failed',
         })
-        expect(logger.warn).toHaveBeenCalledWith('Failed to generate screenshot with FFmpeg.', {
+        expect(logger.warn).toHaveBeenCalledWith('Failed to generate screenshot with FFmpeg.', error, {
             ffmpegPath: '/usr/local/bin/ffmpeg',
             filePath: '/media/movie.mkv',
             timestamp: 10,
