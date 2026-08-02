@@ -130,7 +130,7 @@ describe('StepSelectMedia', () => {
 
         it('resets parent and clears selection when the clear button is clicked', async () => {
             await selectFolder()
-            const clearButton = document.querySelector('[data-slot="trailing"] [data-slot="base"]')
+            const clearButton = document.querySelector('[data-slot="trailingClear"]')
             if (!clearButton) throw new Error('Clear button not found')
             await userEvent.setup().click(clearButton)
             await waitFor(() => expect(capturedParent!.value).toBe(''))

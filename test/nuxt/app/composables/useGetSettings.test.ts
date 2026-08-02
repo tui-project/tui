@@ -1,13 +1,23 @@
-import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { defineComponent } from 'vue'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
+import { defineComponent, ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const fetchMock = vi.fn()
+const useFetchMock = vi.fn()
+const pendingRef = ref(false)
+const dataRef = ref<AppSettings | undefined>()
+const errorRef = ref<Error | undefined>()
+const refreshMock = vi.fn()
+
+mockNuxtImport('useFetch', () => (url: string) => {
+    useFetchMock(url)
+    return { pending: pendingRef, data: dataRef, error: errorRef, refresh: refreshMock }
+})
 
 beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubGlobal('$fetch', fetchMock)
-    fetchMock.mockResolvedValue({ mediaPaths: [], tmdbApiKey: '', trackers: [], imageHostProviders: [], torrentClients: [] })
+    pendingRef.value = false
+    dataRef.value = undefined
+    errorRef.value = undefined
 })
 
 function makeWrapper() {
@@ -25,27 +35,35 @@ describe('useGetSettings', () => {
     it('fetches settings on mount', async () => {
         const { Wrapper } = makeWrapper()
         await renderSuspended(Wrapper)
-        expect(fetchMock).toHaveBeenCalledWith('/api/settings', expect.objectContaining({}))
+        expect(useFetchMock).toHaveBeenCalledWith('/api/settings')
     })
 
     it('populates data after mount', async () => {
-        const response = { mediaPaths: ['/media/a'], tmdbApiKey: 'key', trackers: [], imageHostProviders: [], torrentClients: [] }
+        const response: AppSettings = {
+            mediaPaths: ['/media/a'],
+            tmdbApiKey: 'key',
+            trackers: [],
+            imageHostProviders: [],
+            torrentClients: [],
+            mediainfoPath: '',
+            ffmpegPath: '',
+            ffprobePath: '',
+            movieScreenshotCount: 0,
+            episodePackScreenshotCount: 0,
+            logLevel: 0,
+        }
 
+        dataRef.value = response
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
-
-        fetchMock.mockResolvedValue(response)
-        await getComposable().refresh()
 
         expect(getComposable().data.value).toEqual(response)
     })
 
     it('sets error when fetch throws', async () => {
+        errorRef.value = new Error('network error')
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
-
-        fetchMock.mockRejectedValue(new Error('network error'))
-        await getComposable().refresh()
 
         expect(getComposable().error.value).toBeDefined()
     })
