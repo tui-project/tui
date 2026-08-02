@@ -1,6 +1,7 @@
-import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { fireEvent, screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
+import { isRef, ref, toValue, watch } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import UploadPage from '../../../app/pages/upload.vue'
 
@@ -32,6 +33,53 @@ const fetchedMetadata: Metadata = {
 const FILENAME = 'Movie.2024.1080p.BluRay.ENCODE.H.264.DTS-HD.MA.5.1-GROUP.mkv'
 
 const fetchMock = vi.fn()
+type UseFetchTestOptions = Record<string, unknown> & {
+    query?: unknown
+    body?: unknown
+    transform?: (response: unknown) => unknown
+    watch?: boolean
+    immediate?: boolean
+}
+
+mockNuxtImport('useFetch', () => (request: string | (() => string), options: UseFetchTestOptions = {}) => {
+    const pending = ref(false)
+    const data = ref()
+    const error = ref()
+
+    async function execute() {
+        pending.value = true
+        error.value = undefined
+
+        try {
+            const resolvedOptions =
+                typeof options === 'object'
+                    ? { ...options, query: resolveOptionObject(options.query), body: resolveOptionObject(options.body) }
+                    : options
+            const response = await fetchMock(toValue(request), resolvedOptions)
+            data.value = options.transform ? options.transform(response) : response
+        } catch (fetchError) {
+            error.value = fetchError
+        } finally {
+            pending.value = false
+        }
+    }
+
+    if (options.watch !== false && isRef(options.query)) {
+        watch(options.query, execute)
+    }
+    if (options.immediate !== false) {
+        void execute()
+    }
+
+    return { pending, data, error, execute, refresh: execute }
+})
+
+function resolveOptionObject(value: unknown) {
+    const resolvedValue = isRef(value) ? value.value : value
+    if (!resolvedValue || typeof resolvedValue !== 'object' || Array.isArray(resolvedValue)) return resolvedValue
+
+    return Object.fromEntries(Object.entries(resolvedValue).map(([key, entry]) => [key, isRef(entry) ? entry.value : entry]))
+}
 
 beforeEach(() => {
     vi.clearAllMocks()
@@ -44,7 +92,6 @@ beforeEach(() => {
         if (url === '/api/tracker/ULCX/duplicates') return { duplicates: [] }
         return null
     })
-    vi.stubGlobal('$fetch', fetchMock)
 })
 
 // Navigate to the metadata step and wait until the form is fully populated.
@@ -66,7 +113,7 @@ async function advanceToMetadata() {
 
 // Navigate through all five steps and land on the Review step.
 async function advanceToReview() {
-    const user = await advanceToMetadata()
+    await advanceToMetadata()
     await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
 
     await waitFor(() => expect(screen.getByText('Add the release notes and BBCode details you want included with this upload.')).toBeTruthy())
