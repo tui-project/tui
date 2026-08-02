@@ -2,7 +2,7 @@
 import StepNavigationButtons from './StepNavigationButtons.vue'
 import { useGetSettings } from '~/composables/useGetSettings'
 
-const selectedTrackers = defineModel<string[]>({ default: [] })
+const selectedTrackers = defineModel<string[]>({ default: () => [] })
 
 const emit = defineEmits<{
     back: []
