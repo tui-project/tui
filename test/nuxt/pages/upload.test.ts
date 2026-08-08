@@ -51,10 +51,7 @@ mockNuxtImport('useFetch', () => (request: string | (() => string), options: Use
         error.value = undefined
 
         try {
-            const resolvedOptions =
-                typeof options === 'object'
-                    ? { ...options, query: resolveOptionObject(options.query), body: resolveOptionObject(options.body) }
-                    : options
+            const resolvedOptions = typeof options === 'object' ? { ...options, query: resolveOptionObject(options.query), body: resolveOptionObject(options.body) } : options
             const response = await fetchMock(toValue(request), resolvedOptions)
             data.value = options.transform ? options.transform(response) : response
         } catch (fetchError) {
