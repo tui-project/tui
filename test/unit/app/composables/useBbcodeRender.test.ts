@@ -58,6 +58,20 @@ describe('useBbcodeRender composable', () => {
         expect(html).not.toContain('font-family:')
     })
 
+    it.each([
+        ['[IMG]https://image.test/a.jpg[/img]', 'src="https://image.test/a.jpg"'],
+        ['[Url=https://example.test]Link[/URL]', 'href="https://example.test"'],
+        ['[B]Bold[/b]', 'class="font-bold"'],
+        ['[SpOiLeR]Hidden[/sPoIlEr]', '>Spoiler<'],
+        ['[COMPARISON=Source A, Source B]Body[/comparison]', 'Source A'],
+        ['[LIST][*]Item[/list]', '<li'],
+    ])('renders supported tags case-insensitively: %s', async (bbcode, expected) => {
+        const { useBbcodeRender } = await import('../../../../app/composables/useBbcodeRender')
+        const { toHtml } = useBbcodeRender()
+
+        expect(toHtml(bbcode)).toContain(expected)
+    })
+
     it('renders [*] list items as li elements in any container', async () => {
         const { useBbcodeRender } = await import('../../../../app/composables/useBbcodeRender')
         const { toHtml } = useBbcodeRender()

@@ -1,6 +1,6 @@
 import { TagNode, getUniqAttr, isTagNode } from '@bbob/plugin-helper'
 import presetHTML5 from '@bbob/preset-html5'
-import type { NodeContent, ParseError, PresetTagsDefinition, TagNodeTree } from '@bbob/types'
+import type { BBobCoreTagNodeTree, NodeContent, ParseError, PresetTagsDefinition, TagNodeTree } from '@bbob/types'
 import bbobHTML from '@bbob/html'
 
 export function useBbcodeRender() {
@@ -9,7 +9,7 @@ export function useBbcodeRender() {
     function toHtml(content: string) {
         parseError.value = undefined
 
-        const processed = bbobHTML(normalizeListItems(content), extendedPresetHTML5(), {
+        const processed = bbobHTML(normalizeListItems(content), [normalizeTagNames, extendedPresetHTML5()], {
             caseFreeTags: true,
             onError: (err) => onError(err),
         })
@@ -25,6 +25,14 @@ export function useBbcodeRender() {
         toHtml,
         error: parseError,
     }
+}
+
+function normalizeTagNames(tree: BBobCoreTagNodeTree): BBobCoreTagNodeTree {
+    return tree.walk((node) => {
+        if (isTagNode(node)) return new TagNode(String(node.tag).toLowerCase(), node.attrs, node.content, node.start, node.end)
+
+        return node
+    })
 }
 
 // Wraps runs of bare [*] lines (outside an existing [list]) with [list]...[/list]
