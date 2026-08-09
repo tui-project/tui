@@ -390,6 +390,10 @@ export const [AUDIO_CHANNELS, AUDIO_CHANNEL_OPTIONS] = makeConst({
     '5.1': { value: '5.1', label: '5.1' },
     '6.1': { value: '6.1', label: '6.1' },
     '7.1': { value: '7.1', label: '7.1' },
+    '5.1.2': { value: '5.1.2', label: '5.1.2' },
+    '5.1.4': { value: '5.1.4', label: '5.1.4' },
+    '7.1.2': { value: '7.1.2', label: '7.1.2' },
+    '7.1.4': { value: '7.1.4', label: '7.1.4' },
 })
 export type AudioChannels = (typeof AUDIO_CHANNELS)[keyof typeof AUDIO_CHANNELS]
 

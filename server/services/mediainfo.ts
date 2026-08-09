@@ -34,6 +34,7 @@ export interface ParsedMediainfoMetadata {
 }
 
 const KNOWN_RESOLUTION_HEIGHTS = [...new Set(Object.keys(RESOLUTIONS).map((k) => parseInt(k, 10)))].sort((a, b) => a - b)
+const HEIGHT_CHANNEL_ALIASES = new Set(['vhl', 'vhr', 'lvs', 'rvs'])
 
 export async function parseMetadataFromMediainfo(filePath: string, sourceType: SourceType): Promise<ParsedMediainfoMetadata> {
     logger.debug('Parsing metadata from mediainfo result.', { filePath, sourceType })
@@ -70,7 +71,7 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
 
     const channels = toStringValue(audio, 'Channels')
     const channelLayout = toStringValue(audio, 'ChannelLayout')
-    const audioChannels = parseAudioChannels(channels, channelLayout)
+    const audioChannels = parseAudioChannels(parseInt(channels, 10), channelLayout)
 
     const audioTitle = toStringValue(audio, 'Title')
     const audioMetadata = parseAudioMetadata(audioFormatCommercial, audioTitle)
@@ -333,30 +334,41 @@ function parseAudioCodec(audioFormat: string, formatCommercialIfAny: string): Au
     }
 }
 
-function parseAudioChannels(channels: string, channelLayout: string): AudioChannels | undefined {
+function parseAudioChannels(channels: number, channelLayout: string): AudioChannels | undefined {
     logger.debug('Parse audio channels', { channels, channelLayout })
 
-    switch (true) {
-        case channels === '1':
-            return AUDIO_CHANNELS['1.0']
-        case channels === '2':
-            return AUDIO_CHANNELS['2.0']
-        case channels === '3':
-            return AUDIO_CHANNELS['3.0']
-        case channels === '6' && (channelLayout === 'C L R Ls Rs LFE' || channelLayout === 'L R C LFE Ls Rs'):
-            return AUDIO_CHANNELS['5.1']
-        case channels === '7' && channelLayout === 'C L R Ls Rs LFE Cb':
-            return AUDIO_CHANNELS['6.1']
-        case channels === '8' &&
-            (channelLayout === 'C L R Ls Rs Lb Rb LFE' ||
-                channelLayout === 'L R C LFE Ls Rs Lb Rb' ||
-                channelLayout === 'C L R Ls Rs LFE Lw Rw' ||
-                channelLayout === 'C L R LFE Lb Rb Lss Rss Objects'):
-            return AUDIO_CHANNELS['7.1']
-        default:
-            logger.warn('Unable to detect audio channels from mediainfo.', { channels, channelLayout })
-            return undefined
+    if (channels > 0) {
+        if (channelLayout) {
+            const speakers = channelLayout
+                .trim()
+                .toLowerCase()
+                .split(/\s+/)
+                .filter((channel) => channel !== 'objects')
+
+            if (speakers.length === channels) {
+                const lfe = speakers.filter((channel) => /^lfe\d*$/.test(channel)).length
+                const height = speakers.filter(isHeightChannel).length
+                const bed = channels - lfe - height
+                const value = height > 0 ? `${bed}.${lfe}.${height}` : `${bed}.${lfe}`
+
+                if (Object.values(AUDIO_CHANNELS).includes(value as AudioChannels)) return value as AudioChannels
+            }
+        } else {
+            switch (channels) {
+                case 1:
+                    return AUDIO_CHANNELS['1.0']
+                case 2:
+                    return AUDIO_CHANNELS['2.0']
+            }
+        }
     }
+
+    logger.warn('Unable to detect audio channels from mediainfo.', { channels, channelLayout })
+    return undefined
+}
+
+function isHeightChannel(channel: string): boolean {
+    return channel.startsWith('t') || HEIGHT_CHANNEL_ALIASES.has(channel)
 }
 
 function parseAudioMetadata(formatCommercialIfAny: string, title: string): AudioMetadata {
