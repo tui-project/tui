@@ -72,6 +72,13 @@ describe('useBbcodeRender composable', () => {
         expect(toHtml(bbcode)).toContain(expected)
     })
 
+    it.each([1, 2, 3, 4, 5, 6])('renders h%i tags as the corresponding heading level', async (level) => {
+        const { useBbcodeRender } = await import('../../../../app/composables/useBbcodeRender')
+        const { toHtml } = useBbcodeRender()
+
+        expect(toHtml(`[H${level}]Heading ${level}[/h${level}]`)).toContain(`<h${level}>Heading ${level}</h${level}>`)
+    })
+
     it('renders [*] list items as li elements in any container', async () => {
         const { useBbcodeRender } = await import('../../../../app/composables/useBbcodeRender')
         const { toHtml } = useBbcodeRender()

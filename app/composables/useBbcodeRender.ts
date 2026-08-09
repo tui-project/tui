@@ -65,6 +65,12 @@ const extendedPresetHTML5 = presetHTML5.extend((tags: PresetTagsDefinition<strin
             },
             node.content
         ),
+    h1: (node) => TagNode.create('h1', {}, node.content),
+    h2: (node) => TagNode.create('h2', {}, node.content),
+    h3: (node) => TagNode.create('h3', {}, node.content),
+    h4: (node) => TagNode.create('h4', {}, node.content),
+    h5: (node) => TagNode.create('h5', {}, node.content),
+    h6: (node) => TagNode.create('h6', {}, node.content),
     img: (node, { render }) => {
         const widthAttr = node.attrs?.width
         const rawSize = String(widthAttr ?? getUniqAttr(node.attrs) ?? '').trim()
