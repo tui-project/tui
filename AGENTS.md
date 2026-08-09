@@ -149,6 +149,16 @@ by trusting the parsed episode number first and only overriding it when
 another special scores strictly higher on title matching.
 ```
 
+## Commit and Pull Request Workflow
+
+When asked to commit changes and raise a pull request:
+
+- Do not create or switch to a local feature branch. Commit directly to the local `main` branch.
+- Unless the user explicitly limits the scope, stage and commit all current worktree changes.
+- Push the commit to a remote-only feature branch with `git push origin HEAD:refs/heads/<branch-name>`.
+- Open the pull request against `main` using the remote feature branch as its head.
+- Leave the local `main` branch at the committed revision; do not reset it after pushing.
+
 ## Tracker Duplicate Detection Pattern
 
 When implementing `findDuplicates` for a tracker service, always follow this structure:

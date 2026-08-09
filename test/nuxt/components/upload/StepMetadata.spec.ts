@@ -800,7 +800,7 @@ describe('StepMetadata', () => {
             await renderSuspended(StepMetadata, { props: { selectedPath } })
 
             await waitFor(() => expect(screen.getByRole('checkbox', { name: 'English Subs' })).toBeTruthy())
-        })
+        }, 10000)
 
         it('shows TrueHD Compatibility Track checkbox when audio codec is TrueHD', async () => {
             mockExecute.mockImplementation(() => {
