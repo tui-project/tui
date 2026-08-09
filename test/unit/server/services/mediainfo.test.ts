@@ -309,6 +309,40 @@ describe('mediainfo service', () => {
                 const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
                 expect(result.audioChannels).toBe(expected)
             })
+
+            it.each([
+                {
+                    name: 'uses a coherent original pair when the primary layout is missing',
+                    fields: { Channels: '6', ChannelLayout: '', Channels_Original: '7', ChannelLayout_Original: 'C L R Ls Rs LFE Cb' },
+                    expected: '6.1',
+                },
+                {
+                    name: 'prefers a coherent primary pair',
+                    fields: { Channels: '6', ChannelLayout: 'L R C LFE Ls Rs', Channels_Original: '7', ChannelLayout_Original: 'C L R Ls Rs LFE Cb' },
+                    expected: '5.1',
+                },
+                {
+                    name: 'uses the original pair when the primary pair is inconsistent',
+                    fields: { Channels: '6', ChannelLayout: 'L R', Channels_Original: '7', ChannelLayout_Original: 'C L R Ls Rs LFE Cb' },
+                    expected: '6.1',
+                },
+                {
+                    name: 'rejects an inconsistent original pair',
+                    fields: { Channels: '6', ChannelLayout: '', Channels_Original: '6', ChannelLayout_Original: 'C L R Ls Rs LFE Cb' },
+                    expected: undefined,
+                },
+                {
+                    name: 'rejects incomplete original metadata',
+                    fields: { Channels: '6', ChannelLayout: '', Channels_Original: '7' },
+                    expected: undefined,
+                },
+            ])('$name', async ({ fields, expected }) => {
+                mockTracks(videoTrack(), audioTrack(fields))
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+                expect(result.audioChannels).toBe(expected)
+            })
         })
 
         describe('audioMetadata', () => {

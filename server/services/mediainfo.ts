@@ -71,7 +71,9 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
 
     const channels = toStringValue(audio, 'Channels')
     const channelLayout = toStringValue(audio, 'ChannelLayout')
-    const audioChannels = parseAudioChannels(parseInt(channels, 10), channelLayout)
+    const channelsOriginal = toStringValue(audio, 'Channels_Original')
+    const channelLayoutOriginal = toStringValue(audio, 'ChannelLayout_Original')
+    const audioChannels = parseAudioChannels(parseInt(channels, 10), channelLayout, parseInt(channelsOriginal, 10), channelLayoutOriginal)
 
     const audioTitle = toStringValue(audio, 'Title')
     const audioMetadata = parseAudioMetadata(audioFormatCommercial, audioTitle)
@@ -334,37 +336,42 @@ function parseAudioCodec(audioFormat: string, formatCommercialIfAny: string): Au
     }
 }
 
-function parseAudioChannels(channels: number, channelLayout: string): AudioChannels | undefined {
-    logger.debug('Parse audio channels', { channels, channelLayout })
+function parseAudioChannels(channels: number, channelLayout: string, channelsOriginal: number, channelLayoutOriginal: string): AudioChannels | undefined {
+    logger.debug('Parse audio channels', { channels, channelLayout, channelsOriginal, channelLayoutOriginal })
 
-    if (channels > 0) {
-        if (channelLayout) {
-            const speakers = channelLayout
-                .trim()
-                .toLowerCase()
-                .split(/\s+/)
-                .filter((channel) => channel !== 'objects')
+    const parsed = parseAudioChannelPair(channels, channelLayout) ?? parseAudioChannelPair(channelsOriginal, channelLayoutOriginal)
+    if (parsed) return parsed
 
-            if (speakers.length === channels) {
-                const lfe = speakers.filter((channel) => /^lfe\d*$/.test(channel)).length
-                const height = speakers.filter(isHeightChannel).length
-                const bed = channels - lfe - height
-                const value = height > 0 ? `${bed}.${lfe}.${height}` : `${bed}.${lfe}`
-
-                if (Object.values(AUDIO_CHANNELS).includes(value as AudioChannels)) return value as AudioChannels
-            }
-        } else {
-            switch (channels) {
-                case 1:
-                    return AUDIO_CHANNELS['1.0']
-                case 2:
-                    return AUDIO_CHANNELS['2.0']
-            }
+    if (!channelLayout.trim()) {
+        switch (channels) {
+            case 1:
+                return AUDIO_CHANNELS['1.0']
+            case 2:
+                return AUDIO_CHANNELS['2.0']
         }
     }
 
-    logger.warn('Unable to detect audio channels from mediainfo.', { channels, channelLayout })
+    logger.warn('Unable to detect audio channels from mediainfo.', { channels, channelLayout, channelsOriginal, channelLayoutOriginal })
     return undefined
+}
+
+function parseAudioChannelPair(channels: number, channelLayout: string): AudioChannels | undefined {
+    if (channels <= 0 || !channelLayout.trim()) return undefined
+
+    const speakers = channelLayout
+        .trim()
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((channel) => channel !== 'objects')
+
+    if (speakers.length !== channels) return undefined
+
+    const lfe = speakers.filter((channel) => /^lfe\d*$/.test(channel)).length
+    const height = speakers.filter(isHeightChannel).length
+    const bed = channels - lfe - height
+    const value = height > 0 ? `${bed}.${lfe}.${height}` : `${bed}.${lfe}`
+
+    return Object.values(AUDIO_CHANNELS).includes(value as AudioChannels) ? (value as AudioChannels) : undefined
 }
 
 function isHeightChannel(channel: string): boolean {
