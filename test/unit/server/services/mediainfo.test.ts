@@ -269,9 +269,14 @@ describe('mediainfo service', () => {
 
         describe('audioChannels', () => {
             it.each([
-                { channels: '1', layout: 'C', expected: '1.0' },
+                { channels: '1', layout: 'M', expected: '1.0' },
                 { channels: '2', layout: 'L R', expected: '2.0' },
+                { channels: '3', layout: 'L R LFE', expected: '2.1' },
                 { channels: '3', layout: 'L R C', expected: '3.0' },
+                { channels: '4', layout: 'L R C LFE', expected: '3.1' },
+                { channels: '4', layout: 'L R Ls Rs', expected: '4.0' },
+                { channels: '5', layout: 'L R C Ls Rs', expected: '5.0' },
+                { channels: '5', layout: 'L R Ls Rs LFE', expected: '4.1' },
                 { channels: '6', layout: 'C L R Ls Rs LFE', expected: '5.1' },
                 { channels: '6', layout: 'L R C LFE Ls Rs', expected: '5.1' },
                 { channels: '7', layout: 'C L R Ls Rs LFE Cb', expected: '6.1' },
@@ -279,7 +284,24 @@ describe('mediainfo service', () => {
                 { channels: '8', layout: 'L R C LFE Ls Rs Lb Rb', expected: '7.1' },
                 { channels: '8', layout: 'C L R Ls Rs LFE Lw Rw', expected: '7.1' },
                 { channels: '8', layout: 'C L R LFE Lb Rb Lss Rss Objects', expected: '7.1' },
-                { channels: '9', layout: 'Unknown', expected: undefined },
+                { channels: '8', layout: 'L R C LFE Ls Rs Tfl Tfr', expected: '5.1.2' },
+                { channels: '10', layout: 'L R C LFE Ls Rs Tfl Tfr Tbl Tbr', expected: '5.1.4' },
+                { channels: '10', layout: 'L R C LFE Ls Rs Lb Rb Tfl Tfr', expected: '7.1.2' },
+                { channels: '12', layout: 'L R C LFE Ls Rs Lb Rb Tfl Tfr Tbl Tbr', expected: '7.1.4' },
+                { channels: '8', layout: 'L R C LFE Ls Rs Vhl Vhr', expected: '5.1.2' },
+                { channels: '8', layout: 'L R C LFE Ls Rs Lvs Rvs', expected: '5.1.2' },
+                { channels: '8', layout: '  L  R C LFE Ls Rs TFL TFR  ', expected: '5.1.2' },
+                { channels: '8 channels', layout: 'L R C LFE Ls Rs Lb Rb', expected: '7.1' },
+                { channels: '8 / 6', layout: 'L R C LFE Ls Rs Lb Rb', expected: '7.1' },
+                { channels: '1', layout: '', expected: '1.0' },
+                { channels: '2', layout: '   ', expected: '2.0' },
+                { channels: '6', layout: '', expected: undefined },
+                { channels: '', layout: 'L R', expected: undefined },
+                { channels: '0', layout: '', expected: undefined },
+                { channels: '2', layout: 'L R C', expected: undefined },
+                { channels: '2', layout: 'C LFE', expected: undefined },
+                { channels: '8', layout: 'L R C LFE Ls Rs Tfl', expected: undefined },
+                { channels: '9', layout: 'L R C LFE Ls Rs Lb Rb Cb', expected: undefined },
             ])('$channels ch / "$layout" → $expected', async ({ channels, layout, expected }) => {
                 mockTracks(videoTrack(), audioTrack({ Channels: channels, ChannelLayout: layout }))
                 const { parseMetadataFromMediainfo } = await loadService()

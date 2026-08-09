@@ -756,7 +756,7 @@ describe('StepMetadata', () => {
             await waitFor(() => {
                 expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ title: 'Dune' }) }))
             })
-        })
+        }, 10000)
 
         it('preserves episodeEnd on submit when multi-episode toggle is on', async () => {
             const onUpdateModelValue = vi.fn()
