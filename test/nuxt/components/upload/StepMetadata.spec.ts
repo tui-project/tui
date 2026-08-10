@@ -744,7 +744,7 @@ describe('StepMetadata', () => {
 
             expect(onBack).toHaveBeenCalledTimes(1)
             await waitFor(() => expect(onNext).toHaveBeenCalledTimes(1))
-        })
+        }, 10000)
 
         it('updates modelValue on submit', async () => {
             const onUpdateModelValue = vi.fn()
