@@ -304,10 +304,11 @@ function parseHdr(hdrFormat: string, hdrCompatibility: string): HDR[] {
     return hdr
 }
 
-function parseAudioCodec(audioFormat: string, formatCommercialIfAny: string): AudioCodec | undefined {
+function parseAudioCodec(audioFormat: string, formatCommercialIfAny = ''): AudioCodec | undefined {
     logger.debug('Parse audio codec', { audioFormat, formatCommercialIfAny })
 
     switch (true) {
+        case audioFormat === 'AC-3' && formatCommercialIfAny.startsWith('Dolby Digital Plus'):
         case audioFormat === 'E-AC-3':
         case audioFormat === 'EAC3':
         case audioFormat === 'DDP':
