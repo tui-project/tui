@@ -9,7 +9,7 @@ const dataRef = ref<AppSettings | null>(null)
 const errorRef = ref<unknown>(null)
 let capturedBodyRef: Ref<AppSettings | undefined> | undefined
 
-mockNuxtImport('useFetch', () => (_url: string, options?: { body?: Ref<AppSettings | undefined> }) => {
+mockNuxtImport('useApiFetch', () => (_url: string, options?: { body?: Ref<AppSettings | undefined> }) => {
     capturedBodyRef = options?.body
     return { pending: pendingRef, data: dataRef, error: errorRef, execute: executeMock }
 })
@@ -69,7 +69,7 @@ describe('usePostSettings', () => {
         expect(executeMock).toHaveBeenCalled()
     })
 
-    it('exposes data from useFetch', async () => {
+    it('exposes data from useApiFetch', async () => {
         const response = buildSettings({ tmdbApiKey: 'saved' })
         executeMock.mockImplementation(async () => {
             dataRef.value = response
@@ -81,7 +81,7 @@ describe('usePostSettings', () => {
         expect(getComposable().data.value).toEqual(response)
     })
 
-    it('exposes pending from useFetch', async () => {
+    it('exposes pending from useApiFetch', async () => {
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
 

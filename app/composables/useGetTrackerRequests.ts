@@ -5,7 +5,7 @@ export function useGetTrackerRequests(options?: { page?: Ref<number>; size?: Ref
         withGroupCount: options?.withGroupCount ? 'true' : undefined,
     }))
 
-    const { pending, data, error, refresh } = useFetch<{ items: TrackerRequestResponse[]; total: number }>('/api/tracker/requests', {
+    const { pending, data, error, refresh } = useApiFetch<{ items: TrackerRequestResponse[]; total: number }>('/api/tracker/requests', {
         query,
     })
 

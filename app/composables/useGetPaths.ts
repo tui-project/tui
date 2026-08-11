@@ -13,7 +13,7 @@ type PathResponse = {
 export function useGetPaths(parent: Ref<string>) {
     const query = computed(() => (parent.value ? { parent: parent.value } : undefined))
 
-    const { pending, data, error, refresh } = useFetch('/api/paths', {
+    const { pending, data, error, refresh } = useApiFetch('/api/paths', {
         query: query,
         transform: (paths: PathResponse[]): Path[] =>
             paths.map((path) => ({

@@ -12,7 +12,7 @@ const refreshMock = vi.fn()
 const executeRetryMock = vi.fn()
 let capturedRetryUrlGetter: (() => string) | null = null
 
-mockNuxtImport('useFetch', () => {
+mockNuxtImport('useApiFetch', () => {
     return (url: unknown) => {
         if (typeof url === 'function') {
             capturedRetryUrlGetter = url as () => string

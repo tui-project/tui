@@ -13,7 +13,7 @@ export function usePostTrackerDuplicates() {
         data,
         error,
         execute: _execute,
-    } = useFetch<{ duplicates: DuplicateEntry[] }>(() => `/api/tracker/${trackerCodeRef.value}/duplicates`, {
+    } = useApiFetch<{ duplicates: DuplicateEntry[] }>(() => `/api/tracker/${trackerCodeRef.value}/duplicates`, {
         method: 'POST',
         body: { metadata: metadataRef },
         immediate: false,

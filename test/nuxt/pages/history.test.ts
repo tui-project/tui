@@ -8,7 +8,7 @@ const listData = ref<{ items: Partial<TrackerRequestResponse>[]; total: number }
 const listError = ref<Error | null>(null)
 const listPending = ref(false)
 
-mockNuxtImport('useFetch', () => {
+mockNuxtImport('useApiFetch', () => {
     return () => ({ data: listData, error: listError, pending: listPending, refresh: vi.fn(), execute: vi.fn() })
 })
 

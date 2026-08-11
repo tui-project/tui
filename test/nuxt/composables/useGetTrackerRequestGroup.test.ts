@@ -8,7 +8,7 @@ const dataRef = ref<{ items: TrackerRequestResponse[]; total: number } | null>(n
 const errorRef = ref<unknown>(null)
 let capturedQuery: { groupId: Ref<string | undefined> } | undefined
 
-mockNuxtImport('useFetch', () => (_url: string, options?: { query?: { groupId: Ref<string | undefined> } }) => {
+mockNuxtImport('useApiFetch', () => (_url: string, options?: { query?: { groupId: Ref<string | undefined> } }) => {
     capturedQuery = options?.query
     return { pending: pendingRef, data: dataRef, error: errorRef, execute: executeMock }
 })
@@ -61,7 +61,7 @@ describe('useGetTrackerRequestGroup', () => {
         expect(capturedQuery?.groupId.value).toBe('group-2')
     })
 
-    it('exposes data from useFetch', async () => {
+    it('exposes data from useApiFetch', async () => {
         const items: TrackerRequestResponse[] = [
             { id: '1', groupId: 'g-1', filepath: '/media/movie.mkv', metadata: {} as Metadata, description: '', status: 'pending', trackers: [] },
         ]
@@ -75,7 +75,7 @@ describe('useGetTrackerRequestGroup', () => {
         expect(getComposable().data.value).toEqual({ items, total: 1 })
     })
 
-    it('exposes error from useFetch', async () => {
+    it('exposes error from useApiFetch', async () => {
         executeMock.mockImplementation(async () => {
             errorRef.value = new Error('network error')
         })
@@ -86,7 +86,7 @@ describe('useGetTrackerRequestGroup', () => {
         expect(getComposable().error.value).toBeDefined()
     })
 
-    it('exposes pending from useFetch', async () => {
+    it('exposes pending from useApiFetch', async () => {
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
 

@@ -38,5 +38,5 @@ export type AppSettings = {
 }
 
 export function useGetSettings() {
-    return useFetch<AppSettings>('/api/settings')
+    return useApiFetch<AppSettings>('/api/settings')
 }

@@ -50,6 +50,29 @@ describe('login page flow', async () => {
         await page.waitForSelector('text=Sign in to continue.')
     })
 
+    it('redirects to login when an API request returns 401 after the session expires', async () => {
+        const page = await createPage('/login')
+
+        await page.getByPlaceholder('enter your username').fill('admin')
+        await page.getByPlaceholder('enter your password').fill('Admin@123')
+        await page.getByRole('button', { name: 'Log in' }).click()
+        await page.waitForURL('**/')
+        await page.waitForSelector('text=Dashboard')
+
+        await page.goto(page.url().replace(/\/$/, '') + '/settings')
+        await page.waitForURL('**/settings')
+        await page.waitForSelector('text=Configure settings for the application.')
+        await page.getByPlaceholder('/path/to/media/folder').fill('/tmp/expired-session-test')
+        await page.getByPlaceholder('/path/to/media/folder').press('Enter')
+        await page.getByPlaceholder('Enter TMDB API key').fill('expired-session-test-key')
+
+        await page.context().clearCookies()
+        await page.getByRole('button', { name: 'Save' }).click()
+
+        await page.waitForURL('**/login')
+        await page.waitForSelector('text=Sign in to continue.')
+    })
+
     it('shows an error for invalid credentials', async () => {
         const page = await createPage('/login')
 

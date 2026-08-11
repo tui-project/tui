@@ -8,7 +8,7 @@ export function usePostSettings() {
         data,
         error,
         execute: _execute,
-    } = useFetch<AppSettings>('/api/settings', {
+    } = useApiFetch<AppSettings>('/api/settings', {
         method: 'POST',
         body: bodyRef,
         immediate: false,

@@ -8,7 +8,7 @@ const dataRef = ref<{ duplicates: DuplicateEntry[] } | null>(null)
 const errorRef = ref<unknown>(null)
 let capturedUrlGetter: (() => string) | undefined
 
-mockNuxtImport('useFetch', () => (url: (() => string) | string) => {
+mockNuxtImport('useApiFetch', () => (url: (() => string) | string) => {
     capturedUrlGetter = typeof url === 'function' ? url : () => String(url)
     return { pending: pendingRef, data: dataRef, error: errorRef, execute: executeMock }
 })
@@ -92,7 +92,7 @@ describe('usePostTrackerDuplicates', () => {
         expect(capturedUrlGetter?.()).toBe('/api/tracker/ATH/duplicates')
     })
 
-    it('exposes data from useFetch', async () => {
+    it('exposes data from useApiFetch', async () => {
         const duplicates = [{ name: 'Movie.2024.1080p.BluRay.x264-GROUP', url: 'https://tracker.example.com/torrents/1', trumpable: false }]
         executeMock.mockImplementation(async () => {
             dataRef.value = { duplicates }
@@ -104,7 +104,7 @@ describe('usePostTrackerDuplicates', () => {
         expect(getComposable().data.value).toEqual({ duplicates })
     })
 
-    it('exposes error from useFetch', async () => {
+    it('exposes error from useApiFetch', async () => {
         executeMock.mockImplementation(async () => {
             errorRef.value = new Error('network error')
         })
@@ -115,7 +115,7 @@ describe('usePostTrackerDuplicates', () => {
         expect(getComposable().error.value).toBeDefined()
     })
 
-    it('exposes pending from useFetch', async () => {
+    it('exposes pending from useApiFetch', async () => {
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
 
