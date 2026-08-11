@@ -6,7 +6,7 @@ export function useGetTrackerRequestGroup() {
         data,
         error,
         execute: _execute,
-    } = useFetch<{ items: TrackerRequestResponse[]; total: number }>('/api/tracker/requests', {
+    } = useApiFetch<{ items: TrackerRequestResponse[]; total: number }>('/api/tracker/requests', {
         query: { groupId: groupIdRef },
         immediate: false,
         watch: false,

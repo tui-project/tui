@@ -8,7 +8,7 @@ const dataRef = ref<{ filename: string; metadata: PartialMetadata } | null>(null
 const errorRef = ref<unknown>(null)
 let capturedQuery: { path: Ref<string | undefined> } | undefined
 
-mockNuxtImport('useFetch', () => (_url: string, options?: { query?: { path: Ref<string | undefined> } }) => {
+mockNuxtImport('useApiFetch', () => (_url: string, options?: { query?: { path: Ref<string | undefined> } }) => {
     capturedQuery = options?.query
     return { pending: pendingRef, data: dataRef, error: errorRef, execute: executeMock }
 })
@@ -61,7 +61,7 @@ describe('useGetMetadata', () => {
         expect(capturedQuery?.path.value).toBe('/second/path')
     })
 
-    it('exposes data from useFetch', async () => {
+    it('exposes data from useApiFetch', async () => {
         const response = { filename: 'movie.mkv', metadata: { title: 'My Movie' } as PartialMetadata }
         executeMock.mockImplementation(async () => {
             dataRef.value = response
@@ -73,7 +73,7 @@ describe('useGetMetadata', () => {
         expect(getComposable().data.value).toEqual(response)
     })
 
-    it('exposes error from useFetch', async () => {
+    it('exposes error from useApiFetch', async () => {
         executeMock.mockImplementation(async () => {
             errorRef.value = new Error('network error')
         })
@@ -84,7 +84,7 @@ describe('useGetMetadata', () => {
         expect(getComposable().error.value).toBeDefined()
     })
 
-    it('exposes pending from useFetch', async () => {
+    it('exposes pending from useApiFetch', async () => {
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
 

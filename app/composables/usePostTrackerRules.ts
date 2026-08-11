@@ -12,7 +12,7 @@ export function usePostTrackerRules() {
         data,
         error,
         execute: _execute,
-    } = useFetch<{ violations: RuleViolation[] }>(() => `/api/tracker/${trackerCodeRef.value}/rules`, {
+    } = useApiFetch<{ violations: RuleViolation[] }>(() => `/api/tracker/${trackerCodeRef.value}/rules`, {
         method: 'POST',
         body: { metadata: metadataRef },
         immediate: false,

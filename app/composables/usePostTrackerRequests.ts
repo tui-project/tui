@@ -12,7 +12,7 @@ export function usePostTrackerRequests() {
         pending,
         error,
         execute: _execute,
-    } = useFetch('/api/tracker/requests', {
+    } = useApiFetch('/api/tracker/requests', {
         method: 'POST',
         body: bodyRef,
         immediate: false,

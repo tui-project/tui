@@ -81,7 +81,7 @@ vi.mock('~/composables/usePostTrackerDuplicates', () => ({
 
 mockNuxtImport('useToast', () => () => ({ add: toastAddMock }))
 mockNuxtImport('navigateTo', () => navigateToMock)
-mockNuxtImport('useFetch', () => (url: string, options?: { body?: { value: UploadBody } }) => {
+mockNuxtImport('useApiFetch', () => (url: string, options?: { body?: { value: UploadBody } }) => {
     if (url === '/api/tracker/requests') {
         capturedUploadBody = options?.body ?? null
         return {

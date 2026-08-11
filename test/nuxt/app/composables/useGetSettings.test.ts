@@ -8,7 +8,7 @@ const dataRef = ref<AppSettings | undefined>()
 const errorRef = ref<Error | undefined>()
 const refreshMock = vi.fn()
 
-mockNuxtImport('useFetch', () => (url: string) => {
+mockNuxtImport('useApiFetch', () => (url: string) => {
     useFetchMock(url)
     return { pending: pendingRef, data: dataRef, error: errorRef, refresh: refreshMock }
 })

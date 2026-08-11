@@ -41,7 +41,7 @@ type UseFetchTestOptions = Record<string, unknown> & {
     immediate?: boolean
 }
 
-mockNuxtImport('useFetch', () => (request: string | (() => string), options: UseFetchTestOptions = {}) => {
+mockNuxtImport('useApiFetch', () => (request: string | (() => string), options: UseFetchTestOptions = {}) => {
     const pending = ref(false)
     const data = ref()
     const error = ref()
@@ -102,7 +102,7 @@ async function advanceToMetadata() {
     await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
 
     await waitFor(() => expect(screen.getByText('Review Metadata')).toBeTruthy())
-    // Wait for the fetch response to propagate through useFetch → watch → state → DOM
+    // Wait for the fetch response to propagate through useApiFetch → watch → state → DOM
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Title' }).getAttribute('value')).toBe('Movie'))
 
     return user

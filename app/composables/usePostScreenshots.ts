@@ -15,7 +15,7 @@ export function usePostScreenshots() {
         data,
         error,
         execute: _execute,
-    } = useFetch<ScreenshotResponse>('/api/screenshots', {
+    } = useApiFetch<ScreenshotResponse>('/api/screenshots', {
         method: 'POST',
         body: bodyRef,
         immediate: false,

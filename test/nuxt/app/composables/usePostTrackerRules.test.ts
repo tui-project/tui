@@ -8,7 +8,7 @@ const dataRef = ref<{ violations: RuleViolation[] } | null>(null)
 const errorRef = ref<unknown>(null)
 let capturedUrlGetter: (() => string) | undefined
 
-mockNuxtImport('useFetch', () => (url: (() => string) | string) => {
+mockNuxtImport('useApiFetch', () => (url: (() => string) | string) => {
     capturedUrlGetter = typeof url === 'function' ? url : () => String(url)
     return { pending: pendingRef, data: dataRef, error: errorRef, execute: executeMock }
 })
@@ -92,7 +92,7 @@ describe('usePostTrackerRules', () => {
         expect(capturedUrlGetter?.()).toBe('/api/tracker/ATH/rules')
     })
 
-    it('exposes data from useFetch', async () => {
+    it('exposes data from useApiFetch', async () => {
         const violations = [{ rule: 'banned_release_group', message: 'Release group "YIFY" is banned on ULCX.' }]
         executeMock.mockImplementation(async () => {
             dataRef.value = { violations }
@@ -104,7 +104,7 @@ describe('usePostTrackerRules', () => {
         expect(getComposable().data.value).toEqual({ violations })
     })
 
-    it('exposes error from useFetch', async () => {
+    it('exposes error from useApiFetch', async () => {
         executeMock.mockImplementation(async () => {
             errorRef.value = new Error('network error')
         })
@@ -115,7 +115,7 @@ describe('usePostTrackerRules', () => {
         expect(getComposable().error.value).toBeDefined()
     })
 
-    it('exposes pending from useFetch', async () => {
+    it('exposes pending from useApiFetch', async () => {
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
 

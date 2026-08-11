@@ -8,7 +8,7 @@ const dataRef = ref<{ title: string } | null>(null)
 const errorRef = ref<unknown>(null)
 let capturedUrlGetter: (() => string) | undefined
 
-mockNuxtImport('useFetch', () => (url: (() => string) | string) => {
+mockNuxtImport('useApiFetch', () => (url: (() => string) | string) => {
     capturedUrlGetter = typeof url === 'function' ? url : () => String(url)
     return { pending: pendingRef, data: dataRef, error: errorRef, execute: executeMock }
 })
@@ -92,7 +92,7 @@ describe('usePostTrackerTitle', () => {
         expect(capturedUrlGetter?.()).toBe('/api/tracker/ATH/title')
     })
 
-    it('exposes data from useFetch', async () => {
+    it('exposes data from useApiFetch', async () => {
         executeMock.mockImplementation(async () => {
             dataRef.value = { title: 'Movie 2024 1080p BluRay H.264-GROUP' }
         })
@@ -103,7 +103,7 @@ describe('usePostTrackerTitle', () => {
         expect(getComposable().data.value).toEqual({ title: 'Movie 2024 1080p BluRay H.264-GROUP' })
     })
 
-    it('exposes error from useFetch', async () => {
+    it('exposes error from useApiFetch', async () => {
         executeMock.mockImplementation(async () => {
             errorRef.value = new Error('network error')
         })
@@ -114,7 +114,7 @@ describe('usePostTrackerTitle', () => {
         expect(getComposable().error.value).toBeDefined()
     })
 
-    it('exposes pending from useFetch', async () => {
+    it('exposes pending from useApiFetch', async () => {
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
 

@@ -10,7 +10,7 @@ const errorRef = ref<unknown>(null)
 let capturedBodyRef: Ref<ScreenshotBody | undefined> | undefined
 let capturedTransform: ((res: ScreenshotResponse) => ScreenshotResponse) | undefined
 
-mockNuxtImport('useFetch', () => (_url: string, options?: { body?: Ref<ScreenshotBody | undefined>; transform?: (res: ScreenshotResponse) => ScreenshotResponse }) => {
+mockNuxtImport('useApiFetch', () => (_url: string, options?: { body?: Ref<ScreenshotBody | undefined>; transform?: (res: ScreenshotResponse) => ScreenshotResponse }) => {
     capturedBodyRef = options?.body
     capturedTransform = options?.transform
     return { pending: pendingRef, data: dataRef, error: errorRef, execute: executeMock }
@@ -68,7 +68,7 @@ describe('usePostScreenshots', () => {
         expect(result.screenshots.map((s) => s.order)).toEqual([1, 2, 3])
     })
 
-    it('exposes data from useFetch', async () => {
+    it('exposes data from useApiFetch', async () => {
         const response: ScreenshotResponse = { screenshots: [{ order: 1, url: 'https://img', thumbnailUrl: 'https://thumb' }] }
         executeMock.mockImplementation(async () => {
             dataRef.value = response
@@ -80,7 +80,7 @@ describe('usePostScreenshots', () => {
         expect(getComposable().data.value).toEqual(response)
     })
 
-    it('exposes pending from useFetch', async () => {
+    it('exposes pending from useApiFetch', async () => {
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
 

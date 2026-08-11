@@ -9,7 +9,7 @@ const errorRef = ref<Error | undefined>()
 const refreshMock = vi.fn()
 let capturedOptions: { query: Ref<{ parent: string } | undefined>; transform: (paths: Array<{ path: string; folder: boolean }>) => Path[] } | undefined
 
-mockNuxtImport('useFetch', () => (url: string, options: typeof capturedOptions) => {
+mockNuxtImport('useApiFetch', () => (url: string, options: typeof capturedOptions) => {
     useFetchMock(url, options)
     capturedOptions = options
     return { pending: pendingRef, data: dataRef, error: errorRef, refresh: refreshMock }

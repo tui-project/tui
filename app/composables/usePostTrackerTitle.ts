@@ -2,7 +2,7 @@ export function usePostTrackerTitle() {
     const trackerCodeRef = ref<string>()
     const metadataRef = ref<Metadata>()
 
-    const { pending, data, error, execute } = useFetch<{ title: string }>(() => `/api/tracker/${trackerCodeRef.value}/title`, {
+    const { pending, data, error, execute } = useApiFetch<{ title: string }>(() => `/api/tracker/${trackerCodeRef.value}/title`, {
         method: 'POST',
         body: { metadata: metadataRef },
         immediate: false,

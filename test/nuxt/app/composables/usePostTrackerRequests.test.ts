@@ -8,7 +8,7 @@ const pendingRef = ref(false)
 const errorRef = ref<unknown>(null)
 let capturedBodyRef: Ref<TrackerRequestBody | undefined> | undefined
 
-mockNuxtImport('useFetch', () => (_url: string, options?: { body?: Ref<TrackerRequestBody | undefined> }) => {
+mockNuxtImport('useApiFetch', () => (_url: string, options?: { body?: Ref<TrackerRequestBody | undefined> }) => {
     capturedBodyRef = options?.body
     return { pending: pendingRef, error: errorRef, execute: executeMock }
 })
@@ -56,7 +56,7 @@ describe('usePostTrackerRequests', () => {
         expect(executeMock).toHaveBeenCalled()
     })
 
-    it('exposes error from useFetch', async () => {
+    it('exposes error from useApiFetch', async () => {
         executeMock.mockImplementation(async () => {
             errorRef.value = new Error('network error')
         })
@@ -75,7 +75,7 @@ describe('usePostTrackerRequests', () => {
         expect(getComposable().error.value).toBeFalsy()
     })
 
-    it('exposes pending from useFetch', async () => {
+    it('exposes pending from useApiFetch', async () => {
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
 
