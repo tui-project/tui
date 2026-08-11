@@ -380,12 +380,13 @@ function isHeightChannel(channel: string): boolean {
 }
 
 function parseAudioMetadata(formatCommercialIfAny: string, title: string): AudioMetadata {
+    logger.debug('Parse audio metadata', { formatCommercialIfAny, title })
+
     if (!formatCommercialIfAny || formatCommercialIfAny === 'Dolby Digital Plus') return undefined
 
     if (formatCommercialIfAny.includes('Atmos') || title.includes('Atmos')) return AUDIO_METADATA_TYPES.ATMOS
     if (formatCommercialIfAny.includes('Auro3D') || title.includes('Auro3D')) return AUDIO_METADATA_TYPES.AURO3D
 
-    logger.warn('Unable to detect audio metadata from mediainfo.', { formatCommercialIfAny })
     return undefined
 }
 
