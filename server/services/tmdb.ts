@@ -1,5 +1,7 @@
 import { getSettings } from '../repositories/settings-repository'
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
+
+const logger = createLogger('tmdb')
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 const TMDB_API_KEY_REQUIRED_ERROR = 'tmdb api key is required'
@@ -43,16 +45,18 @@ export interface TMDbSearchResult {
 }
 
 export async function findByTitle(title: string, mediaType: MediaType): Promise<TMDbSearchResult | null> {
+    logger.trace('Find by title', { title, mediaType })
+
     const trimmedTitle = title.trim().normalize('NFC')
     if (!trimmedTitle) {
-        logger.debug('TMDB title lookup skipped due to empty title.')
+        logger.warn('Find by title failed due to empty title.', { mediaType })
         return null
     }
 
-    logger.debug('TMDB title lookup request prepared.', { mediaType, endpoint: 'search/multi', trimmedTitle })
-
     const apiKey = await getApiKey()
     const path = `${TMDB_BASE_URL}/search/multi`
+
+    logger.trace('Find by title request prepared.', { mediaType, endpoint: path, trimmedTitle })
 
     try {
         const response = await $fetch<{ results: TMDbItem[] }>(path, {
@@ -62,16 +66,14 @@ export async function findByTitle(title: string, mediaType: MediaType): Promise<
             },
         })
 
-        logger.trace('TMDB title lookup response', { response })
+        logger.trace('Find by title response received.', { title, mediaType, response })
 
         const results = response.results.filter((item) => item.media_type === mediaType).map((item) => toSearchResult(item, mediaType))
         const match = results[0]
         if (!match) {
-            logger.debug('TMDB title lookup returned no matching result.', { mediaType, resultCount: results.length })
+            logger.warn('Find by title response returned no matching result for media type.', { mediaType })
             return null
         }
-
-        logger.debug('TMDB title lookup matched.', { match })
 
         if (match.media_type === MEDIA_TYPES.TV) {
             const locale = detectLocale(match, results, mediaType)
@@ -80,7 +82,7 @@ export async function findByTitle(title: string, mediaType: MediaType): Promise<
             return match
         }
     } catch (error: unknown) {
-        logger.warn('TMDB request failed.', { path, error })
+        logger.warn('Find by title request failed.', { mediaType, endpoint: path, trimmedTitle, error })
         return null
     }
 }
@@ -90,7 +92,7 @@ async function getApiKey() {
     const apiKey = settings.tmdbApiKey.trim()
 
     if (!apiKey) {
-        logger.warn('TMDB API key missing from settings.')
+        logger.warn('API key missing from settings.')
         throw new Error(TMDB_API_KEY_REQUIRED_ERROR)
     }
 
@@ -145,6 +147,8 @@ function extractYearFromDate(value: string | undefined) {
 }
 
 function detectLocale(match: TMDbSearchResult, allResults: TMDbSearchResult[], mediaType: MediaType): string | undefined {
+    logger.trace('Detecting locale.', { match, allResults })
+
     const duplicates = allResults.filter((item) => item.title === match.title && (mediaType !== MEDIA_TYPES.MOVIE || item.year === match.year)).sort((a, b) => a.year - b.year)
     if (duplicates.length < 2 || duplicates[0]?.id === match.id) return undefined
     if (duplicates[0]?.origin_country === match.origin_country) return undefined
@@ -153,11 +157,13 @@ function detectLocale(match: TMDbSearchResult, allResults: TMDbSearchResult[], m
 }
 
 export async function findLocale(title: string, tmdbId: number, mediaType: MediaType): Promise<string | undefined> {
-    const trimmedTitle = title.trim().normalize('NFC')
-    logger.debug('TMDB locale search request prepared.', { mediaType, endpoint: 'search/multi', trimmedTitle, tmdbId })
+    logger.trace('Find Locale.', { title, tmdbId, mediaType })
 
+    const trimmedTitle = title.trim().normalize('NFC')
     const apiKey = await getApiKey()
     const path = `${TMDB_BASE_URL}/search/multi`
+
+    logger.trace('Locale search request prepared.', { title: trimmedTitle, tmdbId, mediaType, endpoint: path })
 
     try {
         const response = await $fetch<{ results: TMDbItem[] }>(path, {
@@ -167,7 +173,7 @@ export async function findLocale(title: string, tmdbId: number, mediaType: Media
             },
         })
 
-        logger.trace('TMDB locale search response', { response })
+        logger.trace('Locale search response received.', { title: trimmedTitle, tmdbId, mediaType, response })
 
         const results = response.results.filter((item) => item.media_type === mediaType).map((item) => toSearchResult(item, mediaType))
         const match = results.find((item) => item.id === tmdbId)
@@ -175,27 +181,29 @@ export async function findLocale(title: string, tmdbId: number, mediaType: Media
 
         return detectLocale(match, results, mediaType)
     } catch (error: unknown) {
-        logger.warn('TMDB request failed.', { path, error })
+        logger.warn('Locale search request failed.', { title: trimmedTitle, tmdbId, mediaType, endpoint: path, error })
         return undefined
     }
 }
 
 export async function findByExternalID(externalID: string, idType: IDType, mediaType: MediaType): Promise<TMDbSearchResult | null> {
+    logger.trace('Find by external ID.', { externalID, idType, mediaType })
+
     const normalizedExternalID = normalizeTMDbID(externalID)
     if (!normalizedExternalID) {
-        logger.debug('TMDB external id lookup skipped due to empty id.', { mediaType, idType })
+        logger.warn('Find by external ID failed due to empty id.', { mediaType, idType })
         return null
     }
 
     if (idType !== ID_TYPES.IMDB && idType !== ID_TYPES.TVDB) {
-        logger.warn('TMDB external id lookup skipped due to unsupported id type.', { mediaType, idType })
+        logger.warn('Find by external ID failed due to unsupported id type.', { mediaType, idType })
         return null
     }
 
     const apiKey = await getApiKey()
     const path = `${TMDB_BASE_URL}/find/${normalizedExternalID}`
 
-    logger.debug('TMDB external id lookup request prepared.', { mediaType, idType, endpoint: path, externalID: normalizedExternalID })
+    logger.trace('Find by external ID request prepared.', { mediaType, idType, endpoint: path, externalID: normalizedExternalID })
 
     try {
         const response = await $fetch<{ movie_results: TMDbItem[]; tv_results: TMDbItem[] }>(path, {
@@ -205,15 +213,12 @@ export async function findByExternalID(externalID: string, idType: IDType, media
             },
         })
 
-        logger.trace('TMDB external id lookup response', { response })
+        logger.trace('Find by external ID response received.', { externalID, idType, mediaType, response })
 
         const selected = mediaType === MEDIA_TYPES.MOVIE ? response.movie_results[0] : response.tv_results[0]
         if (!selected) {
-            logger.debug('TMDB external id lookup returned no result for requested media type.', {
+            logger.warn('Find by external ID response returned no result for requested media type.', {
                 mediaType,
-                idType,
-                movieResultCount: response.movie_results.length,
-                tvResultCount: response.tv_results.length,
             })
             return null
         }
@@ -225,7 +230,7 @@ export async function findByExternalID(externalID: string, idType: IDType, media
 
         return toSearchResult({ ...selected, external_ids: externalIds }, mediaType)
     } catch (error: unknown) {
-        logger.warn('TMDB request failed.', { path, error })
+        logger.warn('Find by external ID request failed.', { mediaType, idType, endpoint: path, externalID: normalizedExternalID, error })
         return null
     }
 }
@@ -240,16 +245,18 @@ function normalizeTMDbID(value: string) {
 }
 
 export async function getDetails(tmdbID: string, mediaType: MediaType): Promise<TMDbSearchResult | null> {
+    logger.trace('Get details', { tmdbID, mediaType })
+
     const normalizedTMDbID = normalizeTMDbID(tmdbID)
     if (!normalizedTMDbID) {
-        logger.warn('TMDB details lookup skipped due to empty TMDB ID.', { mediaType })
+        logger.warn('Get details lookup skipped due to empty ID.', { mediaType })
         return null
     }
 
     const apiKey = await getApiKey()
     const path = `${TMDB_BASE_URL}/${mediaType}/${normalizedTMDbID}`
 
-    logger.debug('TMDB details request prepared.', { mediaType, endpoint: path, tmdbID: normalizedTMDbID })
+    logger.trace('Get details request prepared.', { mediaType, endpoint: path, tmdbID: normalizedTMDbID })
 
     try {
         const response = await $fetch<TMDbItem>(path, {
@@ -259,26 +266,28 @@ export async function getDetails(tmdbID: string, mediaType: MediaType): Promise<
             },
         })
 
-        logger.trace('TMDB details response', { response })
+        logger.trace('Get details response received.', { mediaType, tmdbID: normalizedTMDbID, response })
 
         return toSearchResult(response, mediaType)
     } catch (error: unknown) {
-        logger.warn('TMDB request failed.', { path, error })
+        logger.warn('Get details request failed.', { mediaType, endpoint: path, tmdbID: normalizedTMDbID, error })
         return null
     }
 }
 
 export async function getExternalIDs(tmdbID: string, mediaType: MediaType): Promise<TMDbExternalIDs | null> {
+    logger.trace('Get external IDs', { tmdbID, mediaType })
+
     const normalizedTMDbID = normalizeTMDbID(tmdbID)
     if (!normalizedTMDbID) {
-        logger.warn('TMDB external ids lookup skipped due to empty TMDB ID.', { mediaType })
+        logger.warn('Get external IDs failed due to empty ID.', { mediaType })
         return null
     }
 
     const apiKey = await getApiKey()
     const path = `${TMDB_BASE_URL}/${mediaType}/${normalizedTMDbID}/external_ids`
 
-    logger.debug('TMDB external ids request prepared.', { mediaType, endpoint: path, tmdbID: normalizedTMDbID })
+    logger.trace('Get external IDs request prepared.', { mediaType, endpoint: path, tmdbID: normalizedTMDbID })
 
     try {
         const response = await $fetch<TMDbExternalIDs>(path, {
@@ -287,11 +296,11 @@ export async function getExternalIDs(tmdbID: string, mediaType: MediaType): Prom
             },
         })
 
-        logger.trace('TMDB external ids response', { response })
+        logger.trace('Get external IDs response received.', { mediaType, tmdbID: normalizedTMDbID, response })
 
         return response
     } catch (error: unknown) {
-        logger.warn('TMDB request failed.', { path, error })
+        logger.warn('Get external IDs request failed.', { path, error })
         return null
     }
 }
@@ -307,7 +316,7 @@ export async function getLanguages(): Promise<{ iso_639_1: string; english_name:
             query: { api_key: apiKey },
         })
 
-        logger.trace('TMDB languages response', { response })
+        logger.trace('TMDB languages response received.', { languageCount: response.length })
 
         return response
     } catch (error: unknown) {
@@ -317,10 +326,12 @@ export async function getLanguages(): Promise<{ iso_639_1: string; english_name:
 }
 
 export async function getAlternativeTitles(tmdbId: number, mediaType: MediaType): Promise<{ iso_3166_1: string; title: string; type: string }[]> {
+    logger.trace('Get alternative titles', { tmdbId, mediaType })
+
     const apiKey = await getApiKey()
     const path = `${TMDB_BASE_URL}/${mediaType}/${tmdbId}/alternative_titles`
 
-    logger.debug('TMDB alternative titles request prepared.', { mediaType, endpoint: path, tmdbId })
+    logger.trace('Get alternative titles request prepared.', { mediaType, endpoint: path, tmdbId })
 
     try {
         const response = await $fetch<{ results?: { iso_3166_1: string; title: string; type: string }[]; titles?: { iso_3166_1: string; title: string; type: string }[] }>(path, {
@@ -329,11 +340,11 @@ export async function getAlternativeTitles(tmdbId: number, mediaType: MediaType)
 
         const entries = response.results ?? response.titles ?? []
 
-        logger.trace('TMDB alternative titles response', { entries })
+        logger.trace('Get alternative titles response received.', { mediaType, tmdbId, entries })
 
         return entries
     } catch (error: unknown) {
-        logger.warn('TMDB request failed.', { path, error })
+        logger.warn('Get alternative titles request failed.', { mediaType, endpoint: path, tmdbId, error })
         return []
     }
 }

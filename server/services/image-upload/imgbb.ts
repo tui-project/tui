@@ -1,8 +1,10 @@
 import { readFile } from 'node:fs/promises'
 import { createError } from 'h3'
 import { z } from 'zod'
-import { logger } from '../../utils/logger'
+import { createLogger } from '../../utils/logger'
 import type { ImageUploadProvider, UploadedImage } from './types'
+
+const logger = createLogger('image-upload:imgbb')
 
 const imgbbResponseSchema = z.object({
     data: z.object({
@@ -26,12 +28,14 @@ export function createImgbbImageUploadProvider(apiKey: string): ImageUploadProvi
                 body: formData,
             })
         } catch (err) {
-            logger.warn('ImgBB upload failed.', { filePath, err })
+            logger.warn('Upload failed.', { filePath, err })
             throw createError({
                 statusCode: 502,
                 message: 'image_upload_failed',
             })
         }
+
+        logger.trace('Image upload response.', { payload })
 
         const result = imgbbResponseSchema.safeParse(payload)
 

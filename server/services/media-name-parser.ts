@@ -1,5 +1,7 @@
 import path from 'node:path'
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
+
+const logger = createLogger('media-name-parser')
 
 export interface ParsedNameMetadata {
     season?: number
@@ -23,7 +25,7 @@ export interface ParsedNameMetadata {
 }
 
 export function parseMetadataFromName(name: string): ParsedNameMetadata {
-    logger.debug('Parsing media metadata from name.', { name })
+    logger.trace('Parsing metadata from name.', { name })
 
     const nameWithoutExtension = stripFileExtension(name)
     const tokens = nameWithoutExtension.split(/[.\s_-]+/).filter(Boolean)
@@ -66,7 +68,7 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
         resolution,
     }
 
-    logger.debug('Parsed media metadata from name.', parsedMetadata)
+    logger.debug('Parsed metadata from name.', parsedMetadata)
 
     return parsedMetadata
 }

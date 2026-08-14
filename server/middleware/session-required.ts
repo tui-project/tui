@@ -1,6 +1,8 @@
 import { createError, getCookie, getRequestURL, sendError, sendRedirect } from 'h3'
 import { deleteExpiredSessions, findActiveSessionById } from '../repositories/session-repository'
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
+
+const logger = createLogger('auth')
 
 const BYPASS_PATHS = ['/setup', '/api/setup', '/login', '/api/login', '/api/_nuxt_icon', '/_ipx']
 

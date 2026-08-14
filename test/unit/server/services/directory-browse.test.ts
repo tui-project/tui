@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const getDirectoryCache = vi.fn<() => Promise<{ path: string; signature: string; items: Array<{ path: string; folder: boolean }> } | null>>()
 const saveDirectoryCache = vi.fn<() => Promise<void>>()
-const loggerError = vi.fn()
+const loggerWarn = vi.fn()
 
 async function buildSignature(dirPath: string): Promise<string> {
     const names = await nodeReaddir(dirPath)
@@ -30,7 +30,7 @@ describe('directory browse service', () => {
         readdirCalls = 0
         getDirectoryCache.mockResolvedValue(null)
         saveDirectoryCache.mockResolvedValue()
-        loggerError.mockReset()
+        loggerWarn.mockReset()
     })
 
     afterEach(async () => {
@@ -43,13 +43,13 @@ describe('directory browse service', () => {
             saveDirectoryCache,
         }))
         vi.doMock('../../../../server/utils/logger', () => ({
-            logger: {
+            createLogger: () => ({
                 debug: vi.fn(),
                 trace: vi.fn(),
-                warn: vi.fn(),
+                warn: loggerWarn,
                 info: vi.fn(),
-                error: loggerError,
-            },
+                error: vi.fn(),
+            }),
         }))
         vi.doMock('h3', () => ({
             createError: (payload: unknown) => payload,
@@ -134,7 +134,7 @@ describe('directory browse service', () => {
         await listChildren(rootDir)
 
         await vi.waitFor(() => {
-            expect(loggerError).toHaveBeenCalledWith('Failed to update directory cache.', expect.any(Error))
+            expect(loggerWarn).toHaveBeenCalledWith('Failed to update directory cache.', expect.any(Error))
         })
     })
 
@@ -146,7 +146,7 @@ describe('directory browse service', () => {
         await listChildren(rootDir)
 
         await vi.waitFor(() => {
-            expect(loggerError).toHaveBeenCalledWith('Failed to update directory cache.', expect.any(Error))
+            expect(loggerWarn).toHaveBeenCalledWith('Failed to update directory cache.', expect.any(Error))
         })
     })
 })

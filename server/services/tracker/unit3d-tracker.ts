@@ -1,9 +1,11 @@
 import { readFile } from 'node:fs/promises'
 import { basename } from 'node:path'
-import { logger } from '../../utils/logger'
+import { createLogger } from '../../utils/logger'
 import { BiMap } from '../../utils/bi-map'
 import { parseMetadataFromName } from '../media-name-parser'
 import { TrackerError, type DuplicateEntry, type TrackerUploadOptions } from './tracker'
+
+const logger = createLogger('tracker:unit3d')
 
 export type TorrentResult = {
     name: string
@@ -92,7 +94,7 @@ export async function upload(
     for (const [key, value] of Object.entries(extraFields)) formData.append(key, value)
 
     logger.info('Uploading torrent to UNIT3D tracker.', { trackerUrl: url, title, torrentPath })
-    logger.debug('request', { formData: Object.fromEntries(formData.entries()) })
+    logger.trace('UNIT3D upload request prepared.', { trackerUrl: url, title, fields: [...formData.keys()] })
 
     try {
         const response = await $fetch<{ data: string }>(`${url}/api/torrents/upload`, {
@@ -105,12 +107,15 @@ export async function upload(
             redirect: 'error',
         })
 
+        logger.debug('UNIT3D upload response received.', { trackerUrl: url, title, response })
         logger.info('Torrent uploaded successfully to UNIT3D tracker.', { trackerUrl: url, title })
 
         return response.data
     } catch (error: unknown) {
         const err = error as { statusCode?: number; data?: unknown }
-        throw new TrackerError(parseUnit3dErrorMessage(err.data), err.statusCode, err.data)
+        const reason = parseUnit3dErrorMessage(err.data)
+        logger.warn('UNIT3D torrent upload failed.', { trackerUrl: url, statusCode: err.statusCode, reason })
+        throw new TrackerError(reason, err.statusCode, err.data)
     }
 }
 
@@ -140,7 +145,7 @@ export async function getTorrents(
     if (params.episodeNumber != null) parts.push(`episodeNumber=${params.episodeNumber}`)
     const query = parts.join('&')
 
-    logger.debug('Fetching existing torrents from UNIT3D tracker.', { trackerUrl: url, query })
+    logger.trace('Fetching existing torrents from UNIT3D tracker.', { trackerUrl: url, query })
 
     try {
         const response = await $fetch<{ data: Array<{ attributes: Attributes }> }>(`${url}/api/torrents/filter?${query}`, {
@@ -149,6 +154,7 @@ export async function getTorrents(
                 Accept: 'application/json',
             },
         })
+        logger.trace('UNIT3D torrent search response received.', { trackerUrl: url, response })
         return response.data.map((t) => mapTorrentAttributes(t.attributes))
     } catch (error: unknown) {
         logger.warn('Failed to fetch torrents from UNIT3D tracker.', { trackerUrl: url, error })
@@ -184,7 +190,7 @@ function mapTorrentAttributes(attrs: Attributes): TorrentResult {
 export function defaultFindDuplicates(candidates: TorrentResult[], metadata: Metadata): DuplicateEntry[] {
     const hasHdr = metadata.hdr.length > 0
 
-    return candidates
+    const duplicates = candidates
         .filter((t) => {
             const torrentHasHdr = t.hdr.length > 0
             if (hasHdr !== torrentHasHdr) return false
@@ -195,4 +201,7 @@ export function defaultFindDuplicates(candidates: TorrentResult[], metadata: Met
             return true
         })
         .map((t) => ({ name: t.name, url: t.url, trumpable: false }))
+
+    logger.trace('Default UNIT3D duplicate check complete.', { title: metadata.title, candidateCount: candidates.length, duplicateCount: duplicates.length })
+    return duplicates
 }

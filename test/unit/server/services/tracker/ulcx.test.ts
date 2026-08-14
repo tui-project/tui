@@ -3,7 +3,7 @@ import { ulcxTrackerService } from '../../../../../server/services/tracker/track
 import { parseMetadataFromName } from '../../../../../server/services/media-name-parser'
 
 vi.mock('../../../../../server/utils/logger', () => ({
-    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+    createLogger: () => ({ trace: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }))
 
 vi.mock('../../../../../server/services/media-name-parser', () => ({

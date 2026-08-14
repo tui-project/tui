@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const logger = {
+    trace: vi.fn(),
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
+    error: vi.fn(),
 }
 
 const readBody = vi.fn<() => Promise<{ username?: string; password?: string }>>()
@@ -27,7 +29,7 @@ async function loadHandler() {
         createUser,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
-        logger,
+        createLogger: () => logger,
     }))
 
     const { default: handler } = await import('../../../../server/api/setup.post')
@@ -49,7 +51,7 @@ describe('POST /api/setup route handler', () => {
             statusCode: 409,
             message: 'setup_completed',
         })
-        expect(logger.warn).toHaveBeenCalled()
+        expect(logger.warn).toHaveBeenCalledWith('Rejected setup request because setup is already completed.', { userCount: 1 })
     })
 
     it('returns bad request when username or password is missing', async () => {
@@ -85,7 +87,7 @@ describe('POST /api/setup route handler', () => {
             statusCode: 400,
             message: 'weak_password',
         })
-        expect(logger.warn).toHaveBeenCalled()
+        expect(logger.warn).toHaveBeenCalledWith('Rejected setup request because password does not meet strength requirements.', { username: 'admin' })
     })
 
     it('creates setup user when payload is valid', async () => {

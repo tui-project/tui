@@ -29,7 +29,7 @@ function mockEvent() {
 }
 
 async function loadHandler() {
-    vi.doMock('../../../../server/utils/logger', () => ({ logger }))
+    vi.doMock('../../../../server/utils/logger', () => ({ createLogger: () => logger }))
     vi.doMock('../../../../server/utils/request-validator', () => ({ parseValidatedBody }))
     vi.doMock('../../../../server/repositories/tracker-request-repository', () => ({
         getTrackerRequest,
@@ -139,6 +139,6 @@ describe('PATCH /api/tracker/requests/:id route handler', () => {
 
         await handler(mockEvent())
 
-        expect(logger.info).toHaveBeenCalledWith('Retrying tracker upload request.', { id: 'upload-1', previousStatus: 'fail' })
+        expect(logger.debug).toHaveBeenCalledWith('Retrying tracker upload request.', { id: 'upload-1', status: 'fail' })
     })
 })

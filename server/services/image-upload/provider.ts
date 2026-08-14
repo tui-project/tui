@@ -1,8 +1,10 @@
 import { createImgbbImageUploadProvider } from './imgbb'
 import { createError } from 'h3'
 import { getSettings } from '../../repositories/settings-repository'
-import { logger } from '../../utils/logger'
+import { createLogger } from '../../utils/logger'
 import type { ImageUploadProvider } from './types'
+
+const logger = createLogger('image-upload')
 
 export async function createImageUploadProvider(): Promise<ImageUploadProvider> {
     logger.trace('Creating image upload provider.')

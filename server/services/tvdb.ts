@@ -1,5 +1,7 @@
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
 import { normaliseSearchString } from '../utils/string'
+
+const logger = createLogger('tvdb')
 
 const SKYHOOK_BASE_URL = 'https://skyhook.sonarr.tv/v1/tvdb/shows/en'
 
@@ -28,13 +30,19 @@ export interface TvdbSpecialRange {
 }
 
 export async function getTvdbSeries(tvdbId: number): Promise<SkyHookSeries | null> {
+    logger.trace('Get Series', { tvdbId })
+
     const url = `${SKYHOOK_BASE_URL}/${tvdbId}`
-    logger.debug('SkyHook series lookup request prepared.', { tvdbId })
+    logger.trace('Get series request prepared.', { tvdbId, url })
 
     try {
-        return await $fetch<SkyHookSeries>(url)
+        const response = await $fetch<SkyHookSeries>(url)
+
+        logger.trace('Get series response received.', { tvdbId, response })
+
+        return response
     } catch (error: unknown) {
-        logger.warn('SkyHook series lookup failed.', { tvdbId, error: toLoggableFetchError(error) })
+        logger.warn('Get series request failed.', { tvdbId, url, error: toLoggableFetchError(error) })
         return null
     }
 }
@@ -51,14 +59,14 @@ function toLoggableFetchError(error: unknown) {
 }
 
 export async function findTvdbSpecial(tvdbId: number, episodeNumber: number, specialName?: string): Promise<TvdbSpecial | null> {
-    logger.debug('SkyHook special lookup request prepared.', { tvdbId, episodeNumber, specialName })
+    logger.trace('Find special episodes of series.', { tvdbId, episodeNumber, specialName })
 
     const series = await getTvdbSeries(tvdbId)
     if (!series) return null
 
     const specials = (series.episodes ?? []).filter((ep) => ep.seasonNumber === 0)
     if (specials.length === 0) {
-        logger.debug('No season 0 episodes found on SkyHook.', { tvdbId })
+        logger.warn('No season 0 episodes found.', { tvdbId })
         return null
     }
 
@@ -69,7 +77,7 @@ export async function findTvdbSpecial(tvdbId: number, episodeNumber: number, spe
         const byNumberTitle = byNumber.title ? normaliseSearchString(byNumber.title) : undefined
 
         if (byNumberTitle === needle) {
-            logger.debug('TVDb special matched by episode number with exact title.', { tvdbId, episodeNumber: byNumber.episodeNumber, title: byNumber.title })
+            logger.debug('Special episode matched by episode number with exact title.', { tvdbId, episodeNumber: byNumber.episodeNumber, title: byNumber.title })
             return { episodeNumber: byNumber.episodeNumber, title: byNumber.title! }
         }
 
@@ -77,18 +85,18 @@ export async function findTvdbSpecial(tvdbId: number, episodeNumber: number, spe
         const byNumberScore = byNumberTitle ? scoreTitleMatch(needle, byNumberTitle) : 0
         const betterMatch = findBestTitleMatch(specials, needle, byNumberScore)
         if (betterMatch && betterMatch.episodeNumber !== byNumber.episodeNumber) {
-            logger.debug('TVDb special matched by title (overriding episode number).', { tvdbId, episodeNumber: betterMatch.episodeNumber, title: betterMatch.title })
+            logger.debug('Special episode matched by title (overriding episode number).', { tvdbId, episodeNumber: betterMatch.episodeNumber, title: betterMatch.title })
             return { episodeNumber: betterMatch.episodeNumber, title: betterMatch.title! }
         }
 
         // No better title match — trust the episode number
         const fallbackTitle = byNumber.title ?? specialName
-        logger.debug('TVDb special matched by episode number (no better title match).', { tvdbId, episodeNumber: byNumber.episodeNumber, title: fallbackTitle })
+        logger.debug('Special episode matched by episode number (no better title match).', { tvdbId, episodeNumber: byNumber.episodeNumber, title: fallbackTitle })
         return { episodeNumber: byNumber.episodeNumber, title: fallbackTitle }
     }
 
     if (byNumber && byNumber.title) {
-        logger.debug('TVDb special matched by episode number (no special name to compare).', { tvdbId, episodeNumber: byNumber.episodeNumber, title: byNumber.title })
+        logger.debug('Special episode matched by episode number (no special name to compare).', { tvdbId, episodeNumber: byNumber.episodeNumber, title: byNumber.title })
         return { episodeNumber: byNumber.episodeNumber, title: byNumber.title }
     }
 
@@ -96,12 +104,12 @@ export async function findTvdbSpecial(tvdbId: number, episodeNumber: number, spe
     if (specialName) {
         const match = findBestTitleMatch(specials, normaliseSearchString(specialName))
         if (match) {
-            logger.debug('TVDb special matched by title (episode number not found).', { tvdbId, episodeNumber: match.episodeNumber, title: match.title })
+            logger.debug('Special episode matched by title (episode number not found).', { tvdbId, episodeNumber: match.episodeNumber, title: match.title })
             return { episodeNumber: match.episodeNumber, title: match.title! }
         }
     }
 
-    logger.debug('No TVDb special match found.', { tvdbId, episodeNumber, specialName })
+    logger.debug('No special episode match found.', { tvdbId, episodeNumber, specialName })
     return null
 }
 
@@ -128,7 +136,7 @@ function findBestTitleMatch(specials: SkyHookEpisode[], needle: string, minScore
 }
 
 export async function findTvdbSpecialRange(tvdbId: number, episodeStart: number, episodeEnd: number): Promise<TvdbSpecialRange | null> {
-    logger.debug('SkyHook special range lookup request prepared.', { tvdbId, episodeStart, episodeEnd })
+    logger.trace('Find special episode range.', { tvdbId, episodeStart, episodeEnd })
 
     const series = await getTvdbSeries(tvdbId)
     if (!series) return null
@@ -137,12 +145,12 @@ export async function findTvdbSpecialRange(tvdbId: number, episodeStart: number,
     const rangeEpisodes = specials.filter((ep) => ep.episodeNumber >= episodeStart && ep.episodeNumber <= episodeEnd)
 
     if (rangeEpisodes.length === 0) {
-        logger.debug('No season 0 episodes found in range.', { tvdbId, episodeStart, episodeEnd })
+        logger.warn('No season 0 episodes found in range.', { tvdbId, episodeStart, episodeEnd })
         return null
     }
 
     const title = extractCommonTitle(rangeEpisodes.map((ep) => ep.title).filter((t): t is string => t !== undefined))
-    logger.debug('TVDb special range resolved.', { tvdbId, episodeStart, episodeEnd: rangeEpisodes[rangeEpisodes.length - 1]!.episodeNumber, title })
+    logger.debug('Special episode range resolved.', { tvdbId, episodeStart, episodeEnd: rangeEpisodes[rangeEpisodes.length - 1]!.episodeNumber, title })
 
     return {
         episodeStart: rangeEpisodes[0]!.episodeNumber,

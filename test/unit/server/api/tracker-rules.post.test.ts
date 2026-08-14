@@ -24,7 +24,7 @@ beforeEach(() => {
 
 async function loadHandler() {
     vi.doMock('h3', () => ({ createError, readBody, getRouterParam }))
-    vi.doMock('../../../../server/utils/logger', () => ({ logger }))
+    vi.doMock('../../../../server/utils/logger', () => ({ createLogger: () => logger }))
     vi.doMock('../../../../server/services/tracker/tracker-factory', () => ({ createTrackerService }))
 
     const { default: handler } = await import('../../../../server/api/tracker/[trackerCode]/rules.post')
@@ -68,8 +68,8 @@ describe('POST /api/tracker/[trackerCode]/rules route handler', () => {
         expect(result).toEqual({ violations })
         expect(createTrackerService).toHaveBeenCalledWith('ULCX')
         expect(checkRulesMock).toHaveBeenCalledWith(expect.objectContaining({ releaseGroup: 'YIFY' }))
-        expect(logger.debug).toHaveBeenCalledWith('Tracker rules check request received.', { trackerCode: 'ULCX' })
-        expect(logger.debug).toHaveBeenCalledWith('Tracker rules checked.', { trackerCode: 'ULCX', violations })
+        expect(logger.trace).toHaveBeenCalledWith('Tracker rules check request received.', { trackerCode: 'ULCX' })
+        expect(logger.trace).toHaveBeenCalledWith('Tracker rules checked.', { trackerCode: 'ULCX', count: violations.length })
     })
 
     it('returns an empty violations array when no rules are violated', async () => {

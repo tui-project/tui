@@ -3,7 +3,9 @@ import { getLanguageDisplayName } from '../../../repositories/language-repositor
 import type { DuplicateEntry, RuleViolation, TrackerService, TrackerUploadOptions } from '../tracker'
 import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
 import { getTorrents, upload } from '../unit3d-tracker'
-import { logger } from '../../../utils/logger'
+import { createLogger } from '../../../utils/logger'
+
+const logger = createLogger('tracker:ath')
 
 // null means banned for ALL source types; a Set means banned only for those specific types
 const BANNED_GROUPS: Map<string, Set<SourceType> | null> = new Map(
@@ -127,6 +129,8 @@ export function athTrackerService(url: string, apiKey: string): TrackerService {
  * Remux                   : Title [AKA Original] LOCALE Year S##E## [Cut] [Ratio] [Hybrid] [REPACK] [PROPER] [RERIP] [Language] Resolution Source REMUX [HDR] VideoCodec [Dub] AudioCodec Channels [Metadata]-Tag
  */
 async function getTitle(metadata: Metadata): Promise<string> {
+    logger.trace('Strting tracker title build.', { metadata })
+
     const parts: string[] = [metadata.title]
 
     if (metadata.originalTitle && metadata.originalTitle !== metadata.title) parts.push(`AKA ${metadata.originalTitle}`)
@@ -165,7 +169,11 @@ async function getTitle(metadata: Metadata): Promise<string> {
     }
 
     const tag = metadata.releaseGroup ? `-${metadata.releaseGroup}` : ''
-    return `${parts.filter(Boolean).join(' ')}${tag}`
+    const title = `${parts.filter(Boolean).join(' ')}${tag}`
+
+    logger.debug('Tracker title built complete.', { metadataTitle: metadata.title, trackerTitle: title })
+
+    return title
 }
 
 async function buildLanguageString(languages: string[]): Promise<string> {
@@ -178,6 +186,8 @@ async function buildLanguageString(languages: string[]): Promise<string> {
 }
 
 function checkRules(metadata: Metadata): RuleViolation[] {
+    logger.trace('Starting tracker rules check.', { metadata })
+
     const violations: RuleViolation[] = []
 
     if (metadata.releaseGroup) {
@@ -217,9 +227,7 @@ function checkRules(metadata: Metadata): RuleViolation[] {
         })
     }
 
-    if (violations.length > 0) {
-        logger.info('ATH rule violations found.', { title: metadata.title, violations: violations.map((v) => v.rule) })
-    }
+    logger.debug('Tracker rules check completed.', { metadataTitle: metadata.title, violationCount: violations.length, violations: violations.map((violation) => violation.rule) })
 
     return violations
 }
@@ -247,6 +255,8 @@ const SD_SOURCE_TRUMP_ORDER: Record<string, number> = {
  *  - API spec       : https://aither.cc/pages/api
  */
 async function findDuplicates(url: string, apiKey: string, metadata: Metadata): Promise<DuplicateEntry[]> {
+    logger.trace('Starting tracker duplicate check.', { metadata })
+
     const resolutions = isSDResolution(metadata.resolution) ? SD_RESOLUTIONS : [metadata.resolution]
     const isWebFamily = isWebSource(metadata.sourceType)
 
@@ -258,6 +268,8 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata): 
         seasonNumber: metadata.mediaType === MEDIA_TYPES.TV ? metadata.season : undefined,
         episodeNumber: metadata.mediaType === MEDIA_TYPES.TV ? (metadata.episode ?? 0) : undefined,
     })
+
+    logger.trace('Candidate torrents from tracker for duplicate check', { candidates })
 
     const uploadHdrTier = getHdrTier(metadata.hdr)
     const sourceTrumpOrder = isSDResolution(metadata.resolution) ? SD_SOURCE_TRUMP_ORDER : WEB_SOURCE_RANK
@@ -288,14 +300,12 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata): 
         .filter(({ existingContext }) => uploadContext.slot === existingContext.slot)
         .map(({ torrent, existingContext }) => ({ name: torrent.name, url: torrent.url, trumpable: TRUMP_RULES.some((rule) => rule(uploadContext, existingContext)) }))
 
-    logger.info('ATH duplicate check complete.', {
+    logger.debug('Tracker duplicate check complete.', {
         title: metadata.title,
         candidates: candidates.length,
         duplicates: duplicates.length,
         trumpable: duplicates.filter((d) => d.trumpable).length,
     })
-    logger.debug('ATH duplicates found.', { title: metadata.title, duplicates })
-
     return duplicates
 }
 

@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { saveTrackerRequest } from '../../../repositories/tracker-request-repository'
-import { logger } from '../../../utils/logger'
+import { createLogger } from '../../../utils/logger'
 import { parseValidatedBody } from '../../../utils/request-validator'
 import { upload as trackerUpload } from '../../../services/tracker-upload'
+
+const logger = createLogger('API')
 
 const trackerItemSchema = z.object({
     code: z.string().trim().min(1),
@@ -25,7 +27,7 @@ function getTrackerCodes(trackers: TrackerItem[]) {
 }
 
 export default defineEventHandler(async (event) => {
-    logger.debug('Tracker upload request received.')
+    logger.trace('Tracker upload request received.')
 
     const request = await parseValidatedBody(event, trackerUploadRequestSchema, {
         onInvalid: (issues) => logger.warn('Rejected tracker upload request with invalid payload.', { issues }),
@@ -41,7 +43,7 @@ export default defineEventHandler(async (event) => {
         status: STATUS.PENDING,
     })
 
-    logger.info('Tracker upload request queued.', {
+    logger.debug('Tracker upload request initiated.', {
         id: uploadRequest.id,
         filepath: uploadRequest.filepath,
         trackerCodes: getTrackerCodes(uploadRequest.trackers),

@@ -7,6 +7,7 @@ const logger = {
     trace: vi.fn(),
     debug: vi.fn(),
     warn: vi.fn(),
+    error: vi.fn(),
 }
 
 beforeEach(() => {
@@ -22,7 +23,7 @@ async function loadService() {
         getSettings,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
-        logger,
+        createLogger: () => logger,
     }))
     vi.doMock('h3', () => ({
         createError,

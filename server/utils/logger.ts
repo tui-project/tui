@@ -1,6 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync, renameSync, statSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
-import { createConsola, LogLevels, type LogObject } from 'consola'
+import { createConsola, LogLevels, type ConsolaInstance, type LogObject } from 'consola'
 
 const logDir = process.env.LOG_DIR ?? join(process.cwd(), 'config', 'logs')
 const logFile = process.env.LOG_FILE ?? join(logDir, 'server.log')
@@ -16,6 +16,7 @@ const baseLogger = createConsola({
         depth: Infinity,
     },
 })
+const scopedLoggers: ConsolaInstance[] = []
 
 if (!logFileDisabled) {
     baseLogger.addReporter({
@@ -29,9 +30,12 @@ function writeFileLog(logObj: LogObject) {
 
     const entry: Record<string, unknown> = {
         time: logObj.date,
-        type: logObj.type,
-        tag: logObj.tag,
+        type: logObj.compactTrace ? 'trace' : logObj.type,
         msg: messageParts.join(' '),
+    }
+
+    if (logObj.tag) {
+        entry.scope = logObj.tag
     }
 
     if (context.length > 0) {
@@ -89,25 +93,27 @@ function rotateLogFileIfNeeded(nextWriteBytes: number) {
     renameSync(logFile, `${logFile}.1`)
 }
 
-const serverLogger = baseLogger.withTag('server')
+export function createLogger(scope: string) {
+    const scopedLogger = baseLogger.withTag(scope)
 
-function writeCompactTrace(...args: unknown[]) {
-    serverLogger._log({
-        args,
-        date: new Date(),
-        level: LogLevels.trace,
-        tag: 'server',
-        type: 'trace',
-    })
+    function writeCompactTrace(...args: unknown[]) {
+        if (LogLevels.trace > scopedLogger.level) {
+            return
+        }
+
+        scopedLogger._log({ args, compactTrace: true, date: new Date(), icon: '→', level: LogLevels.trace, tag: scope, type: '→' as 'trace' })
+    }
+
+    scopedLogger.trace = Object.assign(writeCompactTrace, { raw: writeCompactTrace })
+    scopedLoggers.push(scopedLogger)
+
+    return scopedLogger
 }
-
-serverLogger.trace = Object.assign(writeCompactTrace, {
-    raw: writeCompactTrace,
-})
-
-export const logger = serverLogger
 
 export function setLogLevel(level: number) {
     baseLogger.level = level
-    serverLogger.level = level
+
+    for (const scopedLogger of scopedLoggers) {
+        scopedLogger.level = level
+    }
 }

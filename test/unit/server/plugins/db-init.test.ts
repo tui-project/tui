@@ -36,7 +36,7 @@ describe('db init plugin', () => {
         }))
 
         vi.doMock('../../../../server/utils/logger', () => ({
-            logger,
+            createLogger: () => logger,
         }))
 
         const { default: dbInitPlugin } = await import('../../../../server/plugins/db-init')

@@ -32,7 +32,7 @@ async function loadHandler() {
         findActiveSessionById,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
-        logger,
+        createLogger: () => logger,
     }))
 
     const { default: handler } = await import('../../../../server/middleware/session-required')

@@ -7,17 +7,22 @@ import { analyzeMediaFileAsText } from './mediainfo'
 import { resolveMediaFilePath } from '../utils/file-system'
 import { createTrackerService } from './tracker/tracker-factory'
 import { TrackerError } from './tracker/tracker'
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
 import { injectTorrent } from './torrent-client'
 
+const logger = createLogger('tracker-upload')
+
 export async function upload(uploadRequestId: string, filepath: string, trackers: TrackerItem[], metadata: Metadata, description: string) {
+    logger.debug('Tracker upload request', { id: uploadRequestId, filepath, trackers })
+    logger.trace('Tracker upload request', { metadata, description })
+
     const trackerCodes = trackers.map((t) => t.code)
     let trackerTorrentPaths: Record<string, string> = {}
 
     try {
         await updateTrackerRequestStatus(uploadRequestId, STATUS.TORRENT_CREATION)
 
-        logger.info('Tracker upload request started generic torrent creation.', { id: uploadRequestId, filepath, trackerCodes, status: STATUS.TORRENT_CREATION })
+        logger.debug('Tracker upload request started generic torrent creation.', { id: uploadRequestId, filepath, trackerCodes, status: STATUS.TORRENT_CREATION })
 
         const cachedGenericTorrent = await findGenericTorrentCacheByFilepath(filepath)
         const genericTorrentPath = cachedGenericTorrent ? cachedGenericTorrent.genericTorrentPath : await createGenericTorrentForUploadRequest(uploadRequestId, filepath)
@@ -32,7 +37,7 @@ export async function upload(uploadRequestId: string, filepath: string, trackers
         trackerTorrentPaths = await createTrackerTorrents(genericTorrentPath, filepath, trackerCodes)
 
         await updateTrackerRequestStatus(uploadRequestId, STATUS.UPLOADING)
-        logger.info('Tracker upload request uploading to trackers.', {
+        logger.debug('Starting to upload torrent to trackers.', {
             id: uploadRequestId,
             filepath,
             trackerCodes,
@@ -43,23 +48,24 @@ export async function upload(uploadRequestId: string, filepath: string, trackers
 
         const mediaFilePath = await resolveMediaFilePath(filepath)
         const mediainfoText = await analyzeMediaFileAsText(mediaFilePath)
+
         logger.debug('Mediainfo text ready for tracker upload.', { id: uploadRequestId, mediaFilePath })
 
         const failedTrackerCodes = await uploadToTrackers(uploadRequestId, trackerTorrentPaths, trackers, metadata, description, mediainfoText)
 
         if (failedTrackerCodes.length === 0) {
             await updateTrackerRequestStatus(uploadRequestId, STATUS.SUCCESS)
-            logger.info('Tracker upload request completed successfully.', { id: uploadRequestId, trackerCodes })
+            logger.info('Torrent uploaded successfully.', { id: uploadRequestId, trackerCodes })
         } else if (failedTrackerCodes.length < trackerCodes.length) {
             await updateTrackerRequestStatus(uploadRequestId, STATUS.PARTIAL_SUCCESS, failedTrackerCodes)
-            logger.warn('Tracker upload request completed with partial success.', { id: uploadRequestId, failedTrackerCodes })
+            logger.warn('Torrent upload completed with failures.', { id: uploadRequestId, trackerCodes, failedTrackerCodes })
         } else {
             await updateTrackerRequestStatus(uploadRequestId, STATUS.FAIL)
-            logger.error('Tracker upload request failed for all trackers.', undefined, { id: uploadRequestId, trackerCodes })
+            logger.error('Torrent upload failed for all trackers.', undefined, { id: uploadRequestId, trackerCodes })
         }
     } catch (error: unknown) {
         await updateTrackerRequestStatus(uploadRequestId, STATUS.FAIL)
-        logger.error('Failed to process tracker upload request.', error, { id: uploadRequestId, filepath })
+        logger.warn('Failed to process tracker upload request.', error, { id: uploadRequestId, filepath })
     } finally {
         await removeTrackerTorrents(trackerTorrentPaths)
     }
@@ -104,7 +110,7 @@ async function uploadToTrackers(
             })
             await updateTrackerItem(uploadRequestId, tracker.code, { uploadStatus: 'success' })
 
-            logger.info('Successfully uploaded to tracker.', { trackerCode: tracker.code, torrentDownloadUrl })
+            logger.debug('Successfully uploaded to tracker.', { trackerTitle: tracker.title, trackerCode: tracker.code, torrentDownloadUrl })
 
             if (selectedTorrentClient) {
                 const injected = await injectTorrent(torrentDownloadUrl, selectedTorrentClient)
@@ -117,7 +123,7 @@ async function uploadToTrackers(
         } catch (error: unknown) {
             const context =
                 error instanceof TrackerError ? { trackerCode: tracker.code, statusCode: error.statusCode, responseData: error.responseData } : { trackerCode: tracker.code }
-            logger.error('Failed to upload to tracker.', error, context)
+            logger.warn('Failed to upload to tracker.', error, context)
 
             failedTrackerCodes.push(tracker.code)
             await updateTrackerItem(uploadRequestId, tracker.code, { uploadStatus: 'failed', ...(error instanceof TrackerError && { uploadError: error.reason }) })
@@ -140,6 +146,8 @@ async function removeTrackerTorrents(trackerTorrentPaths: Record<string, string>
 }
 
 async function createTrackerTorrents(genericTorrentPath: string, filepath: string, trackerCodes: string[]): Promise<Record<string, string>> {
+    logger.debug('Creating tracker specific torrent', { genericTorrentPath, filepath, trackerCodes })
+
     const settings = await getSettings()
     const trackersByCode = Object.fromEntries(settings.trackers.map((t) => [t.code, t]))
     const results: Record<string, string> = {}
@@ -154,6 +162,8 @@ async function createTrackerTorrents(genericTorrentPath: string, filepath: strin
         const announceUrl = `${tracker.url}/announce/${tracker.passKey}`
         const { trackerTorrentPath } = await createTrackerTorrent({ genericTorrentPath, trackerCode: code, announceUrl, sourcePath: filepath })
         results[code] = trackerTorrentPath
+
+        logger.trace('Tracker specific torrent created', { trackerCode: code })
     }
 
     return results

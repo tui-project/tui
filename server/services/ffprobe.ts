@@ -1,7 +1,9 @@
 import { createError } from 'h3'
 import { runCommand } from '../utils/process'
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
 import { getSettings } from '../repositories/settings-repository'
+
+const logger = createLogger('ffprobe')
 
 export interface FfprobeVersion {
     version: string

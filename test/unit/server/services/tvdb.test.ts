@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getTvdbSeries, findTvdbSpecial, findTvdbSpecialRange } from '../../../../server/services/tvdb'
 
 vi.mock('../../../../server/utils/logger', () => ({
-    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+    createLogger: () => ({ trace: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }))
 
 const fetchMock = vi.fn()

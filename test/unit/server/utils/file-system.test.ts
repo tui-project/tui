@@ -24,7 +24,7 @@ async function loadModule() {
         createError,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
-        logger,
+        createLogger: () => logger,
     }))
 
     return import('../../../../server/utils/file-system')
@@ -70,7 +70,7 @@ describe('file-system utils', () => {
         const { resolveMediaFilePaths } = await loadModule()
 
         await expect(resolveMediaFilePaths('/media/movie.mkv')).resolves.toEqual(['/media/movie.mkv'])
-        expect(logger.debug).toHaveBeenCalledWith('Resolved media file path directly from file input.', {
+        expect(logger.trace).toHaveBeenCalledWith('Resolved media file path directly from file input.', {
             inputPath: '/media/movie.mkv',
         })
     })
@@ -93,7 +93,7 @@ describe('file-system utils', () => {
         const { resolveMediaFilePaths } = await loadModule()
 
         await expect(resolveMediaFilePaths('/media/show')).resolves.toEqual(['/media/show/episode-01.mkv', '/media/show/episode-02.mkv'])
-        expect(logger.debug).toHaveBeenCalledWith('Resolved media file paths from directory.', {
+        expect(logger.trace).toHaveBeenCalledWith('Resolved media file paths from directory.', {
             inputPath: '/media/show',
             fileCount: 2,
         })

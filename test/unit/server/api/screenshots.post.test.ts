@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const logger = {
+    trace: vi.fn(),
     debug: vi.fn(),
     warn: vi.fn(),
+    error: vi.fn(),
 }
 const readBody = vi.fn()
 const createError = vi.fn((payload: unknown) => payload)
@@ -46,7 +48,7 @@ async function loadHandler() {
         isWithinAnyRoot,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
-        logger,
+        createLogger: () => logger,
     }))
 
     const { default: handler } = await import('../../../../server/api/screenshots.post')

@@ -5,7 +5,9 @@ import { z } from 'zod'
 import { createSession } from '../repositories/session-repository'
 import { findUserByUsername } from '../repositories/user-repository'
 import { parseValidatedBody } from '../utils/request-validator'
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
+
+const logger = createLogger('API')
 
 const scrypt = promisify(scryptCallback)
 const SESSION_TTL_MS = 60 * 60 * 1000
@@ -16,7 +18,7 @@ const loginRequestSchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-    logger.debug('Login request received.')
+    logger.trace('Login request received.')
 
     const { username, password } = await parseValidatedBody(event, loginRequestSchema, {
         onInvalid: (issues) => logger.warn('Rejected login request with invalid payload.', { issues }),
@@ -25,6 +27,7 @@ export default defineEventHandler(async (event) => {
     const user = await findUserByUsername(username)
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
         logger.warn('Rejected login request with invalid credentials.', { username })
+
         throw createError({
             statusCode: 401,
             message: 'invalid_credentials',

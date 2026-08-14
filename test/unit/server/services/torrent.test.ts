@@ -9,6 +9,7 @@ const createTorrent = vi.fn()
 const parseTorrent = vi.fn()
 const toTorrentFile = vi.fn()
 const logger = {
+    trace: vi.fn(),
     debug: vi.fn(),
     info: vi.fn(),
 }
@@ -31,7 +32,7 @@ vi.mock('parse-torrent', () => ({
 }))
 
 vi.mock('../../../../server/utils/logger', () => ({
-    logger,
+    createLogger: () => logger,
 }))
 
 describe('torrent service', () => {

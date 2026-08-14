@@ -1,9 +1,11 @@
 import { deleteCookie, getCookie, setResponseStatus } from 'h3'
 import { removeSessionById } from '../repositories/session-repository'
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
+
+const logger = createLogger('API')
 
 export default defineEventHandler(async (event) => {
-    logger.debug('Logout request received.')
+    logger.trace('Logout request received.')
 
     const sessionId = getCookie(event, 'session_id')
 
