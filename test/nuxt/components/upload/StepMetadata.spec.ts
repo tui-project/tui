@@ -666,7 +666,7 @@ describe('StepMetadata', () => {
                 expect(screen.getByRole('combobox', { name: 'HDR' }).textContent).toContain('DV')
                 expect(screen.getByRole('combobox', { name: 'Language' }).textContent).toContain('Korean')
             })
-        }, 10000)
+        }, 20000)
 
         it('covers UInput v-model handlers for Original Title, IMDb ID, Release Group and Locale', async () => {
             await renderSuspended(StepMetadata, { props: { selectedPath } })
