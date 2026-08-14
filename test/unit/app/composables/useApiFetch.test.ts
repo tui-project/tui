@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const createUseFetchMock = vi.fn()
 const navigateToMock = vi.fn()
+const runWithContextMock = vi.fn((callback: () => unknown) => callback())
 
 beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
     vi.stubGlobal('createUseFetch', createUseFetchMock)
     vi.stubGlobal('navigateTo', navigateToMock)
+    vi.stubGlobal('useNuxtApp', () => ({ runWithContext: runWithContextMock }))
 })
 
 async function loadResponseErrorHandler() {
@@ -25,6 +27,7 @@ describe('useApiFetch', () => {
 
         await onResponseError({ response: { status: 401 } })
 
+        expect(runWithContextMock).toHaveBeenCalledOnce()
         expect(navigateToMock).toHaveBeenCalledWith('/login')
     })
 
@@ -33,6 +36,7 @@ describe('useApiFetch', () => {
 
         await onResponseError({ response: { status } })
 
+        expect(runWithContextMock).not.toHaveBeenCalled()
         expect(navigateToMock).not.toHaveBeenCalled()
     })
 })
