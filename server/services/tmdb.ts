@@ -306,21 +306,23 @@ export async function getExternalIDs(tmdbID: string, mediaType: MediaType): Prom
 }
 
 export async function getLanguages(): Promise<{ iso_639_1: string; english_name: string }[] | null> {
+    logger.trace('Get languages.')
+
     const apiKey = await getApiKey()
     const path = `${TMDB_BASE_URL}/configuration/languages`
 
-    logger.debug('TMDB languages request prepared.')
+    logger.trace('Get languages request prepared.', {path})
 
     try {
         const response = await $fetch<{ iso_639_1: string; english_name: string }[]>(path, {
             query: { api_key: apiKey },
         })
 
-        logger.trace('TMDB languages response received.', { languageCount: response.length })
+        logger.trace('Get languages response received.', { response })
 
         return response
     } catch (error: unknown) {
-        logger.warn('TMDB request failed.', { path, error })
+        logger.warn('Get languages request failed.', { path, error })
         return null
     }
 }
