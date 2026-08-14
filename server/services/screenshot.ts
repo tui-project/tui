@@ -6,9 +6,11 @@ import { generateScreenshotsWithFfmpeg } from './ffmpeg'
 import { probeMediaDuration } from './ffprobe'
 import { createImageUploadProvider } from './image-upload/provider'
 import { resolveMediaFilePath, resolveMediaFilePaths } from '../utils/file-system'
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
 import { getSettings } from '../repositories/settings-repository'
 import type { Settings } from '../model/settings'
+
+const logger = createLogger('screenshot')
 
 export interface ScreenshotResult {
     screenshots: Array<{
@@ -19,7 +21,7 @@ export interface ScreenshotResult {
 }
 
 export async function createScreenshots(inputPath: string, hdr: boolean, tv: boolean): Promise<ScreenshotResult> {
-    logger.debug('Starting screenshot generation.', { inputPath, hdr, tv })
+    logger.trace('Starting screenshot generation.', { inputPath, hdr, tv })
 
     const settings = await getSettings()
     validatSettings(settings)
@@ -66,7 +68,7 @@ export async function createScreenshots(inputPath: string, hdr: boolean, tv: boo
             })
         )
 
-        logger.debug('Screenshot generation completed.', { inputPath, screenshotCount: uploadedScreenshots.length, tv })
+        logger.debug('Screenshot generation completed.', { inputPath, uploadedScreenshots, tv })
         return {
             screenshots: uploadedScreenshots,
         }

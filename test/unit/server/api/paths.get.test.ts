@@ -33,7 +33,7 @@ async function loadHandler() {
     vi.doMock('../../../../server/services/directory-browse', () => ({
         listChildren,
     }))
-    vi.doMock('../../../../server/utils/logger', () => ({ logger }))
+    vi.doMock('../../../../server/utils/logger', () => ({ createLogger: () => logger }))
 
     const { default: handler } = await import('../../../../server/api/paths.get')
     return handler
@@ -92,7 +92,7 @@ describe('GET /api/paths route handler', () => {
             message: 'invalid_parent_path',
         })
         expect(logger.warn).toHaveBeenCalledWith('Rejected directory browse because parent path is outside configured roots.', { parent: '/etc' })
-        expect(logger.error).toHaveBeenCalledWith('Unable to load paths', {
+        expect(logger.warn).toHaveBeenCalledWith('Unable to load paths', {
             statusCode: 400,
             message: 'invalid_parent_path',
         })
@@ -123,6 +123,6 @@ describe('GET /api/paths route handler', () => {
             statusCode: 400,
             message: 'invalid_parent_path',
         })
-        expect(logger.error).toHaveBeenCalledWith('Unable to load paths', expect.any(Error))
+        expect(logger.warn).toHaveBeenCalledWith('Unable to load paths', expect.any(Error))
     })
 })

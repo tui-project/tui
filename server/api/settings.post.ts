@@ -2,9 +2,11 @@ import { stat } from 'node:fs/promises'
 import { createError } from 'h3'
 import { z } from 'zod'
 import { getSettings, saveSettings } from '../repositories/settings-repository'
-import { logger, setLogLevel } from '../utils/logger'
+import { createLogger, setLogLevel } from '../utils/logger'
 import { parseValidatedBody } from '../utils/request-validator'
 import { toSettingsResponse } from './settings-response'
+
+const logger = createLogger('API')
 
 const imageHostProviderSchema = z
     .object({
@@ -109,7 +111,7 @@ const settingsRequestSchema = z
     })
 
 export default defineEventHandler(async (event) => {
-    logger.debug('Settings update request received.')
+    logger.trace('Settings update request received.')
 
     const request = await parseValidatedBody(event, settingsRequestSchema, {
         onInvalid: (issues) => logger.warn('Rejected settings update with invalid payload.', { issues }),

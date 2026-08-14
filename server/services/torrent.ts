@@ -3,7 +3,9 @@ import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 import createTorrent from 'create-torrent'
 import parseTorrent, { toTorrentFile } from 'parse-torrent'
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
+
+const logger = createLogger('torrent')
 
 interface CreateGenericTorrentOptions {
     sourcePath: string
@@ -40,7 +42,7 @@ export async function createGenericTorrent(options: CreateGenericTorrentOptions)
     const pieceLength = await calculatePieceLength(options.sourcePath)
     let lastProgressPercent = -1
 
-    logger.info('Starting generic torrent creation.', {
+    logger.trace('Starting generic torrent creation.', {
         sourcePath: options.sourcePath,
         genericTorrentPath,
         pieceLength,
@@ -62,7 +64,7 @@ export async function createGenericTorrent(options: CreateGenericTorrentOptions)
                     }
 
                     lastProgressPercent = progressPercent
-                    logger.debug('Generic torrent creation progress updated.', {
+                    logger.trace('Generic torrent creation progress updated.', {
                         sourcePath: options.sourcePath,
                         genericTorrentPath,
                         progressPercent,
@@ -90,7 +92,7 @@ export async function createGenericTorrent(options: CreateGenericTorrentOptions)
     const parsedTorrentDetails = parsedTorrent as ParsedTorrentFileDetails
     const fileCount = Array.isArray(parsedTorrentDetails.files) ? parsedTorrentDetails.files.length : undefined
 
-    logger.info('Generic torrent created successfully.', {
+    logger.debug('Generic torrent created successfully.', {
         sourcePath: options.sourcePath,
         genericTorrentPath,
         pieceLength: parsedTorrentDetails.pieceLength,
@@ -146,7 +148,7 @@ export async function createTrackerTorrent(options: CreateTrackerTorrentOptions)
     const trackerTempDirectory = join(tempDirectory, options.trackerCode)
     const trackerTorrentPath = join(trackerTempDirectory, `${sourceName}.torrent`)
 
-    logger.info('Creating tracker-specific torrent.', {
+    logger.trace('Creating tracker-specific torrent.', {
         genericTorrentPath: options.genericTorrentPath,
         trackerTorrentPath,
         trackerCode: options.trackerCode,
@@ -161,7 +163,7 @@ export async function createTrackerTorrent(options: CreateTrackerTorrentOptions)
     const trackerBuffer = Buffer.from(toTorrentFile(parsed as Parameters<typeof toTorrentFile>[0]))
     await writeFile(trackerTorrentPath, trackerBuffer)
 
-    logger.info('Tracker-specific torrent created successfully.', {
+    logger.debug('Tracker-specific torrent created successfully.', {
         trackerTorrentPath,
         trackerCode: options.trackerCode,
     })

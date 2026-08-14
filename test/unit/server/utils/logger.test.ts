@@ -13,7 +13,7 @@ async function importLogger(level = '5', extraEnv: Record<string, string> = {}) 
         process.env[key] = value
     }
 
-    return await import('../../../../server/utils/logger')
+    return import('../../../../server/utils/logger')
 }
 
 async function readLogLines() {
@@ -28,7 +28,8 @@ async function readLogLines() {
 
 describe('server logger', () => {
     it('writes log entries to a file with a msg field', async () => {
-        const { logger } = await importLogger()
+        const { createLogger } = await importLogger()
+        const logger = createLogger('database')
 
         logger.info('Database initialised.')
 
@@ -37,16 +38,27 @@ describe('server logger', () => {
         expect(logs).toHaveLength(1)
         expect(logs[0]).toMatchObject({
             type: 'info',
-            tag: 'server',
+            scope: 'database',
             msg: 'Database initialised.',
         })
         expect(logs[0]).not.toHaveProperty('args')
+        expect(logs[0]).not.toHaveProperty('tag')
+    })
+
+    it('omits scope from file entries when the logger has no tag', async () => {
+        const { createLogger } = await importLogger()
+
+        createLogger('').info('Untagged message')
+
+        const logs = await readLogLines()
+        expect(logs[0]).toMatchObject({ type: 'info', msg: 'Untagged message' })
+        expect(logs[0]).not.toHaveProperty('scope')
     })
 
     it('serializes additional values into the msg field and context', async () => {
-        const { logger } = await importLogger()
+        const { createLogger } = await importLogger()
 
-        logger.info('Created user', { id: 'user-1', username: 'abc' })
+        createLogger('test').info('Created user', { id: 'user-1', username: 'abc' })
 
         const logs = await readLogLines()
 
@@ -55,9 +67,9 @@ describe('server logger', () => {
     })
 
     it('serializes multiple context objects as an array', async () => {
-        const { logger } = await importLogger()
+        const { createLogger } = await importLogger()
 
-        logger.info('Context batch', { id: 'user-1' }, { source: 'setup' })
+        createLogger('test').info('Context batch', { id: 'user-1' }, { source: 'setup' })
 
         const logs = await readLogLines()
         expect(logs[0]?.msg).toBe('Context batch')
@@ -65,7 +77,8 @@ describe('server logger', () => {
     })
 
     it('uses compact trace output without a stack trace', async () => {
-        const { logger } = await importLogger()
+        const { createLogger } = await importLogger()
+        const logger = createLogger('database')
         const logSpy = vi.spyOn(logger, '_log').mockImplementation(() => {})
 
         logger.trace('Initialising database')
@@ -73,18 +86,31 @@ describe('server logger', () => {
         expect(logSpy).toHaveBeenCalledWith(
             expect.objectContaining({
                 args: ['Initialising database'],
+                compactTrace: true,
+                icon: '→',
                 level: 5,
-                tag: 'server',
-                type: 'trace',
+                tag: 'database',
+                type: '→',
             })
         )
     })
 
-    it('does not write debug logs below the configured log level', async () => {
-        const { logger } = await importLogger('3')
+    it('writes compact trace entries to file with the trace type', async () => {
+        const { createLogger } = await importLogger()
+        const logger = createLogger('database')
 
-        logger.debug('Hidden debug message')
-        logger.info('Visible info message')
+        logger.trace('Initialising database')
+
+        const logs = await readLogLines()
+        expect(logs[0]).toMatchObject({ type: 'trace', scope: 'database', msg: 'Initialising database' })
+    })
+
+    it('does not write debug logs below the configured log level', async () => {
+        const { createLogger } = await importLogger('3')
+
+        createLogger('test').debug('Hidden debug message')
+        createLogger('test').trace('Hidden trace message')
+        createLogger('test').info('Visible info message')
 
         const logs = await readLogLines()
 
@@ -93,13 +119,13 @@ describe('server logger', () => {
     })
 
     it('rotates log files when the active file exceeds the configured size', async () => {
-        const { logger } = await importLogger('5', {
+        const { createLogger } = await importLogger('5', {
             LOG_MAX_BYTES: '180',
             LOG_MAX_FILES: '2',
         })
 
-        logger.info('First message that should live in the first file')
-        logger.info('Second message that should rotate the active file')
+        createLogger('test').info('First message that should live in the first file')
+        createLogger('test').info('Second message that should rotate the active file')
 
         const activeLog = await readFile(join(getLogDir(), 'server.log'), 'utf8')
         const rotatedLog = await readFile(join(getLogDir(), 'server.log.1'), 'utf8')
@@ -109,15 +135,15 @@ describe('server logger', () => {
     })
 
     it('keeps only the configured number of rotated log files', async () => {
-        const { logger } = await importLogger('5', {
+        const { createLogger } = await importLogger('5', {
             LOG_MAX_BYTES: '120',
             LOG_MAX_FILES: '2',
         })
 
-        logger.info('First message that will be rotated away eventually')
-        logger.info('Second message that becomes a rotated file')
-        logger.info('Third message that becomes the active file')
-        logger.info('Fourth message that should remove the oldest rotation')
+        createLogger('test').info('First message that will be rotated away eventually')
+        createLogger('test').info('Second message that becomes a rotated file')
+        createLogger('test').info('Third message that becomes the active file')
+        createLogger('test').info('Fourth message that should remove the oldest rotation')
 
         const logFiles = await readdir(getLogDir())
 
@@ -125,14 +151,14 @@ describe('server logger', () => {
     })
 
     it('does not write to log file when file logs are turned off', async () => {
-        const { logger } = await importLogger('5', {
+        const { createLogger } = await importLogger('5', {
             LOG_FILE_DISABLED: 'true',
         })
 
-        logger.info('First message that will be rotated away eventually')
-        logger.info('Second message that becomes a rotated file')
-        logger.info('Third message that becomes the active file')
-        logger.info('Fourth message that should remove the oldest rotation')
+        createLogger('test').info('First message that will be rotated away eventually')
+        createLogger('test').info('Second message that becomes a rotated file')
+        createLogger('test').info('Third message that becomes the active file')
+        createLogger('test').info('Fourth message that should remove the oldest rotation')
 
         const logFiles = await readdir(getLogDir())
 
@@ -140,70 +166,70 @@ describe('server logger', () => {
     })
 
     it('serialises Error values using stack or message', async () => {
-        const { logger } = await importLogger()
+        const { createLogger } = await importLogger()
         const error = new Error('boom')
         error.stack = undefined
 
-        logger.error('Operation failed', error)
+        createLogger('test').error('Operation failed', error)
 
         const logs = await readLogLines()
         expect(logs[0]?.msg).toContain('Operation failed boom')
     })
 
     it('does not rotate when rotation is disabled by config', async () => {
-        const { logger } = await importLogger('5', {
+        const { createLogger } = await importLogger('5', {
             LOG_MAX_BYTES: '0',
             LOG_MAX_FILES: '2',
             LOG_FILE_DISABLED: 'false',
         })
 
-        logger.info('one')
-        logger.info('two')
+        createLogger('test').info('one')
+        createLogger('test').info('two')
 
         const logFiles = await readdir(getLogDir())
         expect(logFiles.sort()).toEqual(['server.log'])
     })
 
     it('serialises primitive non-string values in msg', async () => {
-        const { logger } = await importLogger()
+        const { createLogger } = await importLogger()
 
-        logger.info('User count', 42)
+        createLogger('test').info('User count', 42)
 
         const logs = await readLogLines()
         expect(logs[0]?.msg).toBe('User count 42')
     })
 
     it('serialises null values in msg', async () => {
-        const { logger } = await importLogger()
+        const { createLogger } = await importLogger()
 
-        logger.info('Nullable value', null)
+        createLogger('test').info('Nullable value', null)
 
         const logs = await readLogLines()
         expect(logs[0]?.msg).toBe('Nullable value null')
     })
 
     it('does not rotate when log size stays below max bytes', async () => {
-        const { logger } = await importLogger('5', {
+        const { createLogger } = await importLogger('5', {
             LOG_MAX_BYTES: '100000',
             LOG_MAX_FILES: '2',
             LOG_FILE_DISABLED: 'false',
         })
 
-        logger.info('small message')
+        createLogger('test').info('small message')
 
         const logFiles = await readdir(getLogDir())
         expect(logFiles.sort()).toEqual(['server.log'])
     })
 
     it('does not rotate when an existing log plus next write is still under max', async () => {
-        const { logger } = await importLogger('5', {
+        const { createLogger } = await importLogger('5', {
             LOG_MAX_BYTES: '100000',
             LOG_MAX_FILES: '2',
             LOG_FILE_DISABLED: 'false',
         })
 
-        logger.info('first small message')
-        logger.info('second small message')
+        createLogger('test').info('first small message')
+        createLogger('test').info('second small message')
 
         const logFiles = await readdir(getLogDir())
         expect(logFiles.sort()).toEqual(['server.log'])
@@ -219,8 +245,8 @@ describe('server logger', () => {
             process.chdir(tempCwd)
             vi.resetModules()
 
-            const { logger } = await import('../../../../server/utils/logger')
-            logger.info('default log dir test')
+            const { createLogger } = await import('../../../../server/utils/logger')
+            createLogger('test').info('default log dir test')
 
             const logFiles = await readdir(join(tempCwd, 'config', 'logs'))
             expect(logFiles).toContain('server.log')
@@ -230,7 +256,8 @@ describe('server logger', () => {
     })
 
     it('setLogLevel changes the active log level at runtime', async () => {
-        const { logger, setLogLevel } = await importLogger('3')
+        const { createLogger, setLogLevel } = await importLogger('3')
+        const logger = createLogger('runtime')
 
         logger.info('visible before change')
         setLogLevel(5)
@@ -242,16 +269,29 @@ describe('server logger', () => {
         expect(logs[1]?.msg).toBe('visible after change')
     })
 
+    it('filters compact trace logs after the log level changes at runtime', async () => {
+        const { createLogger, setLogLevel } = await importLogger('5')
+        const logger = createLogger('runtime')
+
+        logger.trace('visible before change')
+        setLogLevel(3)
+        logger.trace('hidden after change')
+        logger.info('visible after change')
+
+        const logs = await readLogLines()
+        expect(logs.map((log) => log.msg)).toEqual(['visible before change', 'visible after change'])
+    })
+
     it('uses default LOG_LEVEL of 5 (debug) when LOG_LEVEL is not set', async () => {
         process.env.LOG_DIR = getLogDir()
         process.env.LOG_FILE_DISABLED = 'false'
         delete process.env.LOG_LEVEL
 
         vi.resetModules()
-        const { logger } = await import('../../../../server/utils/logger')
+        const { createLogger } = await import('../../../../server/utils/logger')
 
-        logger.debug('visible at default level')
-        logger.error('also visible at default level')
+        createLogger('test').debug('visible at default level')
+        createLogger('test').error('also visible at default level')
 
         const logs = await readLogLines()
         expect(logs).toHaveLength(2)

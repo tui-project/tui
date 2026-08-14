@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const logger = {
+    trace: vi.fn(),
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
+    error: vi.fn(),
 }
 const setLogLevel = vi.fn()
 
@@ -33,7 +35,7 @@ async function loadHandler() {
         saveSettings,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
-        logger,
+        createLogger: () => logger,
         setLogLevel,
     }))
 

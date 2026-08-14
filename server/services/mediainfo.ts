@@ -1,6 +1,8 @@
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
 import { runCommand } from '../utils/process'
 import { getSettings } from '../repositories/settings-repository'
+
+const logger = createLogger('mediainfo')
 
 type MediaInfoTrackType = 'General' | 'Video' | 'Audio' | 'Text'
 
@@ -37,7 +39,7 @@ const KNOWN_RESOLUTION_HEIGHTS = [...new Set(Object.keys(RESOLUTIONS).map((k) =>
 const HEIGHT_CHANNEL_ALIASES = new Set(['vhl', 'vhr', 'lvs', 'rvs'])
 
 export async function parseMetadataFromMediainfo(filePath: string, sourceType: SourceType): Promise<ParsedMediainfoMetadata> {
-    logger.debug('Parsing metadata from mediainfo result.', { filePath, sourceType })
+    logger.trace('Parsing metadata.', { filePath, sourceType })
 
     const mediainfo = await analyzeMediaFile(filePath)
     const tracks = getTracks(mediainfo)
@@ -106,22 +108,11 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
         tvdbId,
     }
 
-    logger.debug('Parsed metadata from mediainfo result.', {
+    logger.debug('Parsed metadata from mediainfo.', {
         filePath,
         sourceType,
         trackCount: tracks.length,
-        resolution: parsedMetadata.resolution,
-        videoCodec: parsedMetadata.videoCodec,
-        videoStandard: parsedMetadata.videoStandard,
-        frameRate: parsedMetadata.frameRate,
-        hdr: parsedMetadata.hdr,
-        audioCodec: parsedMetadata.audioCodec,
-        audioChannels: parsedMetadata.audioChannels,
-        languageCount: parsedMetadata.language.length,
-        hasTmdbId: parsedMetadata.tmdbId !== undefined,
-        hasImdbId: Boolean(parsedMetadata.imdbId),
-        hasTvdbId: parsedMetadata.tvdbId !== undefined,
-        hasEnglishSubs: parsedMetadata.hasEnglishSubs,
+        ...{ parsedMetadata },
     })
 
     return parsedMetadata
@@ -131,14 +122,14 @@ export async function analyzeMediaFileAsText(filePath: string): Promise<string> 
     const settings = await getSettings()
     const mediainfoPath = settings.mediainfoPath
 
-    logger.debug('Starting mediainfo CLI analysis.', { filePath, mediainfoPath })
+    logger.debug('Starting CLI analysis.', { filePath, mediainfoPath })
 
     try {
         const { stdout } = await runCommand(mediainfoPath, [filePath])
-        logger.info('Completed mediainfo CLI analysis.', { filePath, mediainfoPath })
+        logger.info('CLI analysis completed.', { filePath, mediainfoPath })
         return stdout
     } catch (error: unknown) {
-        logger.error('Mediainfo CLI analysis failed.', error, { filePath, mediainfoPath })
+        logger.error('CLI analysis failed.', error, { filePath, mediainfoPath })
         return ''
     }
 }
@@ -147,15 +138,17 @@ async function analyzeMediaFile(filePath: string): Promise<MediaInfoResult> {
     const settings = await getSettings()
     const mediainfoPath = settings.mediainfoPath
 
-    logger.debug('Starting mediainfo analysis.', { filePath, mediainfoPath })
+    logger.debug('Starting CLI analysis.', { filePath, mediainfoPath })
 
     try {
         const { stdout } = await runCommand(mediainfoPath, ['--Output=JSON', filePath])
         const result = JSON.parse(stdout) as MediaInfoResult
-        logger.info('Completed mediainfo analysis.', { filePath, mediainfoPath })
+
+        logger.debug('CLI analysis completed.', { result })
+
         return result
     } catch (error: unknown) {
-        logger.error('Mediainfo analysis failed.', error, { filePath, mediainfoPath })
+        logger.error('CLI analysis failed.', error, { filePath, mediainfoPath })
         return {}
     }
 }
@@ -169,6 +162,8 @@ function findTrack(tracks: MediaInfoTrack[], type: MediaInfoTrackType) {
 }
 
 function findDefaultAudioTrack(tracks: MediaInfoTrack[]) {
+    logger.trace('Find default audio track.')
+
     let firstAudio: MediaInfoTrack | undefined
 
     for (const track of tracks) {
@@ -176,6 +171,8 @@ function findDefaultAudioTrack(tracks: MediaInfoTrack[]) {
         if (!firstAudio) firstAudio = track
         if (toStringValue(track, 'Default').toLowerCase() === 'yes') return track
     }
+
+    logger.trace('Find default audio track completed.', { defaultAudioTrack: firstAudio })
 
     return firstAudio
 }
@@ -197,6 +194,8 @@ function toStringValue(track: MediaInfoTrack | undefined, key: string): string {
 }
 
 function parseResolution(height: number, scanType: string): Resolution | undefined {
+    logger.debug('Parse resolution.', { height, scanType })
+
     if (!height) return undefined
 
     const snappedHeight = closestAbove(KNOWN_RESOLUTION_HEIGHTS, height)
@@ -205,7 +204,7 @@ function parseResolution(height: number, scanType: string): Resolution | undefin
     const scan = getScanSuffix(scanType)
     const resolution = RESOLUTIONS[`${snappedHeight}${scan}` as keyof typeof RESOLUTIONS]
     if (!resolution) {
-        logger.warn('Unable to detect resolution from mediainfo.', { height, scanType })
+        logger.warn('Unable to detect resolution.', { height, scanType })
     }
 
     return resolution
@@ -225,6 +224,8 @@ function getScanSuffix(scanType: string): 'i' | 'p' {
 }
 
 function parseVideoCodec(format: string, formatVersion: string, sourceType: SourceType): VideoCodec | undefined {
+    logger.debug('Parse video codec.', { format, formatVersion, sourceType })
+
     switch (true) {
         case format === 'AVC' && sourceType === SOURCE_TYPES.WEBRIP:
             return VIDEO_CODECS.X264
@@ -249,12 +250,14 @@ function parseVideoCodec(format: string, formatVersion: string, sourceType: Sour
         case format === 'AV1':
             return VIDEO_CODECS.AV1
         default:
-            logger.warn('Unknown video codec from mediainfo.', { format, formatVersion, sourceType })
+            logger.warn('Unabled to detect video codec.', { format, formatVersion, sourceType })
             return undefined
     }
 }
 
 function parseVideoStandard(standard: string): VideoStandard | undefined {
+    logger.debug('Parse video standard.', { standard })
+
     if (standard === 'NTSC') return VIDEO_STANDARDS.NTSC
     if (standard === 'PAL') return VIDEO_STANDARDS.PAL
 
@@ -272,10 +275,14 @@ function parseNumberValue(track: MediaInfoTrack | undefined, key: string): numbe
 }
 
 function parseHi10p(format: string, formatProfile: string): boolean {
+    logger.debug('Parse Hi10p.', { format, formatProfile })
+
     return format === 'AVC' && formatProfile.includes('High 10')
 }
 
 function parseHdr(hdrFormat: string, hdrCompatibility: string): HDR[] {
+    logger.debug('Parse HDR.', { hdrFormat, hdrCompatibility })
+
     if (!hdrFormat && !hdrCompatibility) return []
 
     const values = new Set<HDR>()
@@ -298,14 +305,14 @@ function parseHdr(hdrFormat: string, hdrCompatibility: string): HDR[] {
 
     const hdr = [...values].sort((a, b) => a.localeCompare(b))
     if (hdr.length === 0) {
-        logger.warn('Unable to detect HDR from mediainfo.', { hdrFormat, hdrCompatibility })
+        logger.warn('Unable to detect HDR.', { hdrFormat, hdrCompatibility })
     }
 
     return hdr
 }
 
 function parseAudioCodec(audioFormat: string, formatCommercialIfAny = ''): AudioCodec | undefined {
-    logger.debug('Parse audio codec', { audioFormat, formatCommercialIfAny })
+    logger.debug('Parse audio codec.', { audioFormat, formatCommercialIfAny })
 
     switch (true) {
         case audioFormat === 'AC-3' && formatCommercialIfAny.startsWith('Dolby Digital Plus'):
@@ -332,13 +339,13 @@ function parseAudioCodec(audioFormat: string, formatCommercialIfAny = ''): Audio
         case audioFormat === 'MLP FBA':
             return AUDIO_CODECS.TRUEHD
         default:
-            logger.warn('Unable to detect audio codec from mediainfo.', { audioFormat, formatCommercialIfAny })
+            logger.warn('Unable to detect audio codec.', { audioFormat, formatCommercialIfAny })
             return undefined
     }
 }
 
 function parseAudioChannels(channels: number, channelLayout: string, channelsOriginal: number, channelLayoutOriginal: string): AudioChannels | undefined {
-    logger.debug('Parse audio channels', { channels, channelLayout, channelsOriginal, channelLayoutOriginal })
+    logger.debug('Parse audio channels.', { channels, channelLayout, channelsOriginal, channelLayoutOriginal })
 
     const parsed = parseAudioChannelPair(channels, channelLayout) ?? parseAudioChannelPair(channelsOriginal, channelLayoutOriginal)
     if (parsed) return parsed
@@ -352,11 +359,13 @@ function parseAudioChannels(channels: number, channelLayout: string, channelsOri
         }
     }
 
-    logger.warn('Unable to detect audio channels from mediainfo.', { channels, channelLayout, channelsOriginal, channelLayoutOriginal })
+    logger.warn('Unable to detect audio channels.', { channels, channelLayout, channelsOriginal, channelLayoutOriginal })
     return undefined
 }
 
 function parseAudioChannelPair(channels: number, channelLayout: string): AudioChannels | undefined {
+    logger.debug('Parse audio channel pair', { channels, channelLayout })
+
     if (channels <= 0 || !channelLayout.trim()) return undefined
 
     const speakers = channelLayout
@@ -380,7 +389,7 @@ function isHeightChannel(channel: string): boolean {
 }
 
 function parseAudioMetadata(formatCommercialIfAny: string, title: string): AudioMetadata {
-    logger.debug('Parse audio metadata', { formatCommercialIfAny, title })
+    logger.debug('Parse audio metadata.', { formatCommercialIfAny, title })
 
     if (!formatCommercialIfAny || formatCommercialIfAny === 'Dolby Digital Plus') return undefined
 
@@ -391,6 +400,8 @@ function parseAudioMetadata(formatCommercialIfAny: string, title: string): Audio
 }
 
 function parseAudioLanguages(tracks: MediaInfoTrack[]): string[] {
+    logger.trace('Parse audio languages.')
+
     const unique = new Set<string>()
 
     for (const track of tracks) {
@@ -418,6 +429,8 @@ function normalizeAudioLanguage(value: string) {
 }
 
 function parseTrueHDCompatibilityTrack(tracks: MediaInfoTrack[]): boolean {
+    logger.trace('Parse TrueHD compatibility track.')
+
     return tracks.some((track) => {
         if (!isTrackType(track, 'Audio')) return false
         if (isCommentaryAudioTrack(track)) return false
@@ -428,6 +441,8 @@ function parseTrueHDCompatibilityTrack(tracks: MediaInfoTrack[]): boolean {
 }
 
 function parseHasEnglishSubs(tracks: MediaInfoTrack[]): boolean {
+    logger.trace('Parse has english subtitles.')
+
     return tracks.some((track) => {
         if (!isTrackType(track, 'Text')) return false
         const language = toStringValue(track, 'Language').trim().toLowerCase()

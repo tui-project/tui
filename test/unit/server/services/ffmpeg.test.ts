@@ -26,7 +26,7 @@ async function loadService() {
         getSettings,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
-        logger,
+        createLogger: () => logger,
     }))
     vi.doMock('h3', () => ({
         createError,

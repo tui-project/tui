@@ -6,7 +6,7 @@ import { parseMetadataFromName } from '../../../../../server/services/media-name
 
 vi.mock('node:fs/promises', () => ({ readFile: vi.fn() }))
 vi.mock('../../../../../server/utils/logger', () => ({
-    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+    createLogger: () => ({ trace: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }))
 vi.mock('../../../../../server/services/media-name-parser', () => ({
     parseMetadataFromName: vi.fn(() => ({ season: undefined, episode: undefined, repack: 0, proper: 0, rerip: 0, hdr: [], videoCodec: undefined })),

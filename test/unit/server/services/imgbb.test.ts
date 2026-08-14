@@ -6,6 +6,7 @@ const logger = {
     trace: vi.fn(),
     debug: vi.fn(),
     warn: vi.fn(),
+    error: vi.fn(),
 }
 
 vi.mock('node:fs/promises', () => ({
@@ -22,7 +23,7 @@ async function loadService() {
         createError,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
-        logger,
+        createLogger: () => logger,
     }))
 
     return import('../../../../server/services/image-upload/imgbb')

@@ -1,7 +1,9 @@
 import { readdir, stat } from 'node:fs/promises'
 import { createError } from 'h3'
 import { sep } from 'node:path'
-import { logger } from './logger'
+import { createLogger } from './logger'
+
+const logger = createLogger('file-system')
 
 export interface MediaPathItem {
     path: string
@@ -28,6 +30,7 @@ export async function resolveMediaFilePath(inputPath: string): Promise<string> {
 
     const mediaFilePaths = await resolveMediaFilePaths(inputPath)
     const mediaFilePath = mediaFilePaths[0] as string
+
     logger.debug('Resolved media file path.', { inputPath, mediaFilePath })
 
     return mediaFilePath
@@ -38,7 +41,8 @@ export async function resolveMediaFilePaths(inputPath: string): Promise<string[]
 
     const pathStats = await stat(inputPath)
     if (pathStats.isFile()) {
-        logger.debug('Resolved media file path directly from file input.', { inputPath })
+        logger.trace('Resolved media file path directly from file input.', { inputPath })
+
         return [inputPath]
     }
 
@@ -57,11 +61,12 @@ export async function resolveMediaFilePaths(inputPath: string): Promise<string[]
         }
 
         if (mediaFilePaths.length > 0) {
-            logger.debug('Resolved media file paths from directory.', { inputPath, fileCount: mediaFilePaths.length })
+            logger.trace('Resolved media file paths from directory.', { inputPath, fileCount: mediaFilePaths.length })
             return mediaFilePaths
         }
 
         logger.warn('Rejected media file resolution because no files were found in directory.', { path: inputPath })
+
         throw createError({
             statusCode: 400,
             message: 'no_media_file_found',
@@ -69,6 +74,7 @@ export async function resolveMediaFilePaths(inputPath: string): Promise<string[]
     }
 
     logger.warn('Rejected media file resolution because path is not a file or directory.', { path: inputPath })
+
     throw createError({
         statusCode: 400,
         message: 'invalid_path',

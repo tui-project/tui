@@ -84,7 +84,7 @@ async function loadHandler() {
         findTvdbSpecialRange,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
-        logger,
+        createLogger: () => logger,
     }))
 
     const { default: handler } = await import('../../../../server/api/metadata.get')

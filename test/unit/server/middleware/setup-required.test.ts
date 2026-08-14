@@ -23,7 +23,7 @@ async function loadHandler() {
         userCount,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
-        logger,
+        createLogger: () => logger,
     }))
 
     const { default: handler } = await import('../../../../server/middleware/setup-required')

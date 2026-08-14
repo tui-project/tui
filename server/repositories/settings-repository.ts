@@ -1,5 +1,8 @@
 import type { ImageHostProviderSettings, Settings, TorrentClientSettings, TrackerSettings } from '../model/settings'
 import { settingsCollection } from '../utils/db'
+import { createLogger } from '../utils/logger'
+
+const logger = createLogger('repository:settings')
 
 export const DEFAULT_SETTINGS: Settings = {
     id: 'app-settings',
@@ -50,6 +53,8 @@ export const DEFAULT_SETTINGS: Settings = {
 }
 
 export async function getSettings() {
+    logger.trace('Loading application settings.')
+
     const settings = await settingsCollection.findOneAsync({ id: DEFAULT_SETTINGS.id } as Settings | Record<string, unknown>)
 
     return {
@@ -62,6 +67,8 @@ export async function getSettings() {
 }
 
 export async function saveSettings(settingsInput: Omit<Settings, 'id'>) {
+    logger.trace('Saving application settings.')
+
     const settings = {
         id: DEFAULT_SETTINGS.id,
         mediaPaths: settingsInput.mediaPaths,

@@ -16,11 +16,11 @@ beforeEach(() => {
 })
 
 vi.mock('../../../../server/utils/logger', () => ({
-    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+    createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }))
 
 async function loadModule() {
-    vi.doMock('../../../../server/utils/logger', () => ({ logger }))
+    vi.doMock('../../../../server/utils/logger', () => ({ createLogger: () => logger }))
     return import('../../../../server/services/torrent-client')
 }
 
@@ -81,7 +81,7 @@ describe('injectTorrent', () => {
             const result = await injectTorrent('https://tracker.example.com/torrent/1', buildClient())
 
             expect(result).toBe(false)
-            expect(logger.error).toHaveBeenCalledWith('qui injection failed.', fetchError, {
+            expect(logger.warn).toHaveBeenCalledWith('qui injection failed.', fetchError, {
                 torrentDownloadUrl: 'https://tracker.example.com/torrent/1',
                 quiUrl: 'http://qui.local',
             })
@@ -95,7 +95,7 @@ describe('injectTorrent', () => {
             const result = await injectTorrent('https://tracker.example.com/torrent/1', buildClient())
 
             expect(result).toBe(false)
-            expect(logger.error).toHaveBeenCalledWith('qui injection failed.', apiError, {
+            expect(logger.warn).toHaveBeenCalledWith('qui injection failed.', apiError, {
                 torrentDownloadUrl: 'https://tracker.example.com/torrent/1',
                 quiUrl: 'http://qui.local',
             })

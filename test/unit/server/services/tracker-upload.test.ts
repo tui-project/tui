@@ -86,7 +86,7 @@ async function loadService() {
     vi.doMock('../../../../server/utils/file-system', () => ({ resolveMediaFilePath }))
     vi.doMock('../../../../server/services/tracker/tracker-factory', () => ({ createTrackerService }))
     vi.doMock('../../../../server/services/torrent-client', () => ({ injectTorrent }))
-    vi.doMock('../../../../server/utils/logger', () => ({ logger }))
+    vi.doMock('../../../../server/utils/logger', () => ({ createLogger: () => logger }))
 
     const service = await import('../../../../server/services/tracker-upload')
     const { TrackerError } = await import('../../../../server/services/tracker/tracker')
@@ -241,7 +241,7 @@ describe('tracker upload service', () => {
                 uploadStatus: 'failed',
                 uploadError: 'The name has already been taken.',
             })
-            expect(logger.error).toHaveBeenCalledWith('Failed to upload to tracker.', expect.any(Object), { trackerCode: 'TRK1', statusCode: 422, responseData })
+            expect(logger.warn).toHaveBeenCalledWith('Failed to upload to tracker.', expect.any(Object), { trackerCode: 'TRK1', statusCode: 422, responseData })
         })
 
         it('omits uploadError and logs only trackerCode for non-tracker errors', async () => {
@@ -251,7 +251,7 @@ describe('tracker upload service', () => {
             await upload('req-1', '/media/Movie.mkv', [defaultTrackers[0]!], defaultMetadata, 'desc')
 
             expect(updateTrackerItem).toHaveBeenCalledWith('req-1', 'TRK1', { uploadStatus: 'failed' })
-            expect(logger.error).toHaveBeenCalledWith('Failed to upload to tracker.', expect.any(Error), { trackerCode: 'TRK1' })
+            expect(logger.warn).toHaveBeenCalledWith('Failed to upload to tracker.', expect.any(Error), { trackerCode: 'TRK1' })
         })
 
         it('sets fail when all trackers fail', async () => {
@@ -289,7 +289,7 @@ describe('tracker upload service', () => {
             await upload('req-1', '/media/Movie.mkv', defaultTrackers, defaultMetadata, 'desc')
 
             expect(updateTrackerRequestStatus).toHaveBeenCalledWith('req-1', 'fail')
-            expect(logger.error).toHaveBeenCalledWith('Failed to process tracker upload request.', expect.any(Error), { id: 'req-1', filepath: '/media/Movie.mkv' })
+            expect(logger.warn).toHaveBeenCalledWith('Failed to process tracker upload request.', expect.any(Error), { id: 'req-1', filepath: '/media/Movie.mkv' })
         })
     })
 

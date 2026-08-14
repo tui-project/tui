@@ -42,7 +42,7 @@ async function loadHandler() {
         setResponseStatus,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
-        logger,
+        createLogger: () => logger,
     }))
     vi.doMock('../../../../server/repositories/generic-torrent-cache-repository', () => ({
         findGenericTorrentCacheByFilepath,
@@ -182,7 +182,7 @@ describe('POST /api/tracker/requests route handler', () => {
             genericTorrentPath: '/repo/config/torrents/generic-1.torrent',
         })
         expect(updateTrackerRequestStatus).toHaveBeenNthCalledWith(2, 'upload-1', 'uploading')
-        expect(logger.info).toHaveBeenCalledWith('Tracker upload request uploading to trackers.', {
+        expect(logger.debug).toHaveBeenCalledWith('Starting to upload torrent to trackers.', {
             id: 'upload-1',
             filepath: '/media/Movie.2024.1080p.mkv',
             trackerCodes: ['ULCX'],
@@ -299,7 +299,7 @@ describe('POST /api/tracker/requests route handler', () => {
             sourcePath: '/media/Movie.2024.1080p.mkv',
         })
         expect(updateTrackerRequestStatus).toHaveBeenLastCalledWith('upload-1', 'success')
-        expect(logger.info).toHaveBeenLastCalledWith('Tracker upload request completed successfully.', {
+        expect(logger.info).toHaveBeenLastCalledWith('Torrent uploaded successfully.', {
             id: 'upload-1',
             trackerCodes: ['ULCX'],
         })
@@ -408,8 +408,9 @@ describe('POST /api/tracker/requests route handler', () => {
         await flushPromises()
 
         expect(updateTrackerRequestStatus).toHaveBeenCalledWith('upload-1', 'partial_success', ['ATH'])
-        expect(logger.warn).toHaveBeenCalledWith('Tracker upload request completed with partial success.', {
+        expect(logger.warn).toHaveBeenCalledWith('Torrent upload completed with failures.', {
             id: 'upload-1',
+            trackerCodes: ['ULCX', 'ATH'],
             failedTrackerCodes: ['ATH'],
         })
     })
@@ -439,11 +440,11 @@ describe('POST /api/tracker/requests route handler', () => {
         await flushPromises()
 
         expect(updateTrackerRequestStatus).toHaveBeenCalledWith('upload-1', 'fail')
-        expect(logger.error).toHaveBeenCalledWith('Tracker upload request failed for all trackers.', undefined, {
+        expect(logger.error).toHaveBeenCalledWith('Torrent upload failed for all trackers.', undefined, {
             id: 'upload-1',
             trackerCodes: ['ULCX'],
         })
-        expect(logger.error).toHaveBeenCalledWith('Failed to upload to tracker.', uploadError, { trackerCode: 'ULCX' })
+        expect(logger.warn).toHaveBeenCalledWith('Failed to upload to tracker.', uploadError, { trackerCode: 'ULCX' })
     })
 
     it('injects the torrent into the selected torrent client after a successful upload', async () => {
@@ -516,7 +517,7 @@ describe('POST /api/tracker/requests route handler', () => {
 
         expect(updateTrackerRequestStatus).toHaveBeenNthCalledWith(1, 'upload-1', 'torrent_creation')
         expect(updateTrackerRequestStatus).toHaveBeenCalledWith('upload-1', 'fail')
-        expect(logger.error).toHaveBeenCalledWith('Failed to process tracker upload request.', error, {
+        expect(logger.warn).toHaveBeenCalledWith('Failed to process tracker upload request.', error, {
             id: 'upload-1',
             filepath: '/media/Movie.2024.1080p.mkv',
         })

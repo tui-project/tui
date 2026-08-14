@@ -11,8 +11,9 @@ import {
 import type { RuleViolation, TrackerService, TrackerUploadOptions } from '../tracker'
 import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
 import { getTorrents, upload } from '../unit3d-tracker'
-import { logger } from '../../../utils/logger'
+import { createLogger } from '../../../utils/logger'
 
+const logger = createLogger('tracker:ulcx')
 const BANNED_GROUPS = new Set(
     [
         '4K4U',
@@ -84,6 +85,8 @@ export function ulcxTrackerService(url: string, apiKey: string): TrackerService 
  * Encode, WEB-DL, WEBRip, HDTV Template: Name AKA Original LOCALE Year S##E## Cut Ratio Hybrid REPACK PROPER RERip Resolution Edition 3D SOURCE TYPE Dub Acodec Channels Object Hi10P HDR Vcodec-Tag
  */
 async function buildTitle(metadata: Metadata) {
+    logger.trace('Strting tracker title build.', { metadata })
+
     const parts: string[] = [metadata.title]
 
     if (metadata.originalTitle && metadata.originalTitle !== metadata.title) parts.push(`AKA ${metadata.originalTitle}`)
@@ -122,10 +125,16 @@ async function buildTitle(metadata: Metadata) {
         if (!isDvd(metadata)) parts.push(metadata.videoCodec)
     }
 
-    return `${parts.filter(Boolean).join(' ')}-${metadata.releaseGroup ?? 'NOGROUP'}`
+    const title = `${parts.filter(Boolean).join(' ')}-${metadata.releaseGroup ?? 'NOGROUP'}`
+
+    logger.debug('Tracker title built complete.', { metadataTitle: metadata.title, trackerTitle: title })
+
+    return title
 }
 
 function checkRules(metadata: Metadata): RuleViolation[] {
+    logger.trace('Starting tracker rules check.', { metadata })
+
     const violations: RuleViolation[] = []
 
     if (metadata.releaseGroup && BANNED_GROUPS.has(metadata.releaseGroup.toLowerCase())) {
@@ -206,9 +215,7 @@ function checkRules(metadata: Metadata): RuleViolation[] {
         })
     }
 
-    if (violations.length > 0) {
-        logger.info('ULCX rule violations found.', { title: metadata.title, violations: violations.map((v) => v.rule) })
-    }
+    logger.debug('Tracker rules check completed.', { metadataTitle: metadata.title, violationCount: violations.length, violations: violations.map((violation) => violation.rule) })
 
     return violations
 }
@@ -221,6 +228,8 @@ type TorrentContext = BaseTorrentContext & { isNoGrp: boolean }
  *  - API spec : https://upload.cx/wikis/38
  */
 async function findDuplicates(url: string, apiKey: string, metadata: Metadata) {
+    logger.trace('Starting tracker duplicate check.', { metadata })
+
     const sourceTypes = isWebSource(metadata.sourceType) ? WEB_SOURCE_TYPES : [metadata.sourceType]
 
     const candidates = await getTorrents(url, apiKey, {
@@ -231,6 +240,8 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata) {
         seasonNumber: metadata.mediaType === MEDIA_TYPES.TV ? metadata.season : undefined,
         episodeNumber: metadata.mediaType === MEDIA_TYPES.TV ? (metadata.episode ?? 0) : undefined,
     })
+
+    logger.trace('Candidate torrents from tracker for duplicate check', { candidates })
 
     const uploadHdrTier = getHdrTier(metadata.hdr)
     const uploadContext: TorrentContext = {
@@ -261,13 +272,12 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata) {
         .filter(({ context }) => uploadContext.slot === context.slot)
         .map(({ torrent, context }) => ({ name: torrent.name, url: torrent.url, trumpable: TRUMP_RULES.some((rule) => rule(uploadContext, context)) }))
 
-    logger.info('ULCX duplicate check complete.', {
+    logger.debug('Tracker duplicate check complete.', {
         title: metadata.title,
         candidates: candidates.length,
         duplicates: duplicates.length,
         trumpable: duplicates.filter((d) => d.trumpable).length,
     })
-    logger.debug('ULCX duplicates found.', { title: metadata.title, duplicates })
 
     return duplicates
 }

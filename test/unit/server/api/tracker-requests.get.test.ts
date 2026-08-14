@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const logger = {
+    trace: vi.fn(),
     debug: vi.fn(),
     warn: vi.fn(),
 }
@@ -20,7 +21,7 @@ async function loadHandler() {
         getTrackerRequests,
         getTrackerRequestsByGroup,
     }))
-    vi.doMock('../../../../server/utils/logger', () => ({ logger }))
+    vi.doMock('../../../../server/utils/logger', () => ({ createLogger: () => logger }))
     vi.doMock('../../../../server/utils/request-validator', () => ({ parseValidatedQuery }))
 
     const { default: handler } = await import('../../../../server/api/tracker/requests/index.get')

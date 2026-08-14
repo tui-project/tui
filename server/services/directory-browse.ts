@@ -1,20 +1,24 @@
 import { readdir, realpath, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { getDirectoryCache, saveDirectoryCache } from '../repositories/directory-cache-repository'
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
 import { type MediaPathItem, sortPathItems } from '../utils/file-system'
 
+const logger = createLogger('directory-browse')
+
 export async function listChildren(parent: string) {
+    logger.trace('Listing child folders and files', { parent })
+
     const parentRealPath = await realpath(parent)
     const [cached, signature] = await Promise.all([getDirectoryCache(parentRealPath), getDirectorySignature(parentRealPath)])
 
     if (cached) {
         if (cached.signature === signature) {
-            logger.trace('Directory browse cache hit.', { parent: parentRealPath })
+            logger.debug('Directory browse cache hit.', { parent: parentRealPath })
             return cached.items
         }
 
-        logger.trace('Directory browse cache stale.', { parent: parentRealPath })
+        logger.debug('Directory browse cache stale.', { parent: parentRealPath })
 
         const items = await loadChildren(parentRealPath)
         void saveChildrenCache(parentRealPath, items, signature)
@@ -22,7 +26,7 @@ export async function listChildren(parent: string) {
         return items
     }
 
-    logger.trace('Directory browse cache miss.', { parent: parentRealPath })
+    logger.debug('Directory browse cache miss.', { parent: parentRealPath })
 
     const items = await loadChildren(parentRealPath)
     void saveChildrenCache(parentRealPath, items, signature)
@@ -36,6 +40,8 @@ async function getDirectorySignature(directoryPath: string) {
 }
 
 async function loadChildren(parentRealPath: string) {
+    logger.debug('Loading children,', { parentRealPath })
+
     const names = await readdir(parentRealPath)
     const items = await Promise.all(
         names.map(async (name) => {
@@ -62,6 +68,6 @@ function saveChildrenCache(parentRealPath: string, items: MediaPathItem[], signa
             logger.debug('Directory browse cache updated.', { parent: parentRealPath, itemCount: items.length })
         })
         .catch((error: unknown) => {
-            logger.error('Failed to update directory cache.', error)
+            logger.warn('Failed to update directory cache.', error)
         })
 }

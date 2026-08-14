@@ -1,7 +1,9 @@
 import { z } from 'zod'
 import { parseValidatedBody } from '../../../utils/request-validator'
-import { logger } from '../../../utils/logger'
+import { createLogger } from '../../../utils/logger'
 import { createTrackerService } from '../../../services/tracker/tracker-factory'
+
+const logger = createLogger('API')
 
 const titleRequestSchema = z.object({
     metadata: MetadataSchema,
@@ -10,7 +12,7 @@ const titleRequestSchema = z.object({
 export default defineEventHandler(async (event) => {
     const trackerCode = getRouterParam(event, 'trackerCode')!
 
-    logger.debug('Tracker title request received.', { trackerCode })
+    logger.trace('Tracker title request received.', { trackerCode })
 
     const request = await parseValidatedBody(event, titleRequestSchema, {
         onInvalid: (issues) => logger.warn('Rejected tracker title request with invalid payload.', { trackerCode, issues }),
@@ -19,7 +21,7 @@ export default defineEventHandler(async (event) => {
     const service = await createTrackerService(trackerCode)
     const title = await service.getTitle(request.metadata)
 
-    logger.debug('Tracker title built.', { trackerCode, title })
+    logger.trace('Tracker title built.', { trackerCode, title })
 
     return { title }
 })

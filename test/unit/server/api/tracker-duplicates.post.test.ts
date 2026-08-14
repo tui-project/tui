@@ -24,7 +24,7 @@ beforeEach(() => {
 
 async function loadHandler() {
     vi.doMock('h3', () => ({ createError, readBody, getRouterParam }))
-    vi.doMock('../../../../server/utils/logger', () => ({ logger }))
+    vi.doMock('../../../../server/utils/logger', () => ({ createLogger: () => logger }))
     vi.doMock('../../../../server/services/tracker/tracker-factory', () => ({ createTrackerService }))
 
     const { default: handler } = await import('../../../../server/api/tracker/[trackerCode]/duplicates.post')
@@ -68,8 +68,8 @@ describe('POST /api/tracker/[trackerCode]/duplicates route handler', () => {
         expect(result).toEqual({ duplicates })
         expect(createTrackerService).toHaveBeenCalledWith('ATH')
         expect(findDuplicatesMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'Movie' }))
-        expect(logger.debug).toHaveBeenCalledWith('Tracker duplicates check request received.', { trackerCode: 'ATH' })
-        expect(logger.debug).toHaveBeenCalledWith('Tracker duplicates checked.', { trackerCode: 'ATH', count: 1 })
+        expect(logger.trace).toHaveBeenCalledWith('Tracker duplicates check request received.', { trackerCode: 'ATH' })
+        expect(logger.trace).toHaveBeenCalledWith('Tracker duplicates checked.', { trackerCode: 'ATH', count: 1 })
     })
 
     it('returns an empty duplicates array when no duplicates are found', async () => {

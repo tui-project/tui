@@ -24,7 +24,7 @@ beforeEach(() => {
 
 async function loadHandler() {
     vi.doMock('h3', () => ({ createError, readBody, getRouterParam }))
-    vi.doMock('../../../../server/utils/logger', () => ({ logger }))
+    vi.doMock('../../../../server/utils/logger', () => ({ createLogger: () => logger }))
     vi.doMock('../../../../server/services/tracker/tracker-factory', () => ({ createTrackerService }))
 
     const { default: handler } = await import('../../../../server/api/tracker/[trackerCode]/title.post')
@@ -67,8 +67,8 @@ describe('POST /api/tracker/[trackerCode]/title route handler', () => {
         expect(result).toEqual({ title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP' })
         expect(createTrackerService).toHaveBeenCalledWith('ULCX')
         expect(getTitleMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'Movie' }))
-        expect(logger.debug).toHaveBeenCalledWith('Tracker title request received.', { trackerCode: 'ULCX' })
-        expect(logger.debug).toHaveBeenCalledWith('Tracker title built.', { trackerCode: 'ULCX', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP' })
+        expect(logger.trace).toHaveBeenCalledWith('Tracker title request received.', { trackerCode: 'ULCX' })
+        expect(logger.trace).toHaveBeenCalledWith('Tracker title built.', { trackerCode: 'ULCX', title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP' })
     })
 
     it('passes episodeEnd through to getTitle when present', async () => {

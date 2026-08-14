@@ -1,7 +1,9 @@
 import { z } from 'zod'
 import { getTrackerRequests, getTrackerRequestsByGroup } from '../../../repositories/tracker-request-repository'
-import { logger } from '../../../utils/logger'
+import { createLogger } from '../../../utils/logger'
 import { parseValidatedQuery } from '../../../utils/request-validator'
+
+const logger = createLogger('API')
 
 const requestsQuerySchema = z.object({
     page: z.coerce.number().int().positive().default(1),
@@ -14,7 +16,7 @@ const requestsQuerySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-    logger.debug('Get tracker upload requests request received.')
+    logger.trace('Get tracker upload requests request received.')
 
     const { page, size, groupId, withGroupCount } = parseValidatedQuery(event, requestsQuerySchema, {
         errorMessage: 'invalid_query',

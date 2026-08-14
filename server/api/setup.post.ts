@@ -3,8 +3,10 @@ import { promisify } from 'node:util'
 import { createError } from 'h3'
 import { z } from 'zod'
 import { userCount, createUser } from '../repositories/user-repository'
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
 import { parseValidatedBody } from '../utils/request-validator'
+
+const logger = createLogger('API')
 
 const scrypt = promisify(scryptCallback)
 
@@ -29,7 +31,7 @@ async function hashPassword(password: string) {
 }
 
 export default defineEventHandler(async (event) => {
-    logger.debug('Setup request received.')
+    logger.trace('Setup request received.')
 
     const totalUsers = await userCount()
 

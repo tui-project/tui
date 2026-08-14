@@ -1,5 +1,7 @@
 import type { TorrentClientSettings } from '../model/settings'
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
+
+const logger = createLogger('torrent-client')
 
 export async function injectTorrent(torrentDownloadUrl: string, client: TorrentClientSettings): Promise<boolean> {
     if (client.code === 'QUI') {
@@ -29,7 +31,7 @@ async function injectViaQui(torrentDownloadUrl: string, client: TorrentClientSet
         logger.info('qui injection succeeded.', { torrentDownloadUrl, quiUrl: client.url })
         return true
     } catch (error: unknown) {
-        logger.error('qui injection failed.', error, { torrentDownloadUrl, quiUrl: client.url })
+        logger.warn('qui injection failed.', error, { torrentDownloadUrl, quiUrl: client.url })
         return false
     }
 }

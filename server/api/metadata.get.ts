@@ -2,7 +2,7 @@ import { createError } from 'h3'
 import { basename } from 'node:path'
 import { z } from 'zod'
 import { getSettings } from '../repositories/settings-repository'
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
 import { parseMetadataFromName, type ParsedNameMetadata } from '../services/media-name-parser'
 import { parseMetadataFromMediainfo, type ParsedMediainfoMetadata } from '../services/mediainfo'
 import { findByExternalID, findByTitle, findLocale, getAlternativeTitles, getDetails, getExternalIDs, ID_TYPES } from '../services/tmdb'
@@ -10,12 +10,14 @@ import { isWithinAnyRoot, resolveMediaFilePath } from '../utils/file-system'
 import { parseValidatedQuery } from '../utils/request-validator'
 import { findTvdbSpecial, findTvdbSpecialRange } from '../services/tvdb'
 
+const logger = createLogger('API')
+
 const metadataQuerySchema = z.object({
     path: z.string().trim().min(1),
 })
 
 export default defineEventHandler(async (event) => {
-    logger.debug('Metadata request received.')
+    logger.trace('Metadata request received.')
 
     const { path } = parseValidatedQuery(event, metadataQuerySchema, {
         errorMessage: 'invalid_path',
@@ -34,21 +36,18 @@ export default defineEventHandler(async (event) => {
 
     const filename = basename(path)
     const metadataFromFilename = parseMetadataFromName(filename)
-    logger.trace('Parsed filename metadata.', { metadataFromFilename })
-
     const mediaFilePath = await resolveMediaFilePath(path)
-    logger.trace('Resolved media file path for metadata analysis.', { inputPath: path, mediaFilePath })
-
     const metadataFromMediainfo = await parseMetadataFromMediainfo(mediaFilePath, metadataFromFilename.sourceType)
-    logger.trace('Parsed mediainfo metadata.', { metadataFromMediainfo })
-
     const metadata = await buildMetadata(metadataFromFilename, metadataFromMediainfo)
-    logger.debug('Metadata response.', { filename, metadata })
+
+    logger.trace('Metadata response ready.', { filename, mediaType: metadata.mediaType })
 
     return { filename, metadata }
 })
 
 async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataFromMediainfo: ParsedMediainfoMetadata): Promise<PartialMetadata> {
+    logger.trace('Building metadata', { metadataFromFilename, metadataFromMediainfo })
+
     const { videoStandard, frameRate, ...mediainfoFields } = metadataFromMediainfo
     const metadata: PartialMetadata = {
         ...metadataFromFilename,
@@ -57,10 +56,10 @@ async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataF
     metadata.mediaType = metadata.season === undefined ? 'movie' : 'tv'
 
     if (metadata.tmdbId) {
-        logger.debug('TMDB enrichment using existing TMDB ID.', { tmdbId: metadata.tmdbId, mediaType: metadata.mediaType })
-
         const details = await getDetails(String(metadata.tmdbId), metadata.mediaType)
         if (details) {
+            logger.debug('TMDB enrichment using existing TMDB ID.', { tmdbId: metadata.tmdbId, mediaType: metadata.mediaType, details })
+
             metadata.title = details.title
             metadata.originalTitle = details.original_title
             metadata.originalLanguage = details.original_language
@@ -71,10 +70,10 @@ async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataF
             if (metadata.title && metadata.mediaType === MEDIA_TYPES.TV) metadata.locale = await findLocale(metadata?.title, metadata.tmdbId, metadata.mediaType)
         }
     } else if (metadata.imdbId) {
-        logger.debug('TMDB enrichment using IMDb ID.', { imdbId: metadata.imdbId, mediaType: metadata.mediaType })
-
         const findResult = await findByExternalID(metadata.imdbId, ID_TYPES.IMDB, metadata.mediaType)
         if (findResult) {
+            logger.debug('TMDB enrichment using IMDb ID.', { imdbId: metadata.imdbId, mediaType: metadata.mediaType, findResult })
+
             metadata.tmdbId = findResult.id
             metadata.title = findResult.title
             metadata.originalTitle = findResult.original_title
@@ -85,10 +84,10 @@ async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataF
             if (metadata.title && metadata.mediaType === MEDIA_TYPES.TV) metadata.locale = await findLocale(metadata.title, metadata.tmdbId, metadata.mediaType)
         }
     } else if (metadata.tvdbId !== undefined) {
-        logger.debug('TMDB enrichment using TVDB ID.', { tvdbId: metadata.tvdbId, mediaType: metadata.mediaType })
-
         const findResult = await findByExternalID(String(metadata.tvdbId), ID_TYPES.TVDB, metadata.mediaType)
         if (findResult) {
+            logger.debug('TMDB enrichment using TVDB ID.', { tvdbId: metadata.tvdbId, mediaType: metadata.mediaType, findResult })
+
             metadata.tmdbId = findResult.id
             metadata.title = findResult.title
             metadata.originalTitle = findResult.original_title
@@ -99,10 +98,10 @@ async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataF
             if (metadata.title && metadata.mediaType === MEDIA_TYPES.TV) metadata.locale = await findLocale(metadata.title, metadata.tmdbId, metadata.mediaType)
         }
     } else {
-        logger.debug('TMDB enrichment using title lookup.', { title: metadata?.title, mediaType: metadata.mediaType })
-
         const searchResult = await findByTitle(metadata.title!, metadata.mediaType)
         if (searchResult) {
+            logger.debug('TMDB enrichment using title lookup.', { title: metadata?.title, mediaType: metadata.mediaType, searchResult })
+
             metadata.tmdbId = searchResult.id
             metadata.title = searchResult.title
             metadata.originalTitle = searchResult.original_title
@@ -111,10 +110,10 @@ async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataF
             metadata.originCountry = searchResult.origin_country
             metadata.locale = searchResult.locale
 
-            logger.debug('Fetching TMDB external IDs.', { tmdbId: metadata.tmdbId, mediaType: metadata.mediaType })
-
             const externalIDs = await getExternalIDs(String(metadata.tmdbId), metadata.mediaType)
             if (externalIDs) {
+                logger.debug('TMDB external IDs.', { tmdbId: metadata.tmdbId, mediaType: metadata.mediaType, externalIDs })
+
                 metadata.imdbId = externalIDs.imdb_id
                 metadata.tvdbId = externalIDs.tvdb_id
             }
@@ -122,9 +121,15 @@ async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataF
     }
 
     if (isForeignMediaWithoutOriginalTitle(metadata) && metadata.tmdbId) {
-        logger.debug('Fetching TMDB alternative titles for transliteration.', { tmdbId: metadata.tmdbId, originalLanguage: metadata.originalLanguage })
-
         const alternativeTitles = await getAlternativeTitles(metadata.tmdbId, metadata.mediaType)
+
+        logger.debug('Fetching TMDB alternative titles for transliteration.', {
+            tmdbId: metadata.tmdbId,
+            mediaType: metadata.mediaType,
+            originCountry: metadata.originCountry,
+            alternativeTitles,
+        })
+
         const byType = alternativeTitles.find((entry) => entry.type === 'transliteration')
 
         let transliteration = byType
@@ -138,20 +143,20 @@ async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataF
 
     if (isSpecialEpisode(metadata) && metadata.tvdbId) {
         if (metadata.episode != null && metadata.episodeEnd != null) {
-            logger.debug('Attempting TVDb special range lookup.', { tvdbId: metadata.tvdbId, episodeStart: metadata.episode, episodeEnd: metadata.episodeEnd })
-
             const match = await findTvdbSpecialRange(metadata.tvdbId, metadata.episode, metadata.episodeEnd)
             if (match) {
+                logger.debug('TVDb special range lookup.', { tvdbId: metadata.tvdbId, episodeStart: metadata.episode, episodeEnd: metadata.episodeEnd, match })
+
                 metadata.season = 0
                 metadata.episode = match.episodeStart
                 metadata.episodeEnd = match.episodeEnd
                 metadata.specialName = match.title
             }
         } else if (metadata.episode != null) {
-            logger.debug('Attempting TVDb special lookup.', { tvdbId: metadata.tvdbId, episode: metadata.episode, specialName: metadata.specialName })
-
             const match = await findTvdbSpecial(metadata.tvdbId, metadata.episode, metadata.specialName)
             if (match) {
+                logger.debug('TVDb special lookup.', { tvdbId: metadata.tvdbId, episode: metadata.episode, specialName: metadata.specialName, match })
+
                 metadata.season = 0
                 metadata.episode = match.episodeNumber
                 metadata.specialName = match.title
@@ -170,6 +175,8 @@ async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataF
             metadata.source = SOURCES.NTSC_DVD
         }
     }
+
+    logger.debug('Metadata build completed.', { metadata })
 
     return metadata
 }

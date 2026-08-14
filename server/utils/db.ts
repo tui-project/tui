@@ -8,7 +8,9 @@ import type { Settings } from '../model/settings'
 import type { Language } from '../model/language'
 import type { User } from '../model/user'
 import type { TrackerRequest } from '../model/tracker-request'
-import { logger } from './logger'
+import { createLogger } from './logger'
+
+const logger = createLogger('database')
 
 export type UserDocument = Document<User>
 export type SessionDocument = Document<Session>

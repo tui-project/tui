@@ -14,6 +14,7 @@ const logger = {
     info: vi.fn(),
     warn: vi.fn(),
     trace: vi.fn(),
+    error: vi.fn(),
 }
 const createError = vi.fn((payload: unknown) => payload)
 
@@ -71,7 +72,7 @@ async function loadService() {
         createError,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
-        logger,
+        createLogger: () => logger,
     }))
 
     return import('../../../../server/services/screenshot')

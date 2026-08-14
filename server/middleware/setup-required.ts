@@ -1,6 +1,8 @@
 import { getRequestURL, sendRedirect } from 'h3'
 import { userCount } from '../repositories/user-repository'
-import { logger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
+
+const logger = createLogger('setup')
 
 const BYPASS_PATHS = ['/setup', '/api/setup', '/_ipx']
 
