@@ -17,6 +17,13 @@ export default defineNuxtConfig({
         typeCheck: true,
     },
     modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxt/image'],
+    icon: {
+        provider: 'none',
+        clientBundle: {
+            scan: true,
+            icons: ['heroicons:check-circle', 'heroicons:x-circle', 'heroicons:exclamation-triangle', 'heroicons:clock', 'heroicons:cog-6-tooth', 'heroicons:arrow-up-tray'],
+        },
+    },
     css: ['~/assets/css/main.css'],
     vite: {
         optimizeDeps: {

@@ -208,14 +208,7 @@ function getTypeColor(type: string) {
                             <p class="whitespace-pre-wrap wrap-break-words">{{ entry.msg }}</p>
                             <template v-if="entry.context">
                                 <pre class="mt-1 whitespace-pre-wrap wrap-break-words text-gray-400">{{ getVisibleContext(entry) }}</pre>
-                                <UButton
-                                    v-if="isLargeContext(entry.context)"
-                                    color="neutral"
-                                    variant="link"
-                                    size="xs"
-                                    class="mt-1 p-0"
-                                    @click.stop="toggleContext(entry.id)"
-                                >
+                                <UButton v-if="isLargeContext(entry.context)" color="neutral" variant="link" size="xs" class="mt-1 p-0" @click.stop="toggleContext(entry.id)">
                                     {{ expandedContextIds.has(entry.id) ? 'Show less' : 'Show more' }}
                                 </UButton>
                             </template>
@@ -227,7 +220,9 @@ function getTypeColor(type: string) {
 
         <UModal v-model:open="logDetailsOpen" title="Log entry details" description="View or copy the complete structured log entry.">
             <template #body>
-                <pre class="max-h-[65vh] overflow-auto whitespace-pre-wrap wrap-break-words rounded-lg bg-gray-950 p-4 font-mono text-xs text-gray-100">{{ JSON.stringify(selectedEntry, null, 2) }}</pre>
+                <pre class="max-h-[65vh] overflow-auto whitespace-pre-wrap wrap-break-words rounded-lg bg-gray-950 p-4 font-mono text-xs text-gray-100">{{
+                    JSON.stringify(selectedEntry, null, 2)
+                }}</pre>
             </template>
             <template #footer>
                 <div class="flex w-full justify-end gap-2">

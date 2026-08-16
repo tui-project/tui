@@ -11,9 +11,7 @@ vi.mock('h3', () => ({
 }))
 
 vi.mock('../../../../server/utils/logger', () => ({
-    getRecentLogs: vi.fn(() => [
-        { id: 1, time: '2026-08-16T00:00:00.000Z', type: 'info', scope: 'startup', msg: 'Ready', context: null },
-    ] satisfies LogEntry[]),
+    getRecentLogs: vi.fn(() => [{ id: 1, time: '2026-08-16T00:00:00.000Z', type: 'info', scope: 'startup', msg: 'Ready', context: null }] satisfies LogEntry[]),
     subscribeToLogs: vi.fn((callback: (entry: LogEntry) => void) => {
         subscriber = callback
         return unsubscribe
