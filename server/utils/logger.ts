@@ -7,6 +7,7 @@ const logFile = process.env.LOG_FILE ?? join(logDir, 'server.log')
 const logMaxBytes = Number(process.env.LOG_MAX_BYTES ?? 5 * 1024 * 1024)
 const logMaxFiles = Number(process.env.LOG_MAX_FILES ?? 5)
 const logFileDisabled = process.env.LOG_FILE_DISABLED === 'true'
+const logBufferSize = Number(process.env.LOG_BUFFER_SIZE ?? 1000)
 
 mkdirSync(logDir, { recursive: true })
 
@@ -17,20 +18,39 @@ const baseLogger = createConsola({
     },
 })
 const scopedLoggers: ConsolaInstance[] = []
+const recentLogs: LogEntry[] = []
+const logSubscribers = new Set<(entry: LogEntry) => void>()
+let nextLogId = 1
 
-if (!logFileDisabled) {
-    baseLogger.addReporter({
-        log: writeFileLog,
-    })
+baseLogger.addReporter({
+    log: captureLog,
+})
+
+function captureLog(logObj: LogObject) {
+    const entry = createLogEntry(logObj)
+
+    if (logBufferSize > 0) {
+        recentLogs.push(entry)
+        recentLogs.splice(0, Math.max(0, recentLogs.length - logBufferSize))
+    }
+
+    for (const subscriber of logSubscribers) {
+        subscriber(entry)
+    }
+
+    if (!logFileDisabled) {
+        writeFileLog(entry)
+    }
 }
 
-function writeFileLog(logObj: LogObject) {
+function createLogEntry(logObj: LogObject): LogEntry {
     const context = logObj.args.filter((arg) => typeof arg === 'object' && arg !== null && !(arg instanceof Error))
     const messageParts = logObj.args.filter((arg) => typeof arg !== 'object' || arg === null || arg instanceof Error).map(formatLogArg)
 
-    const entry: Record<string, unknown> = {
-        time: logObj.date,
-        type: logObj.compactTrace ? 'trace' : logObj.type,
+    const entry: LogEntry = {
+        id: nextLogId++,
+        time: logObj.date.toISOString(),
+        type: logObj.compactTrace ? LOG_TYPES.TRACE : (logObj.type as LogType),
         msg: messageParts.join(' '),
     }
 
@@ -42,7 +62,12 @@ function writeFileLog(logObj: LogObject) {
         entry.context = context.length === 1 ? context[0] : context
     }
 
-    const line = JSON.stringify(entry)
+    return entry
+}
+
+function writeFileLog(entry: LogEntry) {
+    const { id: _id, ...fileEntry } = entry
+    const line = JSON.stringify(fileEntry)
 
     rotateLogFileIfNeeded(Buffer.byteLength(`${line}\n`))
     appendFileSync(logFile, `${line}\n`)
@@ -116,4 +141,14 @@ export function setLogLevel(level: number) {
     for (const scopedLogger of scopedLoggers) {
         scopedLogger.level = level
     }
+}
+
+export function getRecentLogs() {
+    return [...recentLogs]
+}
+
+export function subscribeToLogs(subscriber: (entry: LogEntry) => void) {
+    logSubscribers.add(subscriber)
+
+    return () => logSubscribers.delete(subscriber)
 }

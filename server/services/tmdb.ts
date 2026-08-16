@@ -311,7 +311,7 @@ export async function getLanguages(): Promise<{ iso_639_1: string; english_name:
     const apiKey = await getApiKey()
     const path = `${TMDB_BASE_URL}/configuration/languages`
 
-    logger.trace('Get languages request prepared.', {path})
+    logger.trace('Get languages request prepared.', { path })
 
     try {
         const response = await $fetch<{ iso_639_1: string; english_name: string }[]>(path, {

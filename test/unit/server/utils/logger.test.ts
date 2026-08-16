@@ -27,6 +27,34 @@ async function readLogLines() {
 }
 
 describe('server logger', () => {
+    it('buffers recent logs and publishes new entries to subscribers', async () => {
+        const { createLogger, getRecentLogs, subscribeToLogs } = await importLogger('5', { LOG_BUFFER_SIZE: '2' })
+        const received: LogEntry[] = []
+        const unsubscribe = subscribeToLogs((entry) => received.push(entry))
+        const logger = createLogger('stream')
+
+        logger.info('one')
+        logger.warn('two')
+        unsubscribe()
+        logger.error('three')
+
+        expect(received.map((entry) => entry.msg)).toEqual(['one', 'two'])
+        expect(getRecentLogs().map((entry) => entry.msg)).toEqual(['two', 'three'])
+        expect(getRecentLogs()[0]).toMatchObject({ id: 2, scope: 'stream', type: 'warn' })
+        expect(typeof getRecentLogs()[0]?.time).toBe('string')
+    })
+
+    it('can disable the in-memory log buffer while still publishing entries', async () => {
+        const { createLogger, getRecentLogs, subscribeToLogs } = await importLogger('5', { LOG_BUFFER_SIZE: '0' })
+        const subscriber = vi.fn()
+        subscribeToLogs(subscriber)
+
+        createLogger('stream').info('published only')
+
+        expect(subscriber).toHaveBeenCalledOnce()
+        expect(getRecentLogs()).toEqual([])
+    })
+
     it('writes log entries to a file with a msg field', async () => {
         const { createLogger } = await importLogger()
         const logger = createLogger('database')

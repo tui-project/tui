@@ -16,7 +16,7 @@ export default defineNuxtConfig({
     typescript: {
         typeCheck: true,
     },
-    modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxt/test-utils/module', '@nuxt/image', '@nuxt/image'],
+    modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxt/image'],
     css: ['~/assets/css/main.css'],
     vite: {
         optimizeDeps: {

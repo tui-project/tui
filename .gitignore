@@ -11,10 +11,6 @@ coverage
 node_modules
 .pnpm-store
 
-# Logs
-logs
-*.log
-
 # Misc
 .DS_Store
 .fleet

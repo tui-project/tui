@@ -70,7 +70,7 @@ For setup status specifically:
 
 ## Tests
 
-API route tests should live under `test/e2e/server/api`.
+API behavior tests should live under `test/e2e/server/api`. Focused route-handler tests that mock dependencies may live under `test/unit/server/api`.
 
 Nuxt browser e2e page tests should use `@nuxt/test-utils/e2e` with `vitest` (not `@playwright/test` runner). Use Playwright page APIs for interactions and selectors.
 
@@ -111,7 +111,7 @@ When testing modules that initialize the database:
 - Set `process.env.DATABASE_DIR` to a temp directory before import.
 - Remove the temp directory and delete env vars in `afterEach`.
 
-Do not add unit tests that import Nitro route handlers directly.
+When a unit test imports a Nitro route handler directly, stub Nitro auto-imports such as `defineEventHandler` and mock external dependencies so the test remains focused on route wiring.
 
 Coverage expectations:
 

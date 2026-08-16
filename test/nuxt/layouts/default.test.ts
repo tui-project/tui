@@ -40,6 +40,7 @@ describe('default layout', () => {
         expect(screen.getByRole('link', { name: 'Dashboard' })).toBeDefined()
         expect(screen.getByRole('link', { name: 'History' })).toBeDefined()
         expect(screen.getByRole('link', { name: 'Upload' })).toBeDefined()
+        expect(screen.getByRole('link', { name: 'Logs' })).toBeDefined()
         expect(screen.getByRole('link', { name: 'Settings' })).toBeDefined()
         expect(screen.getByRole('link', { name: 'About' })).toBeDefined()
         expect(screen.getByText('slot content')).toBeDefined()
@@ -96,7 +97,7 @@ describe('default layout', () => {
         expect(confirmButton.getAttribute('disabled')).not.toBeNull()
     })
 
-    it.each(['/history', '/upload', '/settings', '/about'])('renders navigation for route %s', async (path) => {
+    it.each(['/history', '/upload', '/logs', '/settings', '/about'])('renders navigation for route %s', async (path) => {
         routeState.path = path
 
         await renderSuspended(DefaultLayout)
