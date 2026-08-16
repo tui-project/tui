@@ -45,7 +45,7 @@
         "@iconify-json/material-symbols": "1.2.88",
         "@iconify-json/qlementine-icons": "1.2.15",
         "@nuxt/test-utils": "4.1.0",
-        "@testing-library/user-event": "14.6.3",
+        "@testing-library/user-event": "14.6.4",
         "@testing-library/vue": "8.1.0",
         "@types/create-torrent": "6.1.1",
         "@types/parse-torrent": "11.0.1",
@@ -59,6 +59,6 @@
         "prettier": "3.9.6",
         "typescript": "6.0.3",
         "vitest": "4.1.10",
-        "vue-tsc": "3.3.9"
+        "vue-tsc": "3.3.10"
     }
 }

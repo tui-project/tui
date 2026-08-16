@@ -39,7 +39,10 @@ describe('GET /api/logs/stream', async () => {
         expect(response.headers.get('content-type')).toContain('text/event-stream')
 
         const probePath = '/api/log-stream-e2e-probe'
-        const streamedEntry = readLogEntry(response, (entry) => entry.context !== null && typeof entry.context === 'object' && 'path' in entry.context && entry.context.path === probePath)
+        const streamedEntry = readLogEntry(
+            response,
+            (entry) => entry.context !== null && typeof entry.context === 'object' && 'path' in entry.context && entry.context.path === probePath
+        )
 
         await fetch(probePath)
 
