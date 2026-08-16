@@ -25,6 +25,12 @@ const items = computed<NavigationMenuItem[]>(() => [
         active: route.path.startsWith('/upload'),
     },
     {
+        label: 'Logs',
+        to: '/logs',
+        icon: 'i-lucide-scroll-text',
+        active: route.path.startsWith('/logs'),
+    },
+    {
         label: 'Settings',
         to: '/settings',
         icon: 'i-lucide-settings',

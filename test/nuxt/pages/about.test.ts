@@ -15,7 +15,23 @@ describe('about page', () => {
             expect(screen.getByRole('heading', { name: heading, level: 2 })).toBeDefined()
         }
 
-        for (const name of ['Aither', 'Upload.cx', 'ImgBB', 'qui', 'The Movie Database', 'The TVDB', 'MediaInfo', 'FFmpeg', 'FFprobe', 'Nuxt 4', 'Nitro', 'Nuxt UI v4', 'NeDB', 'Zod', 'create-torrent']) {
+        for (const name of [
+            'Aither',
+            'Upload.cx',
+            'ImgBB',
+            'qui',
+            'The Movie Database',
+            'The TVDB',
+            'MediaInfo',
+            'FFmpeg',
+            'FFprobe',
+            'Nuxt 4',
+            'Nitro',
+            'Nuxt UI v4',
+            'NeDB',
+            'Zod',
+            'create-torrent',
+        ]) {
             expect(screen.getByText(name)).toBeDefined()
         }
     })

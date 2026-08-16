@@ -3,10 +3,11 @@ import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, afterEach, vi } from 'vitest'
+import * as log from '../../shared/types/log'
 import * as metadata from '../../shared/types/metadata'
 import * as trackerRequest from '../../shared/types/tracker-request'
 
-Object.assign(globalThis, metadata, trackerRequest)
+Object.assign(globalThis, log, metadata, trackerRequest)
 
 let dataDir = ''
 let logDir = ''
@@ -39,6 +40,7 @@ afterEach(async () => {
     delete process.env.LOG_FILE
     delete process.env.LOG_FILE_DISABLED
     delete process.env.LOG_LEVEL
+    delete process.env.LOG_BUFFER_SIZE
 
     await Promise.all([rm(dataDir, { recursive: true, force: true }), rm(logDir, { recursive: true, force: true })])
 })
