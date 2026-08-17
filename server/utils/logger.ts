@@ -1,6 +1,7 @@
 import { appendFileSync, existsSync, mkdirSync, renameSync, statSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { createConsola, LogLevels, type ConsolaInstance, type LogObject } from 'consola'
+import { publishLog } from '../events/log'
 
 const logDir = process.env.LOG_DIR ?? join(process.cwd(), 'config', 'logs')
 const logFile = process.env.LOG_FILE ?? join(logDir, 'server.log')
@@ -19,7 +20,6 @@ const baseLogger = createConsola({
 })
 const scopedLoggers: ConsolaInstance[] = []
 const recentLogs: LogEntry[] = []
-const logSubscribers = new Set<(entry: LogEntry) => void>()
 let nextLogId = 1
 
 baseLogger.addReporter({
@@ -34,9 +34,7 @@ function captureLog(logObj: LogObject) {
         recentLogs.splice(0, Math.max(0, recentLogs.length - logBufferSize))
     }
 
-    for (const subscriber of logSubscribers) {
-        subscriber(entry)
-    }
+    publishLog(entry)
 
     if (!logFileDisabled) {
         writeFileLog(entry)
@@ -145,10 +143,4 @@ export function setLogLevel(level: number) {
 
 export function getRecentLogs() {
     return [...recentLogs]
-}
-
-export function subscribeToLogs(subscriber: (entry: LogEntry) => void) {
-    logSubscribers.add(subscriber)
-
-    return () => logSubscribers.delete(subscriber)
 }

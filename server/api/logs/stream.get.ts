@@ -1,5 +1,6 @@
 import { createEventStream } from 'h3'
-import { getRecentLogs, subscribeToLogs } from '../../utils/logger'
+import { subscribeToLogs } from '../../events/log'
+import { getRecentLogs } from '../../utils/logger'
 
 export default defineEventHandler((event) => {
     const eventStream = createEventStream(event)

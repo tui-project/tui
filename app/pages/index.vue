@@ -1,5 +1,4 @@
 <script setup lang="ts">
-const REFRESH_INTERVAL_MS = 2_000
 const FINAL_STATUSES = new Set<string>([STATUS.SUCCESS, STATUS.PARTIAL_SUCCESS, STATUS.FAIL])
 
 const { pending, data, error, refresh } = useGetTrackerRequests()
@@ -9,8 +8,20 @@ const requests = computed(() => data.value?.items ?? [])
 
 const { execute: executeRetry } = usePatchTrackerRequest()
 
-const refreshTimer = globalThis.setInterval(refresh, REFRESH_INTERVAL_MS)
-onBeforeUnmount(() => clearInterval(refreshTimer))
+useStreamTrackerRequests(updateRequest, refresh)
+
+function updateRequest(request: TrackerRequestResponse) {
+    if (!data.value) return
+
+    const index = data.value.items.findIndex((item) => item.id === request.id)
+    if (index === -1) {
+        data.value.items.unshift(request)
+        data.value.total += 1
+        return
+    }
+
+    data.value.items[index] = request
+}
 
 function shouldShowProgress(status: Status) {
     return status === STATUS.TORRENT_CREATION

@@ -58,13 +58,17 @@ export async function updateTrackerRequestStatus(id: string, status: Status, fai
     } else {
         update.failedTrackerCodes = undefined
     }
+    const { affectedDocuments } = await trackerUploadRequestCollection.updateAsync({ id }, { $set: update }, { returnUpdatedDocs: true })
 
-    await trackerUploadRequestCollection.updateAsync({ id }, { $set: update }, {})
+    return affectedDocuments
 }
 
 export async function updateTrackerRequestTorrentCreationProgress(id: string, torrentCreationProgress: number) {
     logger.trace('Updating tracker request torrent creation progress.', { requestId: id, torrentCreationProgress })
-    await trackerUploadRequestCollection.updateAsync({ id }, { $set: { torrentCreationProgress } }, {})
+
+    const { affectedDocuments } = await trackerUploadRequestCollection.updateAsync({ id }, { $set: { torrentCreationProgress } }, { returnUpdatedDocs: true })
+
+    return affectedDocuments
 }
 
 export async function updateTrackerItem(
@@ -78,7 +82,9 @@ export async function updateTrackerItem(
     if (!request) return
 
     const trackers = request.trackers.map((t) => (t.code === code ? { ...t, ...update } : t))
-    await trackerUploadRequestCollection.updateAsync({ id }, { $set: { trackers } }, {})
+    const { affectedDocuments } = await trackerUploadRequestCollection.updateAsync({ id }, { $set: { trackers } }, { returnUpdatedDocs: true })
+
+    return affectedDocuments
 }
 
 export async function resetTrackerRequest(id: string) {

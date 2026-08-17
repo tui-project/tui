@@ -28,7 +28,8 @@ async function readLogLines() {
 
 describe('server logger', () => {
     it('buffers recent logs and publishes new entries to subscribers', async () => {
-        const { createLogger, getRecentLogs, subscribeToLogs } = await importLogger('5', { LOG_BUFFER_SIZE: '2' })
+        const { createLogger, getRecentLogs } = await importLogger('5', { LOG_BUFFER_SIZE: '2' })
+        const { subscribeToLogs } = await import('../../../../server/events/log')
         const received: LogEntry[] = []
         const unsubscribe = subscribeToLogs((entry) => received.push(entry))
         const logger = createLogger('stream')
@@ -45,7 +46,8 @@ describe('server logger', () => {
     })
 
     it('can disable the in-memory log buffer while still publishing entries', async () => {
-        const { createLogger, getRecentLogs, subscribeToLogs } = await importLogger('5', { LOG_BUFFER_SIZE: '0' })
+        const { createLogger, getRecentLogs } = await importLogger('5', { LOG_BUFFER_SIZE: '0' })
+        const { subscribeToLogs } = await import('../../../../server/events/log')
         const subscriber = vi.fn()
         subscribeToLogs(subscriber)
 

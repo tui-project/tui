@@ -29,6 +29,7 @@ beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
     vi.stubGlobal('setResponseStatus', setResponseStatus)
+    waitUntilPromise = undefined
     getSettings.mockResolvedValue({ trackers: [], torrentClients: [] })
     createTrackerService.mockResolvedValue({ upload: vi.fn().mockResolvedValue('https://tracker.example.com/torrent/download/1') })
     resolveMediaFilePath.mockResolvedValue('/media/Movie.2024.1080p.mkv')
@@ -118,14 +119,18 @@ function buildRequest(overrides: Partial<Record<string, unknown>> = {}) {
     }
 }
 
+let waitUntilPromise: Promise<unknown> | undefined
+
 function mockEvent() {
-    return { waitUntil: (p: Promise<unknown>) => p } as never
+    return {
+        waitUntil: (promise: Promise<unknown>) => {
+            waitUntilPromise = promise
+        },
+    } as never
 }
 
 async function flushPromises() {
-    for (let i = 0; i < 20; i++) {
-        await Promise.resolve()
-    }
+    await waitUntilPromise
 }
 
 describe('POST /api/tracker/requests route handler', () => {

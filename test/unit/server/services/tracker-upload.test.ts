@@ -4,6 +4,7 @@ const rm = vi.fn()
 const updateTrackerRequestStatus = vi.fn()
 const updateTrackerRequestTorrentCreationProgress = vi.fn()
 const updateTrackerItem = vi.fn()
+const publishTrackerRequest = vi.fn()
 const findGenericTorrentCacheByFilepath = vi.fn()
 const saveGenericTorrentCache = vi.fn()
 const getSettings = vi.fn()
@@ -50,9 +51,10 @@ beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
 
-    updateTrackerRequestStatus.mockResolvedValue(undefined)
-    updateTrackerRequestTorrentCreationProgress.mockResolvedValue(undefined)
-    updateTrackerItem.mockResolvedValue(undefined)
+    const updatedRequest = { id: 'req-1', status: 'uploading' }
+    updateTrackerRequestStatus.mockResolvedValue(updatedRequest)
+    updateTrackerRequestTorrentCreationProgress.mockResolvedValue(updatedRequest)
+    updateTrackerItem.mockResolvedValue(updatedRequest)
     findGenericTorrentCacheByFilepath.mockResolvedValue(null)
     saveGenericTorrentCache.mockResolvedValue(undefined)
     getSettings.mockResolvedValue(defaultSettings)
@@ -81,6 +83,7 @@ async function loadService() {
         updateTrackerRequestTorrentCreationProgress,
         updateTrackerItem,
     }))
+    vi.doMock('../../../../server/events/tracker-request', () => ({ publishTrackerRequest }))
     vi.doMock('../../../../server/services/torrent', () => ({ createGenericTorrent, createTrackerTorrent }))
     vi.doMock('../../../../server/services/mediainfo', () => ({ analyzeMediaFileAsText }))
     vi.doMock('../../../../server/utils/file-system', () => ({ resolveMediaFilePath }))
@@ -103,6 +106,27 @@ describe('tracker upload service', () => {
             expect(updateTrackerRequestStatus).toHaveBeenNthCalledWith(1, 'req-1', 'torrent_creation')
             expect(updateTrackerRequestStatus).toHaveBeenNthCalledWith(2, 'req-1', 'uploading')
             expect(updateTrackerRequestStatus).toHaveBeenNthCalledWith(3, 'req-1', 'success')
+        })
+
+        it('publishes stored request state after updates', async () => {
+            const request = { id: 'req-1', status: 'uploading' }
+            updateTrackerRequestStatus.mockResolvedValue(request)
+            const { upload } = await loadService()
+
+            await upload('req-1', '/media/Movie.mkv', defaultTrackers, defaultMetadata, 'desc')
+
+            expect(publishTrackerRequest).toHaveBeenCalledWith(request)
+        })
+
+        it('does not publish when an updated request no longer exists', async () => {
+            updateTrackerRequestStatus.mockResolvedValue(null)
+            updateTrackerRequestTorrentCreationProgress.mockResolvedValue(null)
+            updateTrackerItem.mockResolvedValue(null)
+            const { upload } = await loadService()
+
+            await upload('req-1', '/media/Movie.mkv', defaultTrackers, defaultMetadata, 'desc')
+
+            expect(publishTrackerRequest).not.toHaveBeenCalled()
         })
 
         it('creates a generic torrent and saves cache entry when no cache exists', async () => {
