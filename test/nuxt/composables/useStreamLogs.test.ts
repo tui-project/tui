@@ -1,70 +1,41 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { defineComponent, nextTick } from 'vue'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent } from 'vue'
 
-class EventSourceMock {
-    static instance: EventSourceMock
+const { useApiEventStreamMock } = vi.hoisted(() => ({ useApiEventStreamMock: vi.fn() }))
 
-    listeners = new Map<string, EventListener>()
-    close = vi.fn()
-
-    constructor(public url: string) {
-        EventSourceMock.instance = this
-    }
-
-    addEventListener(type: string, listener: EventListener) {
-        this.listeners.set(type, listener)
-    }
-
-    emit(type: string, event = new Event(type)) {
-        this.listeners.get(type)?.(event)
-    }
-}
+mockNuxtImport('useApiEventStream', () => useApiEventStreamMock)
 
 describe('useStreamLogs', () => {
-    beforeEach(() => {
-        vi.stubGlobal('EventSource', EventSourceMock)
-    })
+    beforeEach(() => useApiEventStreamMock.mockReset())
 
-    afterEach(() => {
-        vi.unstubAllGlobals()
-    })
-
-    it('connects, receives logs, reports errors, clears, and closes', async () => {
+    it('receives logs, reports connection state, and clears', async () => {
         let liveLogs: ReturnType<typeof useStreamLogs> | undefined
-        const component = defineComponent({
-            setup() {
-                liveLogs = useStreamLogs()
-                return () => null
-            },
-        })
+        await renderSuspended(
+            defineComponent({
+                setup() {
+                    liveLogs = useStreamLogs()
+                    return () => null
+                },
+            })
+        )
+        const [url, options] = useApiEventStreamMock.mock.calls[0]!
 
-        const rendered = await renderSuspended(component)
-        const source = EventSourceMock.instance
-        expect(source.url).toBe('/api/logs/stream')
-
-        source.emit('open')
+        expect(url).toBe('/api/logs/stream')
+        options.onOpen()
         expect(liveLogs?.connected.value).toBe(true)
         expect(liveLogs?.error.value).toBe(false)
 
-        source.emit(
-            'log',
-            new MessageEvent('log', {
-                data: JSON.stringify({ id: 1, time: '2026-08-15T01:00:00.000Z', type: 'info', msg: 'ready' }),
-            })
-        )
+        options.onEvent('other', '{}')
+        options.onEvent('log', JSON.stringify({ id: 1, time: '2026-08-15T01:00:00.000Z', type: 'info', msg: 'ready' }))
         expect(liveLogs?.logs.value).toHaveLength(1)
 
-        source.emit('error')
+        options.onError()
         expect(liveLogs?.connected.value).toBe(false)
         expect(liveLogs?.error.value).toBe(true)
 
         liveLogs?.clear()
         expect(liveLogs?.logs.value).toEqual([])
-
-        rendered.unmount()
-        await nextTick()
-        expect(source.close).toHaveBeenCalledOnce()
     })
 
     it('retains only the latest 1,000 browser entries', async () => {
@@ -77,9 +48,10 @@ describe('useStreamLogs', () => {
                 },
             })
         )
+        const options = useApiEventStreamMock.mock.calls[0]![1]
 
         for (let id = 1; id <= 1001; id += 1) {
-            EventSourceMock.instance.emit('log', new MessageEvent('log', { data: JSON.stringify({ id, time: '2026-08-15T01:00:00.000Z', type: 'info', msg: String(id) }) }))
+            options.onEvent('log', JSON.stringify({ id, time: '2026-08-15T01:00:00.000Z', type: 'info', msg: String(id) }))
         }
 
         expect(liveLogs?.logs.value).toHaveLength(1000)

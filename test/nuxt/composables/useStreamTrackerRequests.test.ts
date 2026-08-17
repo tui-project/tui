@@ -1,33 +1,18 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderSuspended } from '@nuxt/test-utils/runtime'
-import { defineComponent, nextTick } from 'vue'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent } from 'vue'
 
-class EventSourceMock {
-    static instance: EventSourceMock
-    listeners = new Map<string, EventListener>()
-    close = vi.fn()
+const { useApiEventStreamMock } = vi.hoisted(() => ({ useApiEventStreamMock: vi.fn() }))
 
-    constructor(public url: string) {
-        EventSourceMock.instance = this
-    }
-
-    addEventListener(type: string, listener: EventListener) {
-        this.listeners.set(type, listener)
-    }
-
-    emit(type: string, event = new Event(type)) {
-        this.listeners.get(type)?.(event)
-    }
-}
+mockNuxtImport('useApiEventStream', () => useApiEventStreamMock)
 
 describe('useStreamTrackerRequests', () => {
-    beforeEach(() => vi.stubGlobal('EventSource', EventSourceMock))
-    afterEach(() => vi.unstubAllGlobals())
+    beforeEach(() => useApiEventStreamMock.mockReset())
 
-    it('streams requests, refreshes only after reconnection, and closes', async () => {
+    it('handles request events and refreshes after reconnection', async () => {
         const onRequest = vi.fn()
         const onReconnect = vi.fn()
-        const rendered = await renderSuspended(
+        await renderSuspended(
             defineComponent({
                 setup() {
                     useStreamTrackerRequests(onRequest, onReconnect)
@@ -35,21 +20,16 @@ describe('useStreamTrackerRequests', () => {
                 },
             })
         )
-        const source = EventSourceMock.instance
+        const [url, options] = useApiEventStreamMock.mock.calls[0]!
 
-        expect(source.url).toBe('/api/tracker/requests/stream')
-        source.emit('open')
-        expect(onReconnect).not.toHaveBeenCalled()
-
-        source.emit('request', new MessageEvent('request', { data: JSON.stringify({ id: 'upload-1', status: 'pending' }) }))
+        expect(url).toBe('/api/tracker/requests/stream')
+        options.onEvent('other', '{}')
+        options.onEvent('request', JSON.stringify({ id: 'upload-1', status: 'pending' }))
         expect(onRequest).toHaveBeenCalledWith({ id: 'upload-1', status: 'pending' })
 
-        source.emit('error')
-        source.emit('open')
+        options.onOpen(false)
+        expect(onReconnect).not.toHaveBeenCalled()
+        options.onOpen(true)
         expect(onReconnect).toHaveBeenCalledOnce()
-
-        rendered.unmount()
-        await nextTick()
-        expect(source.close).toHaveBeenCalledOnce()
     })
 })

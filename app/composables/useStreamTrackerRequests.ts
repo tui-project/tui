@@ -1,30 +1,10 @@
 export function useStreamTrackerRequests(onRequest: (request: TrackerRequestResponse) => void, onReconnect: () => void | Promise<void>) {
-    let eventSource: EventSource | undefined
-    let reconnecting = false
-
-    onMounted(() => {
-        eventSource = new EventSource('/api/tracker/requests/stream')
-        eventSource.addEventListener('open', onOpen)
-        eventSource.addEventListener('error', onError)
-        eventSource.addEventListener('request', onRequestEvent)
+    useApiEventStream('/api/tracker/requests/stream', {
+        onEvent(event, data) {
+            if (event === 'request') onRequest(JSON.parse(data) as TrackerRequestResponse)
+        },
+        onOpen(reconnected) {
+            if (reconnected) void onReconnect()
+        },
     })
-
-    onBeforeUnmount(() => {
-        eventSource?.close()
-    })
-
-    function onOpen() {
-        if (reconnecting) {
-            reconnecting = false
-            void onReconnect()
-        }
-    }
-
-    function onError() {
-        reconnecting = true
-    }
-
-    function onRequestEvent(event: MessageEvent<string>) {
-        onRequest(JSON.parse(event.data) as TrackerRequestResponse)
-    }
 }
