@@ -7,7 +7,7 @@ interface ApiEventStreamOptions {
 const RECONNECT_DELAY_MS = 3000
 
 export function useApiEventStream(url: string, options: ApiEventStreamOptions) {
-    const nuxtApp = useNuxtApp()
+    const { $api } = useNuxtApp()
     let abortController: AbortController | undefined
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined
     let connected = false
@@ -20,14 +20,9 @@ export function useApiEventStream(url: string, options: ApiEventStreamOptions) {
         abortController = new AbortController()
 
         try {
-            const stream = await $fetch<ReadableStream<Uint8Array>>(url, {
+            const stream = await $api<ReadableStream<Uint8Array>>(url, {
                 responseType: 'stream',
                 signal: abortController.signal,
-                async onResponseError({ response }) {
-                    if (response.status === 401) {
-                        await nuxtApp.runWithContext(() => navigateTo('/login'))
-                    }
-                },
             })
 
             options.onOpen?.(connected)

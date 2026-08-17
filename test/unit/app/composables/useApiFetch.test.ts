@@ -1,42 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const createUseFetchMock = vi.fn()
-const navigateToMock = vi.fn()
-const runWithContextMock = vi.fn((callback: () => unknown) => callback())
+const handleApiResponseErrorMock = vi.fn()
+const nuxtAppMock = {}
 
 beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
     vi.stubGlobal('createUseFetch', createUseFetchMock)
-    vi.stubGlobal('navigateTo', navigateToMock)
-    vi.stubGlobal('useNuxtApp', () => ({ runWithContext: runWithContextMock }))
+    vi.stubGlobal('useNuxtApp', () => nuxtAppMock)
+    vi.stubGlobal('handleApiResponseError', handleApiResponseErrorMock)
 })
 
-async function loadResponseErrorHandler() {
+async function loadFetchOptions() {
     await import('../../../../app/composables/useApiFetch')
     const createOptions = createUseFetchMock.mock.calls[0]![0] as () => {
         onResponseError: (context: { response: { status: number } }) => Promise<void>
     }
-
-    return createOptions().onResponseError
+    return createOptions()
 }
 
 describe('useApiFetch', () => {
-    it('navigates to login when a response is unauthorized', async () => {
-        const onResponseError = await loadResponseErrorHandler()
+    it('delegates response errors to the shared handler', async () => {
+        const options = await loadFetchOptions()
+        await options.onResponseError({ response: { status: 401 } })
 
-        await onResponseError({ response: { status: 401 } })
-
-        expect(runWithContextMock).toHaveBeenCalledOnce()
-        expect(navigateToMock).toHaveBeenCalledWith('/login')
-    })
-
-    it.each([403, 500])('does not navigate when a response has status %s', async (status) => {
-        const onResponseError = await loadResponseErrorHandler()
-
-        await onResponseError({ response: { status } })
-
-        expect(runWithContextMock).not.toHaveBeenCalled()
-        expect(navigateToMock).not.toHaveBeenCalled()
+        expect(handleApiResponseErrorMock).toHaveBeenCalledWith(401, nuxtAppMock)
     })
 })

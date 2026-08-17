@@ -1,19 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 let unmountHandler: (() => void) | undefined
-let fetchMock: ReturnType<typeof vi.fn>
-const navigateToMock = vi.fn()
-const runWithContextMock = vi.fn((callback: () => unknown) => callback())
+let apiMock: ReturnType<typeof vi.fn>
 
 beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
     vi.useFakeTimers()
     unmountHandler = undefined
-    fetchMock = vi.fn()
-    vi.stubGlobal('$fetch', fetchMock)
-    vi.stubGlobal('navigateTo', navigateToMock)
-    vi.stubGlobal('useNuxtApp', () => ({ runWithContext: runWithContextMock }))
+    apiMock = vi.fn()
+    vi.stubGlobal('useNuxtApp', () => ({ $api: apiMock }))
     vi.stubGlobal('onMounted', (handler: () => void) => handler())
     vi.stubGlobal('onBeforeUnmount', (handler: () => void) => {
         unmountHandler = handler
@@ -29,7 +25,7 @@ describe('useApiEventStream', () => {
     it('parses named and multiline events, then reconnects', async () => {
         const firstStream = createStream(['event: request\r\ndata: {"id":', '"one"}\r\ndata: second\r\n\r', '\nevent: ignored\n\n'])
         const secondStream = createStream()
-        fetchMock.mockResolvedValueOnce(firstStream).mockResolvedValueOnce(secondStream)
+        apiMock.mockResolvedValueOnce(firstStream).mockResolvedValueOnce(secondStream)
         const onEvent = vi.fn()
         const onOpen = vi.fn()
         const onError = vi.fn()
@@ -43,18 +39,15 @@ describe('useApiEventStream', () => {
         expect(onEvent).toHaveBeenCalledTimes(1)
 
         await vi.advanceTimersByTimeAsync(3000)
-        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+        await vi.waitFor(() => expect(apiMock).toHaveBeenCalledTimes(2))
         expect(onOpen).toHaveBeenLastCalledWith(true)
 
         unmountHandler?.()
-        expect(fetchMock.mock.calls[1]![1].signal.aborted).toBe(true)
+        expect(apiMock.mock.calls[1]![1].signal.aborted).toBe(true)
     })
 
     it('redirects and does not reconnect after a 401 response', async () => {
-        fetchMock.mockImplementation(async (_url, requestOptions) => {
-            await requestOptions.onResponseError({ response: { status: 401 } })
-            throw { response: { status: 401 } }
-        })
+        apiMock.mockRejectedValue({ response: { status: 401 } })
         const onError = vi.fn()
         const { useApiEventStream } = await import('../../../../app/composables/useApiEventStream')
 
@@ -62,19 +55,17 @@ describe('useApiEventStream', () => {
         await vi.waitFor(() => expect(onError).toHaveBeenCalledOnce())
 
         await vi.advanceTimersByTimeAsync(3000)
-        expect(fetchMock).toHaveBeenCalledOnce()
-        expect(runWithContextMock).toHaveBeenCalledOnce()
-        expect(navigateToMock).toHaveBeenCalledWith('/login')
+        expect(apiMock).toHaveBeenCalledOnce()
         unmountHandler?.()
     })
 
     it('reconnects after request failures and supports omitted lifecycle callbacks', async () => {
-        fetchMock.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(createStream(['data: ready\n\n']))
+        apiMock.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(createStream(['data: ready\n\n']))
         const onEvent = vi.fn()
         const { useApiEventStream } = await import('../../../../app/composables/useApiEventStream')
 
         useApiEventStream('/api/events', { onEvent })
-        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+        await vi.waitFor(() => expect(apiMock).toHaveBeenCalledOnce())
         await vi.advanceTimersByTimeAsync(3000)
         await vi.waitFor(() => expect(onEvent).toHaveBeenCalledWith('message', 'ready'))
 
@@ -82,18 +73,14 @@ describe('useApiEventStream', () => {
     })
 
     it('forwards non-401 response errors and reconnects', async () => {
-        fetchMock.mockImplementation(async (_url, requestOptions) => {
-            await requestOptions.onResponseError({ response: { status: 500 } })
-            throw { response: { status: 500 } }
-        })
+        apiMock.mockRejectedValue({ response: { status: 500 } })
         const { useApiEventStream } = await import('../../../../app/composables/useApiEventStream')
 
         useApiEventStream('/api/events', { onEvent: vi.fn() })
-        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+        await vi.waitFor(() => expect(apiMock).toHaveBeenCalledOnce())
         await vi.advanceTimersByTimeAsync(3000)
 
-        expect(fetchMock).toHaveBeenCalledTimes(2)
-        expect(runWithContextMock).not.toHaveBeenCalled()
+        expect(apiMock).toHaveBeenCalledTimes(2)
         unmountHandler?.()
     })
 
@@ -104,23 +91,23 @@ describe('useApiEventStream', () => {
                 closeStream = () => controller.close()
             },
         })
-        fetchMock.mockResolvedValue(stream)
+        apiMock.mockResolvedValue(stream)
         const onError = vi.fn()
         const { useApiEventStream } = await import('../../../../app/composables/useApiEventStream')
 
         useApiEventStream('/api/events', { onEvent: vi.fn(), onError })
-        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+        await vi.waitFor(() => expect(apiMock).toHaveBeenCalledOnce())
         unmountHandler?.()
         closeStream?.()
         await vi.runAllTimersAsync()
 
         expect(onError).not.toHaveBeenCalled()
-        expect(fetchMock).toHaveBeenCalledOnce()
+        expect(apiMock).toHaveBeenCalledOnce()
     })
 
     it('does not report or reconnect a request failure after unmounting', async () => {
         let rejectRequest: ((error: Error) => void) | undefined
-        fetchMock.mockImplementation(
+        apiMock.mockImplementation(
             () =>
                 new Promise((_resolve, reject) => {
                     rejectRequest = reject
@@ -135,7 +122,7 @@ describe('useApiEventStream', () => {
         await vi.runAllTimersAsync()
 
         expect(onError).not.toHaveBeenCalled()
-        expect(fetchMock).toHaveBeenCalledOnce()
+        expect(apiMock).toHaveBeenCalledOnce()
     })
 
     it('can stop before the connection starts', async () => {
@@ -150,7 +137,7 @@ describe('useApiEventStream', () => {
         mountHandler?.()
         await vi.runAllTimersAsync()
 
-        expect(fetchMock).toHaveBeenCalledOnce()
+        expect(apiMock).toHaveBeenCalledOnce()
     })
 })
 
