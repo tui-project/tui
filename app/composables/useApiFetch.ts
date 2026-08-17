@@ -3,7 +3,9 @@ export const useApiFetch = createUseFetch(() => {
 
     return {
         async onResponseError({ response }) {
-            await handleApiResponseError(response.status, nuxtApp)
+            if (response.status === 401) {
+                await nuxtApp.runWithContext(() => navigateTo('/login'))
+            }
         },
     }
 })
