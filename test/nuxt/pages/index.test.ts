@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { renderSuspended, mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { renderSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import IndexPage from '../../../app/pages/index.vue'
 
 const useFetchData = ref<Partial<TrackerRequestResponse>[] | null>(null)
@@ -11,6 +11,15 @@ const useFetchPending = ref(false)
 const refreshMock = vi.fn()
 const executeRetryMock = vi.fn()
 let capturedRetryUrlGetter: (() => string) | null = null
+let streamRequestHandler: ((request: TrackerRequestResponse) => void) | null = null
+let streamReconnectHandler: (() => void | Promise<void>) | null = null
+
+mockNuxtImport('useStreamTrackerRequests', () => {
+    return (onRequest: (request: TrackerRequestResponse) => void, onReconnect: () => void | Promise<void>) => {
+        streamRequestHandler = onRequest
+        streamReconnectHandler = onReconnect
+    }
+})
 
 mockNuxtImport('useApiFetch', () => {
     return (url: unknown) => {
@@ -28,6 +37,7 @@ mockNuxtImport('useApiFetch', () => {
 })
 
 const BASE_REQUEST = {
+    groupId: 'group-1',
     metadata: { title: 'Movie', mediaType: 'movie' as const, year: 2024 } as TrackerRequestResponse['metadata'],
     description: '',
 }
@@ -39,6 +49,8 @@ describe('index page', () => {
         useFetchError.value = null
         useFetchPending.value = false
         capturedRetryUrlGetter = null
+        streamRequestHandler = null
+        streamReconnectHandler = null
         refreshMock.mockReset()
         executeRetryMock.mockReset()
     })
@@ -166,28 +178,57 @@ describe('index page', () => {
         expect(screen.getByText('0%')).toBeTruthy()
     })
 
-    it('polls for updated requests every 2 seconds', async () => {
+    it('updates an existing request from the stream without polling', async () => {
+        useFetchData.value = []
+        const request = {
+            ...BASE_REQUEST,
+            id: 'upload-1',
+            filepath: '/media/Movie.mkv',
+            status: 'pending' as const,
+            trackers: [],
+        }
+        useFetchData.value = [request]
+
+        await renderSuspended(IndexPage)
+        streamRequestHandler?.({ ...request, status: 'success' })
+        await nextTick()
+
+        expect(refreshMock).toHaveBeenCalledTimes(0)
+        expect(screen.getByText('Success')).toBeTruthy()
+    })
+
+    it('prepends a newly streamed request and refreshes after reconnecting', async () => {
         useFetchData.value = []
         refreshMock.mockResolvedValue(undefined)
 
         await renderSuspended(IndexPage)
+        streamRequestHandler?.({
+            ...BASE_REQUEST,
+            id: 'upload-new',
+            filepath: '/media/New.mkv',
+            status: 'pending',
+            trackers: [],
+        })
+        await streamReconnectHandler?.()
+        await nextTick()
 
-        expect(refreshMock).toHaveBeenCalledTimes(0)
-
-        await vi.advanceTimersByTimeAsync(2_000)
-
-        expect(refreshMock).toHaveBeenCalledTimes(1)
+        expect(screen.getByText('New.mkv')).toBeTruthy()
+        expect(useFetchData.value).toHaveLength(1)
+        expect(refreshMock).toHaveBeenCalledOnce()
     })
 
-    it('clears the polling interval when the component is unmounted', async () => {
-        useFetchData.value = []
-        const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval')
+    it('ignores streamed requests until the initial list has loaded', async () => {
+        await renderSuspended(IndexPage)
 
-        const wrapper = await mountSuspended(IndexPage)
-        await wrapper.unmount()
+        streamRequestHandler?.({
+            ...BASE_REQUEST,
+            id: 'upload-new',
+            filepath: '/media/New.mkv',
+            status: 'pending',
+            trackers: [],
+        })
 
-        expect(clearIntervalSpy).toHaveBeenCalled()
-        clearIntervalSpy.mockRestore()
+        expect(useFetchData.value).toBeNull()
     })
 
     it('shows neutral badge for a pending request without progress or failed trackers', async () => {
