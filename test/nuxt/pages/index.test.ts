@@ -5,7 +5,12 @@ import { computed, nextTick, ref } from 'vue'
 import IndexPage from '../../../app/pages/index.vue'
 
 const useFetchData = ref<Partial<TrackerRequestResponse>[] | null>(null)
-const useFetchListData = computed(() => (useFetchData.value === null ? null : { items: useFetchData.value, total: useFetchData.value.length }))
+const useFetchListData = computed({
+    get: () => (useFetchData.value === null ? null : { items: useFetchData.value, total: useFetchData.value.length }),
+    set: (value) => {
+        useFetchData.value = value?.items ?? null
+    },
+})
 const useFetchError = ref<Error | null>(null)
 const useFetchPending = ref(false)
 const refreshMock = vi.fn()
@@ -190,11 +195,11 @@ describe('index page', () => {
         useFetchData.value = [request]
 
         await renderSuspended(IndexPage)
-        streamRequestHandler?.({ ...request, status: 'success' })
+        streamRequestHandler?.({ ...request, status: 'torrent_creation', torrentCreationProgress: 42 })
         await nextTick()
 
         expect(refreshMock).toHaveBeenCalledTimes(0)
-        expect(screen.getByText('Success')).toBeTruthy()
+        expect(screen.getByText('42%')).toBeTruthy()
     })
 
     it('prepends a newly streamed request and refreshes after reconnecting', async () => {

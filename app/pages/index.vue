@@ -15,12 +15,17 @@ function updateRequest(request: TrackerRequestResponse) {
 
     const index = data.value.items.findIndex((item) => item.id === request.id)
     if (index === -1) {
-        data.value.items.unshift(request)
-        data.value.total += 1
+        data.value = {
+            items: [request, ...data.value.items],
+            total: data.value.total + 1,
+        }
         return
     }
 
-    data.value.items[index] = request
+    data.value = {
+        ...data.value,
+        items: data.value.items.map((item) => (item.id === request.id ? request : item)),
+    }
 }
 
 function shouldShowProgress(status: Status) {
