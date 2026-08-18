@@ -192,7 +192,14 @@ describe('index page', () => {
             status: 'pending' as const,
             trackers: [],
         }
-        useFetchData.value = [request]
+        const otherRequest = {
+            ...BASE_REQUEST,
+            id: 'upload-2',
+            filepath: '/media/Other.mkv',
+            status: 'success' as const,
+            trackers: [],
+        }
+        useFetchData.value = [request, otherRequest]
 
         await renderSuspended(IndexPage)
         streamRequestHandler?.({ ...request, status: 'torrent_creation', torrentCreationProgress: 42 })
@@ -200,6 +207,7 @@ describe('index page', () => {
 
         expect(refreshMock).toHaveBeenCalledTimes(0)
         expect(screen.getByText('42%')).toBeTruthy()
+        expect(useFetchData.value?.[1]).toEqual(otherRequest)
     })
 
     it('prepends a newly streamed request and refreshes after reconnecting', async () => {

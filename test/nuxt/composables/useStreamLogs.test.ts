@@ -48,12 +48,20 @@ describe('useStreamLogs', () => {
         expect(liveLogs?.error.value).toBe(false)
 
         source.emit(
-            'log',
-            new MessageEvent('log', {
-                data: JSON.stringify({ id: 1, time: '2026-08-15T01:00:00.000Z', type: 'info', msg: 'ready' }),
+            'snapshot',
+            new MessageEvent('snapshot', {
+                data: JSON.stringify([{ id: 1, time: '2026-08-15T01:00:00.000Z', type: 'info', msg: 'ready' }]),
             })
         )
         expect(liveLogs?.logs.value).toHaveLength(1)
+
+        source.emit(
+            'log',
+            new MessageEvent('log', {
+                data: JSON.stringify({ id: 2, time: '2026-08-15T01:00:01.000Z', type: 'warn', msg: 'live' }),
+            })
+        )
+        expect(liveLogs?.logs.value).toHaveLength(2)
 
         source.emit('error')
         expect(liveLogs?.connected.value).toBe(false)
@@ -81,6 +89,29 @@ describe('useStreamLogs', () => {
         for (let id = 1; id <= 1001; id += 1) {
             EventSourceMock.instance.emit('log', new MessageEvent('log', { data: JSON.stringify({ id, time: '2026-08-15T01:00:00.000Z', type: 'info', msg: String(id) }) }))
         }
+
+        expect(liveLogs?.logs.value).toHaveLength(1000)
+        expect(liveLogs?.logs.value[0]?.id).toBe(2)
+    })
+
+    it('retains only the latest 1,000 entries from the initial snapshot', async () => {
+        let liveLogs: ReturnType<typeof useStreamLogs> | undefined
+        await renderSuspended(
+            defineComponent({
+                setup() {
+                    liveLogs = useStreamLogs()
+                    return () => null
+                },
+            })
+        )
+        const entries = Array.from({ length: 1001 }, (_, index) => ({
+            id: index + 1,
+            time: '2026-08-15T01:00:00.000Z',
+            type: 'info',
+            msg: String(index + 1),
+        }))
+
+        EventSourceMock.instance.emit('snapshot', new MessageEvent('snapshot', { data: JSON.stringify(entries) }))
 
         expect(liveLogs?.logs.value).toHaveLength(1000)
         expect(liveLogs?.logs.value[0]?.id).toBe(2)

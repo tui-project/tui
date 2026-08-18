@@ -35,6 +35,13 @@ describe('logs page flow', async () => {
 
         await page.goto(page.url().replace(/\/$/, '') + '/logs')
         await page.waitForURL('**/logs')
+
+        await page.getByRole('link', { name: 'About' }).click()
+        await page.waitForURL('**/about')
+        await page.getByRole('heading', { name: 'About' }).waitFor()
+
+        await page.getByRole('link', { name: 'Logs' }).click()
+        await page.waitForURL('**/logs')
         await page.getByText('Live', { exact: true }).waitFor()
 
         const probePath = '/api/log-page-e2e-probe'
