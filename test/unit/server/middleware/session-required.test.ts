@@ -12,6 +12,9 @@ const sendError = vi.fn((event: unknown, error: unknown) => ({ event, error }))
 const createError = vi.fn((opts: { statusCode: number; message: string }) => opts)
 const getRequestURL = vi.fn<(event: unknown) => { pathname: string }>()
 const getCookie = vi.fn<(event: unknown, name: string) => string | undefined>()
+const push = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
+const send = vi.fn(() => 'stream response')
+const createEventStream = vi.fn(() => ({ push, send }))
 
 beforeEach(() => {
     vi.resetModules()
@@ -22,6 +25,7 @@ beforeEach(() => {
 async function loadHandler() {
     vi.doMock('h3', () => ({
         createError,
+        createEventStream,
         getCookie,
         getRequestURL,
         sendError,
@@ -71,6 +75,18 @@ describe('session required middleware', () => {
         expect(sendRedirect).not.toHaveBeenCalled()
     })
 
+    it('returns an unauthorised event when the session cookie is missing on a stream route', async () => {
+        getRequestURL.mockReturnValue({ pathname: '/api/logs/stream' })
+        getCookie.mockReturnValue(undefined)
+        const event = { requestId: 'req-1' } as never
+        const handler = await loadHandler()
+
+        await expect(handler(event)).resolves.toBe('stream response')
+        expect(createEventStream).toHaveBeenCalledWith(event)
+        expect(push).toHaveBeenCalledWith({ event: 'unauthorised', data: 'Unauthorized' })
+        expect(sendError).not.toHaveBeenCalled()
+    })
+
     it('redirects to login when session is not active on a page route', async () => {
         getRequestURL.mockReturnValue({ pathname: '/' })
         getCookie.mockReturnValue('session-1')
@@ -95,6 +111,18 @@ describe('session required middleware', () => {
 
         expect(sendError).toHaveBeenCalledWith(event, { statusCode: 401, message: 'Unauthorized' })
         expect(sendRedirect).not.toHaveBeenCalled()
+    })
+
+    it('returns an unauthorised event when the session is not active on a stream route', async () => {
+        getRequestURL.mockReturnValue({ pathname: '/api/tracker/requests/stream' })
+        getCookie.mockReturnValue('session-1')
+        findActiveSessionById.mockResolvedValue(null)
+        const event = { requestId: 'req-1' } as never
+        const handler = await loadHandler()
+
+        await expect(handler(event)).resolves.toBe('stream response')
+        expect(push).toHaveBeenCalledWith({ event: 'unauthorised', data: 'Unauthorized' })
+        expect(sendError).not.toHaveBeenCalled()
     })
 
     it('allows request with active session', async () => {

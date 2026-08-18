@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { defineComponent, nextTick } from 'vue'
+
+const { navigateToMock } = vi.hoisted(() => ({ navigateToMock: vi.fn() }))
+
+mockNuxtImport('navigateTo', () => navigateToMock)
 
 class EventSourceMock {
     static instance: EventSourceMock
@@ -21,7 +25,10 @@ class EventSourceMock {
 }
 
 describe('useStreamTrackerRequests', () => {
-    beforeEach(() => vi.stubGlobal('EventSource', EventSourceMock))
+    beforeEach(() => {
+        vi.stubGlobal('EventSource', EventSourceMock)
+        navigateToMock.mockReset()
+    })
     afterEach(() => vi.unstubAllGlobals())
 
     it('replaces requests from snapshots, applies updates, reports connection state, and closes', async () => {
@@ -84,5 +91,21 @@ describe('useStreamTrackerRequests', () => {
         expect(stream?.requests.value).toHaveLength(12)
         expect(stream?.requests.value[0]).toEqual(newest)
         expect(stream?.requests.value).not.toContainEqual(requests.at(-1))
+    })
+
+    it('closes and redirects to login when the stream reports an unauthorised session', async () => {
+        await renderSuspended(
+            defineComponent({
+                setup() {
+                    useStreamTrackerRequests()
+                    return () => null
+                },
+            })
+        )
+
+        EventSourceMock.instance.emit('unauthorised')
+
+        expect(EventSourceMock.instance.close).toHaveBeenCalledOnce()
+        expect(navigateToMock).toHaveBeenCalledWith('/login')
     })
 })
