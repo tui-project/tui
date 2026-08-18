@@ -10,6 +10,7 @@ export function useStreamLogs() {
         eventSource = new EventSource('/api/logs/stream')
         eventSource.addEventListener('open', onOpen)
         eventSource.addEventListener('error', onError)
+        eventSource.addEventListener('snapshot', onSnapshot)
         eventSource.addEventListener('log', onLog)
     })
 
@@ -30,6 +31,10 @@ export function useStreamLogs() {
     function onLog(event: MessageEvent<string>) {
         logs.value.push(JSON.parse(event.data) as LogEntry)
         logs.value.splice(0, Math.max(0, logs.value.length - MAX_CLIENT_LOGS))
+    }
+
+    function onSnapshot(event: MessageEvent<string>) {
+        logs.value = (JSON.parse(event.data) as LogEntry[]).slice(-MAX_CLIENT_LOGS)
     }
 
     function clear() {

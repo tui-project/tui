@@ -29,9 +29,8 @@ describe('logs stream route', () => {
 
         expect(handler(event)).toBe('stream response')
         expect(push).toHaveBeenCalledWith({
-            id: '1',
-            event: 'log',
-            data: JSON.stringify({ id: 1, time: '2026-08-16T00:00:00.000Z', type: 'info', scope: 'startup', msg: 'Ready', context: null }),
+            event: 'snapshot',
+            data: JSON.stringify([{ id: 1, time: '2026-08-16T00:00:00.000Z', type: 'info', scope: 'startup', msg: 'Ready', context: null }]),
         })
 
         const liveEntry = { id: 2, time: '2026-08-16T00:00:01.000Z', type: 'warn', scope: 'auth', msg: 'Missing session', context: { path: '/api/test' } } satisfies LogEntry

@@ -93,8 +93,8 @@ async function readLogEntry(response: Response, matches: (entry: LogEntry) => bo
                     ?.slice(5)
                     .trim()
                 if (data) {
-                    const entry = JSON.parse(data) as LogEntry
-                    if (matches(entry)) {
+                    const entry = JSON.parse(data) as LogEntry | LogEntry[]
+                    if (!Array.isArray(entry) && matches(entry)) {
                         return entry
                     }
                 }

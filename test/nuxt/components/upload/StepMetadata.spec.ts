@@ -65,7 +65,7 @@ beforeEach(() => {
     })
 })
 
-describe('StepMetadata', () => {
+describe('StepMetadata', { timeout: 10000 }, () => {
     describe('no path selected', () => {
         it('shows select path alert and does not call execute', async () => {
             await renderSuspended(StepMetadata, { props: { selectedPath: { label: '', value: '', icon: '', folder: false } } })
@@ -425,7 +425,7 @@ describe('StepMetadata', () => {
 
             expect(screen.getByRole('spinbutton', { name: 'Last Episode' })).toBeDefined()
             expect(screen.getByRole('spinbutton', { name: 'First Episode' })).toBeDefined()
-        }, 10000)
+        })
 
         it('initialises multi-episode toggle from metadata with episodeEnd', async () => {
             mockExecute.mockImplementation(() => {
@@ -452,7 +452,7 @@ describe('StepMetadata', () => {
 
             await user.click(screen.getByRole('switch', { name: 'Multi-episode' }))
             expect(screen.getByRole('spinbutton', { name: 'Last Episode' }).getAttribute('value')).toBe('8')
-        }, 10000)
+        })
 
         it.each([
             [0, 12, 'Polar Challenge'],
@@ -492,7 +492,7 @@ describe('StepMetadata', () => {
             await fireEvent.blur(lastEpisodeInput)
 
             await waitFor(() => expect(lastEpisodeInput.getAttribute('value')).toBe('6'))
-        }, 10000)
+        })
 
         it('allows editing the special name field', async () => {
             mockExecute.mockImplementation(() => {
@@ -542,7 +542,7 @@ describe('StepMetadata', () => {
                 expect(tvdbInput.getAttribute('value')).toBe('67890')
                 expect(tmdbInput.getAttribute('value')).toBe('99999')
             })
-        }, 10000)
+        })
 
         it('updates flag checkboxes and TVDB field for tv metadata', async () => {
             const user = userEvent.setup({ delay: null })
@@ -574,7 +574,7 @@ describe('StepMetadata', () => {
             expect(yearInput.getAttribute('value')).toBe('2024')
             expect(screen.getByRole('combobox', { name: 'Resolution' }).textContent).toBe('1080p')
             expect(tvdbInput.getAttribute('value')).toBe('4321')
-        }, 10000)
+        })
 
         it.each([
             ['Video Codec', 'AVC'],
@@ -607,7 +607,7 @@ describe('StepMetadata', () => {
             await user.tab()
 
             await waitFor(() => expect(tmdbInput.getAttribute('value')).toBe('12345'))
-        }, 10000)
+        })
 
         it('covers single-select dropdown v-model handlers in basic and source-release sections', async () => {
             // All interactions in one test: one renderSuspended, one cleanup — avoids multi-test
@@ -697,7 +697,7 @@ describe('StepMetadata', () => {
             await user.tab()
 
             await waitFor(() => expect(tvdbInput.getAttribute('value')).toBe('12345'))
-        }, 10000)
+        })
     })
 
     describe('validation', () => {
@@ -744,7 +744,7 @@ describe('StepMetadata', () => {
 
             expect(onBack).toHaveBeenCalledTimes(1)
             await waitFor(() => expect(onNext).toHaveBeenCalledTimes(1))
-        }, 10000)
+        })
 
         it('updates modelValue on submit', async () => {
             const onUpdateModelValue = vi.fn()
@@ -756,7 +756,7 @@ describe('StepMetadata', () => {
             await waitFor(() => {
                 expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ title: 'Dune' }) }))
             })
-        }, 10000)
+        })
 
         it('preserves episodeEnd on submit when multi-episode toggle is on', async () => {
             const onUpdateModelValue = vi.fn()
@@ -771,7 +771,7 @@ describe('StepMetadata', () => {
             await waitFor(() => {
                 expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ episodeEnd: 8 }) }))
             })
-        }, 10000)
+        })
 
         it('clears episodeEnd on submit when multi-episode toggle is off', async () => {
             const user = userEvent.setup({ delay: null })
@@ -788,7 +788,7 @@ describe('StepMetadata', () => {
             await waitFor(() => {
                 expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.not.objectContaining({ episodeEnd: expect.anything() }) }))
             })
-        }, 10000)
+        })
     })
 
     describe('conditional flags', () => {
@@ -800,7 +800,7 @@ describe('StepMetadata', () => {
             await renderSuspended(StepMetadata, { props: { selectedPath } })
 
             await waitFor(() => expect(screen.getByRole('checkbox', { name: 'English Subs' })).toBeTruthy())
-        }, 10000)
+        })
 
         it('shows TrueHD Compatibility Track checkbox when audio codec is TrueHD', async () => {
             mockExecute.mockImplementation(() => {
