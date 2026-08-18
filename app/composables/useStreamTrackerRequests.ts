@@ -11,6 +11,7 @@ export function useStreamTrackerRequests() {
         eventSource = new EventSource('/api/tracker/requests/stream')
         eventSource.addEventListener('open', onOpen)
         eventSource.addEventListener('error', onError)
+        eventSource.addEventListener('unauthorised', onUnauthorised)
         eventSource.addEventListener('snapshot', onSnapshot)
         eventSource.addEventListener('request', onRequestEvent)
     })
@@ -27,6 +28,11 @@ export function useStreamTrackerRequests() {
     function onError() {
         connected.value = false
         error.value = true
+    }
+
+    function onUnauthorised() {
+        eventSource?.close()
+        void navigateTo('/login')
     }
 
     function onRequestEvent(event: MessageEvent<string>) {

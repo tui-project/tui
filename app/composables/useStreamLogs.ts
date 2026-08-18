@@ -10,6 +10,7 @@ export function useStreamLogs() {
         eventSource = new EventSource('/api/logs/stream')
         eventSource.addEventListener('open', onOpen)
         eventSource.addEventListener('error', onError)
+        eventSource.addEventListener('unauthorised', onUnauthorised)
         eventSource.addEventListener('snapshot', onSnapshot)
         eventSource.addEventListener('log', onLog)
     })
@@ -26,6 +27,11 @@ export function useStreamLogs() {
     function onError() {
         connected.value = false
         error.value = true
+    }
+
+    function onUnauthorised() {
+        eventSource?.close()
+        void navigateTo('/login')
     }
 
     function onLog(event: MessageEvent<string>) {

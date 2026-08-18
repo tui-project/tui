@@ -25,10 +25,12 @@ describe('GET /api/logs/stream', async () => {
         })
     })
 
-    it('returns unauthorized without a valid session', async () => {
+    it('streams an unauthorised event without a valid session', async () => {
         const response = await fetch('/api/logs/stream')
 
-        expect(response.status).toBe(401)
+        expect(response.status).toBe(200)
+        expect(response.headers.get('content-type')).toContain('text/event-stream')
+        await expect(readEvent(response)).resolves.toContain('event: unauthorised')
     })
 
     it('streams new structured log entries to an authenticated client', async () => {
@@ -49,11 +51,34 @@ describe('GET /api/logs/stream', async () => {
         await expect(streamedEntry).resolves.toMatchObject({
             type: 'warn',
             scope: 'auth',
-            msg: 'Missing session. Redirecting request to login page.',
+            msg: 'Missing session. Rejecting request.',
             context: { path: probePath },
         })
     })
 })
+
+async function readEvent(response: Response) {
+    const reader = response.body!.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    try {
+        while (!buffer.includes('\n\n')) {
+            const { done, value } = await Promise.race([
+                reader.read(),
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timed out waiting for streamed event.')), 10000)),
+            ])
+            if (done) {
+                throw new Error('Stream closed before an event arrived.')
+            }
+            buffer += decoder.decode(value, { stream: true })
+        }
+
+        return buffer.slice(0, buffer.indexOf('\n\n'))
+    } finally {
+        await reader.cancel()
+    }
+}
 
 async function getSessionCookie() {
     const response = await fetch('/api/login', {

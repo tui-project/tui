@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { defineComponent, nextTick } from 'vue'
+
+const { navigateToMock } = vi.hoisted(() => ({ navigateToMock: vi.fn() }))
+
+mockNuxtImport('navigateTo', () => navigateToMock)
 
 class EventSourceMock {
     static instance: EventSourceMock
@@ -24,6 +28,23 @@ class EventSourceMock {
 describe('useStreamLogs', () => {
     beforeEach(() => {
         vi.stubGlobal('EventSource', EventSourceMock)
+        navigateToMock.mockReset()
+    })
+
+    it('closes and redirects to login when the stream reports an unauthorised session', async () => {
+        await renderSuspended(
+            defineComponent({
+                setup() {
+                    useStreamLogs()
+                    return () => null
+                },
+            })
+        )
+
+        EventSourceMock.instance.emit('unauthorised')
+
+        expect(EventSourceMock.instance.close).toHaveBeenCalledOnce()
+        expect(navigateToMock).toHaveBeenCalledWith('/login')
     })
 
     afterEach(() => {
