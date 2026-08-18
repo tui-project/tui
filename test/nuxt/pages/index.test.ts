@@ -5,25 +5,17 @@ import { computed, nextTick, ref } from 'vue'
 import IndexPage from '../../../app/pages/index.vue'
 
 const useFetchData = ref<Partial<TrackerRequestResponse>[] | null>(null)
-const useFetchListData = computed({
-    get: () => (useFetchData.value === null ? null : { items: useFetchData.value, total: useFetchData.value.length }),
-    set: (value) => {
-        useFetchData.value = value?.items ?? null
-    },
-})
 const useFetchError = ref<Error | null>(null)
 const useFetchPending = ref(false)
-const refreshMock = vi.fn()
 const executeRetryMock = vi.fn()
 let capturedRetryUrlGetter: (() => string) | null = null
-let streamRequestHandler: ((request: TrackerRequestResponse) => void) | null = null
-let streamReconnectHandler: (() => void | Promise<void>) | null = null
 
 mockNuxtImport('useStreamTrackerRequests', () => {
-    return (onRequest: (request: TrackerRequestResponse) => void, onReconnect: () => void | Promise<void>) => {
-        streamRequestHandler = onRequest
-        streamReconnectHandler = onReconnect
-    }
+    return () => ({
+        requests: computed(() => useFetchData.value ?? []),
+        pending: useFetchPending,
+        error: useFetchError,
+    })
 })
 
 mockNuxtImport('useApiFetch', () => {
@@ -32,12 +24,7 @@ mockNuxtImport('useApiFetch', () => {
             capturedRetryUrlGetter = url as () => string
             return { execute: executeRetryMock, status: ref('idle'), error: ref(null) }
         }
-        return {
-            data: useFetchListData,
-            error: useFetchError,
-            pending: useFetchPending,
-            refresh: refreshMock,
-        }
+        throw new Error('Unexpected non-mutation API request')
     }
 })
 
@@ -54,9 +41,6 @@ describe('index page', () => {
         useFetchError.value = null
         useFetchPending.value = false
         capturedRetryUrlGetter = null
-        streamRequestHandler = null
-        streamReconnectHandler = null
-        refreshMock.mockReset()
         executeRetryMock.mockReset()
     })
 
@@ -183,7 +167,7 @@ describe('index page', () => {
         expect(screen.getByText('0%')).toBeTruthy()
     })
 
-    it('updates an existing request from the stream without polling', async () => {
+    it('reactively renders an existing request updated by the stream', async () => {
         useFetchData.value = []
         const request = {
             ...BASE_REQUEST,
@@ -202,46 +186,30 @@ describe('index page', () => {
         useFetchData.value = [request, otherRequest]
 
         await renderSuspended(IndexPage)
-        streamRequestHandler?.({ ...request, status: 'torrent_creation', torrentCreationProgress: 42 })
+        useFetchData.value = [{ ...request, status: 'torrent_creation', torrentCreationProgress: 42 }, otherRequest]
         await nextTick()
 
-        expect(refreshMock).toHaveBeenCalledTimes(0)
         expect(screen.getByText('42%')).toBeTruthy()
         expect(useFetchData.value?.[1]).toEqual(otherRequest)
     })
 
-    it('prepends a newly streamed request and refreshes after reconnecting', async () => {
+    it('renders a new request received from the stream', async () => {
         useFetchData.value = []
-        refreshMock.mockResolvedValue(undefined)
 
         await renderSuspended(IndexPage)
-        streamRequestHandler?.({
-            ...BASE_REQUEST,
-            id: 'upload-new',
-            filepath: '/media/New.mkv',
-            status: 'pending',
-            trackers: [],
-        })
-        await streamReconnectHandler?.()
+        useFetchData.value = [
+            {
+                ...BASE_REQUEST,
+                id: 'upload-new',
+                filepath: '/media/New.mkv',
+                status: 'pending',
+                trackers: [],
+            },
+        ]
         await nextTick()
 
         expect(screen.getByText('New.mkv')).toBeTruthy()
         expect(useFetchData.value).toHaveLength(1)
-        expect(refreshMock).toHaveBeenCalledOnce()
-    })
-
-    it('ignores streamed requests until the initial list has loaded', async () => {
-        await renderSuspended(IndexPage)
-
-        streamRequestHandler?.({
-            ...BASE_REQUEST,
-            id: 'upload-new',
-            filepath: '/media/New.mkv',
-            status: 'pending',
-            trackers: [],
-        })
-
-        expect(useFetchData.value).toBeNull()
     })
 
     it('shows neutral badge for a pending request without progress or failed trackers', async () => {
@@ -331,9 +299,8 @@ describe('index page', () => {
         expect(screen.getByText('Torrent client injection failed for one or more trackers.')).toBeTruthy()
     })
 
-    it('retries the request and refreshes the list when the retry button is clicked', async () => {
+    it('retries the request without refetching the list', async () => {
         executeRetryMock.mockResolvedValue(undefined)
-        refreshMock.mockResolvedValue(undefined)
         useFetchData.value = [
             {
                 ...BASE_REQUEST,
@@ -351,7 +318,6 @@ describe('index page', () => {
         await user.click(screen.getByRole('button', { name: /retry/i }))
 
         expect(executeRetryMock).toHaveBeenCalledTimes(1)
-        expect(refreshMock).toHaveBeenCalledTimes(1)
         expect(capturedRetryUrlGetter?.()).toBe('/api/tracker/requests/upload-1')
     })
 })

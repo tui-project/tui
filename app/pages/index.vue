@@ -1,32 +1,10 @@
 <script setup lang="ts">
 const FINAL_STATUSES = new Set<string>([STATUS.SUCCESS, STATUS.PARTIAL_SUCCESS, STATUS.FAIL])
 
-const { pending, data, error, refresh } = useGetTrackerRequests()
+const { requests, pending, error } = useStreamTrackerRequests()
 const { formatStatus, getRequestLabel, getStatusColor, getStatusIcon, getTrackerUploadStatusColor } = useTrackerRequestStatus()
 
-const requests = computed(() => data.value?.items ?? [])
-
 const { execute: executeRetry } = usePatchTrackerRequest()
-
-useStreamTrackerRequests(updateRequest, refresh)
-
-function updateRequest(request: TrackerRequestResponse) {
-    if (!data.value) return
-
-    const index = data.value.items.findIndex((item) => item.id === request.id)
-    if (index === -1) {
-        data.value = {
-            items: [request, ...data.value.items],
-            total: data.value.total + 1,
-        }
-        return
-    }
-
-    data.value = {
-        ...data.value,
-        items: data.value.items.map((item) => (item.id === request.id ? request : item)),
-    }
-}
 
 function shouldShowProgress(status: Status) {
     return status === STATUS.TORRENT_CREATION
@@ -59,7 +37,6 @@ function hasInjectionFailure(request: TrackerRequestResponse) {
 
 async function handleRetry(request: TrackerRequestResponse) {
     await executeRetry(request.id)
-    await refresh()
 }
 </script>
 
@@ -69,7 +46,7 @@ async function handleRetry(request: TrackerRequestResponse) {
         <UCard title="Recent Uploads" description="The latest upload requests and their current status." variant="subtle">
             <UAlert v-if="error" color="error" variant="soft" title="Unable to load recent upload requests." description="Please try again in a moment." />
 
-            <div v-else-if="pending && !data" class="space-y-2">
+            <div v-else-if="pending" class="space-y-2">
                 <USkeleton class="h-20 w-full" />
                 <USkeleton class="h-20 w-full" />
                 <USkeleton class="h-20 w-full" />
