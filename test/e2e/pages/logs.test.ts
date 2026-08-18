@@ -50,7 +50,7 @@ describe('logs page flow', async () => {
         const search = page.getByPlaceholder('Text or key=value, e.g. trackerCode=ATH')
         await search.fill(`path=${probePath}`)
 
-        const entry = page.getByRole('button', { name: 'View log details: Missing session. Redirecting request to login page.' })
+        const entry = page.getByRole('button', { name: 'View log details: Missing session. Rejecting request.' })
         await entry.waitFor()
         await entry.click()
 
