@@ -1,5 +1,5 @@
 import { mkdtempSync } from 'node:fs'
-import { rm } from 'node:fs/promises'
+import { readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, afterEach, vi } from 'vitest'
@@ -36,6 +36,15 @@ beforeEach(async () => {
 afterEach(async () => {
     vi.restoreAllMocks()
 
+    if ((await readdir(dataDir)).length > 0) {
+        const db = await import('../../server/utils/db')
+        await Promise.all(
+            [db.userCollection, db.sessionCollection, db.settingsCollection, db.directoryCacheCollection, db.genericTorrentCacheCollection, db.trackerUploadRequestCollection]
+                .map((collection) => collection?.autoloadPromise)
+                .filter((load): load is Promise<void> => load !== null && load !== undefined)
+        )
+    }
+
     delete process.env.DATABASE_DIR
     delete process.env.LOG_DIR
     delete process.env.LOG_FILE
@@ -43,5 +52,12 @@ afterEach(async () => {
     delete process.env.LOG_LEVEL
     delete process.env.LOG_BUFFER_SIZE
 
-    await Promise.all([rm(dataDir, { recursive: true, force: true }), rm(logDir, { recursive: true, force: true })])
+    const cleanupOptions = {
+        recursive: true,
+        force: true,
+        maxRetries: 5,
+        retryDelay: 50,
+    }
+
+    await Promise.all([rm(dataDir, cleanupOptions), rm(logDir, cleanupOptions)])
 })
