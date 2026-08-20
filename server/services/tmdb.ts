@@ -305,28 +305,6 @@ export async function getExternalIDs(tmdbID: string, mediaType: MediaType): Prom
     }
 }
 
-export async function getLanguages(): Promise<{ iso_639_1: string; english_name: string }[] | null> {
-    logger.trace('Get languages.')
-
-    const apiKey = await getApiKey()
-    const path = `${TMDB_BASE_URL}/configuration/languages`
-
-    logger.trace('Get languages request prepared.', { path })
-
-    try {
-        const response = await $fetch<{ iso_639_1: string; english_name: string }[]>(path, {
-            query: { api_key: apiKey },
-        })
-
-        logger.trace('Get languages response received.', { response })
-
-        return response
-    } catch (error: unknown) {
-        logger.warn('Get languages request failed.', { path, error })
-        return null
-    }
-}
-
 export async function getAlternativeTitles(tmdbId: number, mediaType: MediaType): Promise<{ iso_3166_1: string; title: string; type: string }[]> {
     logger.trace('Get alternative titles', { tmdbId, mediaType })
 

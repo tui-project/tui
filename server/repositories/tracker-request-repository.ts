@@ -98,14 +98,3 @@ async function countTrackerRequestsByGroup(groupId: string) {
     logger.trace('Counting tracker requests by group.', { groupId })
     return trackerUploadRequestCollection.countAsync({ groupId })
 }
-
-export async function backfillTrackerRequestGroupIds() {
-    logger.trace('Finding tracker requests without group identifiers.')
-
-    const missing = await trackerUploadRequestCollection.findAsync({ groupId: { $exists: false } })
-    if (!missing.length) return
-
-    logger.trace('Backfilling tracker request group identifiers.', { requestCount: missing.length })
-
-    await Promise.all(missing.map((request) => trackerUploadRequestCollection.updateAsync({ id: request.id }, { $set: { groupId: deriveGroupId(request.filepath) } }, {})))
-}

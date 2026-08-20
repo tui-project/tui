@@ -1,5 +1,4 @@
 import { type HdrTier, type TorrentContext, type TorrentRule, SLOT_TIERS, HDR_TIER_TRUMPS, getHdrTier, getCodecFamily, WEB_SOURCE_RANK } from '../util/tracker-util'
-import { getLanguageDisplayName } from '../../../repositories/language-repository'
 import type { DuplicateEntry, RuleViolation, TrackerService, TrackerUploadOptions } from '../tracker'
 import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
 import { getTorrents, upload } from '../unit3d-tracker'
@@ -178,9 +177,9 @@ async function getTitle(metadata: Metadata): Promise<string> {
 
 async function buildLanguageString(languages: string[]): Promise<string> {
     if (!languages.length) return ''
-    if (languages.includes('en')) return ''
+    if (languageListIncludes(languages, 'en')) return ''
 
-    const displayName = await getLanguageDisplayName(languages[0]!)
+    const displayName = getLanguageDisplayName(languages[0]!)
 
     return displayName ? displayName.toUpperCase() : ''
 }
@@ -220,7 +219,7 @@ function checkRules(metadata: Metadata): RuleViolation[] {
         }
     }
 
-    if (!hasEnglishAudio(metadata) && !metadata.language.includes(metadata.originalLanguage)) {
+    if (!hasEnglishAudio(metadata) && !hasOriginalAudio(metadata)) {
         violations.push({
             rule: 'missing_required_audio',
             message: 'Audio tracks must include at least the original language or an English dub.',
@@ -279,7 +278,7 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata): 
         hdrTier: uploadHdrTier,
         sourceRank: sourceTrumpOrder[metadata.sourceType] ?? 0,
         revision: Math.max(metadata.repack, metadata.proper, metadata.rerip),
-        hasOriginalAudio: metadata.language.includes(metadata.originalLanguage),
+        hasOriginalAudio: hasOriginalAudio(metadata),
         hybrid: metadata.hybrid,
     }
 

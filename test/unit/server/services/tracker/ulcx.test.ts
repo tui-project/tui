@@ -351,6 +351,11 @@ describe('ulcxTrackerService — getTitle', () => {
             expect(title).toContain('Dual-Audio')
         })
 
+        it('includes Dual-Audio when Cantonese matches the Chinese macrolanguage', async () => {
+            const title = await service.getTitle({ ...baseMetadata, language: ['en', 'yue'], originalLanguage: 'zh' })
+            expect(title).toContain('Dual-Audio')
+        })
+
         it('includes Dubbed when single English language and original is not English', async () => {
             const title = await service.getTitle({ ...baseMetadata, language: ['en'], originalLanguage: 'fr' })
             expect(title).toContain('Dubbed')
@@ -609,6 +614,11 @@ describe('ulcxTrackerService — checkRules', () => {
         it('returns no violation when original language audio is present for foreign content', () => {
             const violations = service.checkRules({ ...baseMetadata, language: ['fr'], originalLanguage: 'fr' })
             expect(violations.every((v) => v.rule !== 'missing_required_audio')).toBe(true)
+        })
+
+        it.each(['cmn', 'yue'])('accepts %s audio for a Chinese original language', (language) => {
+            const violations = service.checkRules({ ...baseMetadata, language: [language], originalLanguage: 'zh', hasEnglishSubs: true })
+            expect(violations.every((violation) => violation.rule !== 'missing_required_audio')).toBe(true)
         })
 
         it('returns a violation when audio has neither English nor original language', () => {

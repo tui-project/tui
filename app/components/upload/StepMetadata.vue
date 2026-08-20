@@ -24,6 +24,11 @@ const state = reactive<PartialMetadata>({
     originalLanguage: '',
     imdbId: '',
 })
+const languageSearchTerm = ref('')
+const originalLanguageSearchTerm = ref('')
+const selectedLanguageCodes = computed(() => [...(state.language ?? []), state.originalLanguage ?? ''])
+const languageOptions = computed(() => getLanguageOptions(selectedLanguageCodes.value, languageSearchTerm.value))
+const originalLanguageOptions = computed(() => getLanguageOptions(selectedLanguageCodes.value, originalLanguageSearchTerm.value))
 
 const showMultiEpisode = ref(false)
 const isTV = computed(() => state?.mediaType === MEDIA_TYPES.TV)
@@ -220,11 +225,32 @@ function onSubmit(event: FormSubmitEvent<Metadata>) {
                         </UFormField>
 
                         <UFormField label="Language" name="language" required>
-                            <USelect v-model="state.language" size="xl" class="w-full" placeholder="Select language" :items="LANGUAGE_OPTIONS" multiple />
+                            <USelectMenu
+                                v-model="state.language"
+                                size="xl"
+                                class="w-full"
+                                placeholder="Select language"
+                                :items="languageOptions"
+                                :search-input="{ placeholder: 'Search all languages…' }"
+                                value-key="value"
+                                aria-label="Language"
+                                v-model:search-term="languageSearchTerm"
+                                multiple
+                            />
                         </UFormField>
 
                         <UFormField label="Original Language" name="originalLanguage">
-                            <USelect v-model="state.originalLanguage" size="xl" class="w-full" :items="LANGUAGE_OPTIONS" placeholder="Select original language" />
+                            <USelectMenu
+                                v-model="state.originalLanguage"
+                                size="xl"
+                                class="w-full"
+                                :items="originalLanguageOptions"
+                                :search-input="{ placeholder: 'Search all languages…' }"
+                                value-key="value"
+                                aria-label="Original Language"
+                                v-model:search-term="originalLanguageSearchTerm"
+                                placeholder="Select original language"
+                            />
                         </UFormField>
 
                         <UFormField label="Cut">
@@ -310,7 +336,7 @@ function onSubmit(event: FormSubmitEvent<Metadata>) {
                         <UFormField label="Flags" class="md:col-span-2 lg:col-span-3">
                             <div class="flex flex-wrap items-center gap-4 py-2">
                                 <UCheckbox
-                                    v-if="state.originalLanguage !== LANGUAGES.EN"
+                                    v-if="state.originalLanguage !== 'en'"
                                     v-model="state.hasEnglishSubs"
                                     size="xl"
                                     label="English Subs"
