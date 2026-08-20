@@ -1,9 +1,22 @@
-import { renderSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
 import { fireEvent, screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StepMetadata from '~/components/upload/StepMetadata.vue'
+
+mockNuxtImport('getLanguageOptions', () =>
+    vi.fn((extraCodes: string[] = [], _searchTerm = '') => {
+        const options = [
+            { value: 'en', label: 'English' },
+            { value: 'ko', label: 'Korean' },
+        ]
+        for (const value of extraCodes) {
+            if (value && !options.some((option) => option.value === value)) options.push({ value, label: value })
+        }
+        return options
+    })
+)
 
 const selectedPath: Path = {
     label: '/media/nas/movie.mkv',
@@ -126,8 +139,8 @@ describe('StepMetadata', { timeout: 10000 }, () => {
             expect(screen.getByRole('textbox', { name: 'Release Group' }).getAttribute('value')).toBe('FLUX')
             expect(screen.getByRole('combobox', { name: 'Resolution' }).textContent).toBe('2160p')
             expect(screen.getByRole('combobox', { name: 'HDR' }).textContent).toBe('HDR10+')
-            expect(screen.getByRole('combobox', { name: 'Language' }).textContent).toBe('English')
-            expect(screen.getByRole('combobox', { name: 'Original Language' }).textContent).toBe('English')
+            expect(screen.getByLabelText('Language').textContent).toBe('English')
+            expect(screen.getByLabelText('Original Language').textContent).toBe('English')
             expect(screen.getByRole('combobox', { name: 'Cut' }).textContent).toBe('Extended')
             expect(screen.getByRole('checkbox', { name: 'Repack' }).getAttribute('data-state')).toBe('checked')
             expect(screen.getByRole('checkbox', { name: 'Proper' }).getAttribute('data-state')).toBe('checked')
@@ -149,6 +162,19 @@ describe('StepMetadata', { timeout: 10000 }, () => {
             })
 
             expect(screen.getByLabelText('selected-file-or-folder').textContent).toBe('Folder: movie.mkv')
+        })
+
+        it.each(['Language', 'Original Language'])('indicates that the complete %s list is searchable', async (label) => {
+            const user = userEvent.setup({ delay: null })
+            await renderSuspended(StepMetadata, { props: { selectedPath } })
+
+            await user.click(screen.getByLabelText(label))
+
+            const searchInput = screen.getByPlaceholderText('Search all languages…')
+            await user.type(searchInput, 'man')
+
+            expect((searchInput as HTMLInputElement).value).toBe('man')
+            await user.keyboard('{Escape}')
         })
 
         it('shows TV-only fields and hides movie-only fields for tv media type', async () => {
@@ -619,7 +645,7 @@ describe('StepMetadata', { timeout: 10000 }, () => {
             await user.click(screen.getByRole('combobox', { name: 'Service' }))
             await user.click(await screen.findByRole('option', { name: 'Apple TV+' }))
 
-            await user.click(screen.getByRole('combobox', { name: 'Original Language' }))
+            await user.click(screen.getByLabelText('Original Language'))
             await user.click(await screen.findByRole('option', { name: 'Korean' }))
 
             await user.click(screen.getByRole('combobox', { name: 'Cut' }))
@@ -658,13 +684,13 @@ describe('StepMetadata', { timeout: 10000 }, () => {
             await user.click(await screen.findByRole('option', { name: 'DV' }))
             await user.keyboard('{Escape}')
 
-            await user.click(screen.getByRole('combobox', { name: 'Language' }))
+            await user.click(screen.getByLabelText('Language'))
             await user.click(await screen.findByRole('option', { name: 'Korean' }))
             await user.keyboard('{Escape}')
 
             await waitFor(() => {
                 expect(screen.getByRole('combobox', { name: 'HDR' }).textContent).toContain('DV')
-                expect(screen.getByRole('combobox', { name: 'Language' }).textContent).toContain('Korean')
+                expect(screen.getByLabelText('Language').textContent).toContain('Korean')
             })
         }, 20000)
 

@@ -608,21 +608,3 @@ describe('tmdb service — getAlternativeTitles', () => {
         await expect(getAlternativeTitles(1, 'movie')).resolves.toEqual([])
     })
 })
-
-describe('tmdb service — getLanguages', () => {
-    it('returns language list on success', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { getLanguages } = await loadTMDbService()
-        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue([{ iso_639_1: 'fr', english_name: 'French' }]))
-
-        await expect(getLanguages()).resolves.toEqual([{ iso_639_1: 'fr', english_name: 'French' }])
-    })
-
-    it('returns null when fetch fails', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { getLanguages } = await loadTMDbService()
-        vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('network error')))
-
-        await expect(getLanguages()).resolves.toBeNull()
-    })
-})

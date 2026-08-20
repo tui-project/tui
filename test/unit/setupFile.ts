@@ -4,10 +4,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, afterEach, vi } from 'vitest'
 import * as log from '../../shared/types/log'
+import * as language from '../../shared/types/language'
 import * as metadata from '../../shared/types/metadata'
 import * as trackerRequest from '../../shared/types/tracker-request'
 
-Object.assign(globalThis, log, metadata, trackerRequest)
+Object.assign(globalThis, language, log, metadata, trackerRequest)
 
 let dataDir = ''
 let logDir = ''

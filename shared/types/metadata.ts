@@ -396,30 +396,6 @@ export const [AUDIO_METADATA_TYPES, AUDIO_METADATA_OPTIONS] = makeConst({
 })
 export type AudioMetadata = (typeof AUDIO_METADATA_TYPES)[keyof typeof AUDIO_METADATA_TYPES] | undefined
 
-export const [LANGUAGES, LANGUAGE_OPTIONS] = makeConst({
-    AR: { value: 'ar', label: 'Arabic' },
-    DA: { value: 'da', label: 'Danish' },
-    DE: { value: 'de', label: 'German' },
-    EN: { value: 'en', label: 'English' },
-    ES: { value: 'es', label: 'Spanish' },
-    FI: { value: 'fi', label: 'Finnish' },
-    FR: { value: 'fr', label: 'French' },
-    HI: { value: 'hi', label: 'Hindi' },
-    IT: { value: 'it', label: 'Italian' },
-    JA: { value: 'ja', label: 'Japanese' },
-    KO: { value: 'ko', label: 'Korean' },
-    NL: { value: 'nl', label: 'Dutch' },
-    NO: { value: 'no', label: 'Norwegian' },
-    PL: { value: 'pl', label: 'Polish' },
-    PT: { value: 'pt', label: 'Portuguese' },
-    RU: { value: 'ru', label: 'Russian' },
-    SV: { value: 'sv', label: 'Swedish' },
-    TA: { value: 'ta', label: 'Tamil' },
-    TH: { value: 'th', label: 'Thai' },
-    TR: { value: 'tr', label: 'Turkish' },
-    ZH: { value: 'zh', label: 'Chinese' },
-})
-
 export type PartialMetadata = {
     releaseGroup?: string
     mediaType?: MediaType
@@ -534,10 +510,6 @@ export function isEncode(metadata: Metadata): boolean {
 
 export function isForeignContent(metadata: Metadata): boolean {
     return metadata.originalLanguage !== 'en'
-}
-
-export function hasEnglishAudio(metadata: Metadata): boolean {
-    return metadata.language.includes('en')
 }
 
 export function isWebSource(sourceType: SourceType) {

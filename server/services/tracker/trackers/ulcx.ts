@@ -208,7 +208,7 @@ function checkRules(metadata: Metadata): RuleViolation[] {
         }
     }
 
-    if (!hasEnglishAudio(metadata) && !metadata.language.includes(metadata.originalLanguage)) {
+    if (!hasEnglishAudio(metadata) && !hasOriginalAudio(metadata)) {
         violations.push({
             rule: 'missing_required_audio',
             message: 'Audio tracks must include at least the original language or an English dub.',
@@ -249,7 +249,7 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata) {
         hdrTier: uploadHdrTier,
         sourceRank: WEB_SOURCE_RANK[metadata.sourceType] ?? 0,
         revision: Math.max(metadata.repack, metadata.proper, metadata.rerip),
-        hasOriginalAudio: metadata.language.includes(metadata.originalLanguage),
+        hasOriginalAudio: hasOriginalAudio(metadata),
         hybrid: metadata.hybrid,
         isNoGrp: !metadata.releaseGroup,
     }

@@ -78,7 +78,6 @@ Defined in [server/utils/db.ts](./server/utils/db.ts). Each collection maps 1-to
 | `directoryCacheCollection`       | `directory-cache.db`         | `DirectoryCache`       |
 | `genericTorrentCacheCollection`  | `generic-torrent-cache.db`   | `GenericTorrentCache`  |
 | `trackerUploadRequestCollection` | `tracker-upload-requests.db` | `TrackerUploadRequest` |
-| `languageCollection`             | `languages.db`               | `Language`             |
 
 Application code must go through repositories, not import collections directly.
 

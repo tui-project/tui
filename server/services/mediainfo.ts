@@ -408,7 +408,7 @@ function parseAudioLanguages(tracks: MediaInfoTrack[]): string[] {
         if (!isTrackType(track, 'Audio')) continue
         if (isCommentaryAudioTrack(track)) continue
 
-        const language = normalizeAudioLanguage(toStringValue(track, 'Language'))
+        const language = normalizeLanguageCode(toStringValue(track, 'Language'))
         if (!language) continue
 
         unique.add(language)
@@ -419,13 +419,6 @@ function parseAudioLanguages(tracks: MediaInfoTrack[]): string[] {
 
 function isCommentaryAudioTrack(track: MediaInfoTrack): boolean {
     return toStringValue(track, 'Title').trim().toLowerCase().startsWith('commentary')
-}
-
-function normalizeAudioLanguage(value: string) {
-    const trimmed = value.trim()
-    if (!trimmed) return ''
-    const dashIndex = trimmed.indexOf('-')
-    return (dashIndex > 0 ? trimmed.slice(0, dashIndex) : trimmed).trim().toLowerCase()
 }
 
 function parseTrueHDCompatibilityTrack(tracks: MediaInfoTrack[]): boolean {

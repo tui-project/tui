@@ -61,7 +61,7 @@ export function buildTypeString(sourceType: SourceType): string {
 
 export function buildDubString(languages: string[], originalLanguage: string): string {
     if (!languages?.length) return ''
-    if (languages.length === 2 && languages.includes(originalLanguage)) return 'Dual-Audio'
-    if (languages.length === 1 && languages.includes('en') && !languages.includes(originalLanguage)) return 'Dubbed'
+    if (languages.length === 2 && languageListIncludes(languages, originalLanguage)) return 'Dual-Audio'
+    if (languages.length === 1 && languageListIncludes(languages, 'en') && !languageListIncludes(languages, originalLanguage)) return 'Dubbed'
     return ''
 }

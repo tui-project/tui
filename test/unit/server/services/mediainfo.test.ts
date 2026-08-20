@@ -382,6 +382,27 @@ describe('mediainfo service', () => {
                 expect(result.language).toEqual(['ja'])
             })
 
+            it.each([
+                ['cn', 'zh'],
+                ['dum', 'dum'],
+                ['cmn', 'cmn'],
+                ['yue', 'yue'],
+                ['ro', 'ro'],
+                ['in', 'id'],
+                ['is', 'is'],
+                ['mul', 'mul'],
+                ['und', 'und'],
+                ['mis', 'mis'],
+                ['zxx', 'zxx'],
+            ])('normalizes MediaInfo language "%s" to "%s"', async (input, expected) => {
+                mockTracks(videoTrack(), audioTrack({ Language: input }))
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/media/file.mkv', 'WEB-DL')
+
+                expect(result.language).toEqual([expected])
+            })
+
             it('deduplicates and sorts multiple languages', async () => {
                 mockTracks(
                     videoTrack(),

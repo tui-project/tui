@@ -228,29 +228,4 @@ describe('tracker upload request repository', () => {
 
         expect(group.map((request) => request.id)).toEqual(['g-2', 'g-1'])
     })
-
-    it('backfills groupId on records that are missing it', async () => {
-        const { saveTrackerRequest, getTrackerRequest, backfillTrackerRequestGroupIds } = await import('../../../../server/repositories/tracker-request-repository')
-        const { trackerUploadRequestCollection } = await import('../../../../server/utils/db')
-
-        // Save one already-tagged record and insert one missing groupId directly.
-        await saveTrackerRequest(buildRequest({ id: 'tagged' }))
-        const untagged = buildRequest({ id: 'untagged', filepath: '/media/Untagged.mkv' })
-        await trackerUploadRequestCollection.insertAsync(untagged as TrackerRequest)
-
-        await backfillTrackerRequestGroupIds()
-
-        expect((await getTrackerRequest('untagged'))?.groupId).toBe(groupIdFor('/media/Untagged.mkv'))
-        expect((await getTrackerRequest('tagged'))?.groupId).toBe(groupIdFor('/media/Movie.2024.1080p.mkv'))
-    })
-
-    it('does nothing when no records are missing a groupId', async () => {
-        const { saveTrackerRequest, getTrackerRequest, backfillTrackerRequestGroupIds } = await import('../../../../server/repositories/tracker-request-repository')
-
-        await saveTrackerRequest(buildRequest({ id: 'tagged-only' }))
-
-        await backfillTrackerRequestGroupIds()
-
-        expect((await getTrackerRequest('tagged-only'))?.groupId).toBe(groupIdFor('/media/Movie.2024.1080p.mkv'))
-    })
 })

@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { athTrackerService } from '../../../../../server/services/tracker/trackers/ath'
-import { getLanguageDisplayName } from '../../../../../server/repositories/language-repository'
 import { parseMetadataFromName } from '../../../../../server/services/media-name-parser'
 
 vi.mock('../../../../../server/utils/logger', () => ({
@@ -9,10 +8,6 @@ vi.mock('../../../../../server/utils/logger', () => ({
 
 vi.mock('../../../../../server/services/media-name-parser', () => ({
     parseMetadataFromName: vi.fn(() => ({ season: undefined, episode: undefined, repack: 0, proper: 0, rerip: 0, hdr: [], videoCodec: 'x264' })),
-}))
-
-vi.mock('../../../../../server/repositories/language-repository', () => ({
-    getLanguageDisplayName: vi.fn().mockResolvedValue(null),
 }))
 
 vi.mock('node:fs/promises', () => ({
@@ -137,6 +132,11 @@ describe('athTrackerService — checkRules', () => {
         expect(violations.some((v) => v.rule === 'missing_required_audio')).toBe(false)
     })
 
+    it.each(['cmn', 'yue'])('accepts %s audio for a Chinese original language', (language) => {
+        const violations = service.checkRules({ ...baseMetadata, language: [language], originalLanguage: 'zh', hasEnglishSubs: true })
+        expect(violations.some((violation) => violation.rule === 'missing_required_audio')).toBe(false)
+    })
+
     it('does not flag missing_required_audio when English dub is present', () => {
         const violations = service.checkRules({ ...baseMetadata, language: ['en'], originalLanguage: 'ja' })
         expect(violations.some((v) => v.rule === 'missing_required_audio')).toBe(false)
@@ -213,7 +213,6 @@ describe('athTrackerService — getTitle', () => {
     beforeEach(() => {
         fetchMock.mockReset()
         fetchMock.mockResolvedValue({ data: 'http://aither.cc/torrents/1' })
-        vi.mocked(getLanguageDisplayName).mockResolvedValue(null)
     })
 
     it('builds a basic encode movie title', async () => {
@@ -385,9 +384,15 @@ describe('athTrackerService — getTitle', () => {
     })
 
     describe('language component', () => {
+        it('omits an empty normalized language name', async () => {
+            const title = await service.getTitle({ ...baseMetadata, language: [' '] })
+
+            expect(title).not.toContain('  ')
+            expect(title).not.toContain('UNDEFINED')
+        })
+
         it('includes language in ALL CAPS before resolution when no English audio', async () => {
             // Kuroko's Basketball AKA Kuroko no Basket 2017 JAPANESE 1080p BluRay DD+ 5.1 x264-Kitsune
-            vi.mocked(getLanguageDisplayName).mockResolvedValue('Japanese')
             const title = await service.getTitle({ ...baseMetadata, language: ['ja'], originalLanguage: 'ja' })
             const langIndex = title.indexOf('JAPANESE')
             const resIndex = title.indexOf(baseMetadata.resolution)
@@ -397,7 +402,6 @@ describe('athTrackerService — getTitle', () => {
 
         it('includes language after REPACK and before resolution', async () => {
             // Kika 2025 REPACK FRENCH 1080p AMZN WEB-DL DD+ 5.1 H.264-Phallus
-            vi.mocked(getLanguageDisplayName).mockResolvedValue('French')
             const title = await service.getTitle({ ...baseMetadata, language: ['fr'], originalLanguage: 'fr', repack: 1 })
             const repackIndex = title.indexOf('REPACK')
             const langIndex = title.indexOf('FRENCH')
@@ -407,20 +411,17 @@ describe('athTrackerService — getTitle', () => {
         })
 
         it('omits language component when English audio is present', async () => {
-            vi.mocked(getLanguageDisplayName).mockResolvedValue('French')
             const title = await service.getTitle({ ...baseMetadata, language: ['en'], originalLanguage: 'en' })
             expect(title).not.toContain('FRENCH')
         })
 
         it('omits language component for Dual-Audio (handled after codec)', async () => {
-            vi.mocked(getLanguageDisplayName).mockResolvedValue('Japanese')
             const title = await service.getTitle({ ...baseMetadata, language: ['ja', 'en'], originalLanguage: 'ja' })
             expect(title).not.toContain('JAPANESE')
             expect(title).toContain('Dual-Audio')
         })
 
         it('omits language component for Dubbed (handled after codec)', async () => {
-            vi.mocked(getLanguageDisplayName).mockResolvedValue('French')
             const title = await service.getTitle({ ...baseMetadata, language: ['en'], originalLanguage: 'fr' })
             expect(title).not.toContain('FRENCH')
             expect(title).toContain('Dubbed')
@@ -431,18 +432,16 @@ describe('athTrackerService — getTitle', () => {
             expect(title).not.toMatch(/[A-Z]{4,}\s+\d+[ip]/)
         })
 
-        it('omits language component when display name lookup returns null', async () => {
-            vi.mocked(getLanguageDisplayName).mockResolvedValue(null)
+        it('preserves an unknown language code in the title', async () => {
             const title = await service.getTitle({ ...baseMetadata, language: ['xx'], originalLanguage: 'xx' })
-            expect(title).not.toMatch(/[A-Z]{3,}\s+\d+[ip]/)
+            expect(title).toContain('XX')
         })
 
         it.each([
-            ['fr', 'French', 'FRENCH'],
-            ['da', 'Danish', 'DANISH'],
-            ['ko', 'Korean', 'KOREAN'],
-        ])('uppercases "%s" display name to "%s"', async (code, displayName, expected) => {
-            vi.mocked(getLanguageDisplayName).mockResolvedValue(displayName)
+            ['fr', 'FRENCH'],
+            ['da', 'DANISH'],
+            ['ko', 'KOREAN'],
+        ])('uppercases the "%s" display name to "%s"', async (code, expected) => {
             const title = await service.getTitle({ ...baseMetadata, language: [code], originalLanguage: code })
             expect(title).toContain(expected)
         })

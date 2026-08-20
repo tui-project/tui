@@ -1,28 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { injectTorrent } from '../../../../server/services/torrent-client'
 
-const logger = {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-}
-
-const fetchMock = vi.fn()
+const { fetchMock, logger } = vi.hoisted(() => ({
+    fetchMock: vi.fn(),
+    logger: {
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+    },
+}))
 
 beforeEach(() => {
-    vi.resetModules()
     vi.clearAllMocks()
     vi.stubGlobal('$fetch', fetchMock)
 })
 
 vi.mock('../../../../server/utils/logger', () => ({
-    createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
+    createLogger: () => logger,
 }))
-
-async function loadModule() {
-    vi.doMock('../../../../server/utils/logger', () => ({ createLogger: () => logger }))
-    return import('../../../../server/services/torrent-client')
-}
 
 function buildClient(overrides: Partial<{ code: string; url: string; apiKey: string }> = {}) {
     return {
@@ -37,8 +33,6 @@ function buildClient(overrides: Partial<{ code: string; url: string; apiKey: str
 
 describe('injectTorrent', () => {
     it('returns false and logs a warning for an unsupported client code', async () => {
-        const { injectTorrent } = await loadModule()
-
         const result = await injectTorrent('https://tracker.example.com/torrent/1', buildClient({ code: 'UNKNOWN' }))
 
         expect(result).toBe(false)
@@ -52,7 +46,6 @@ describe('injectTorrent', () => {
             const arrayBuffer = torrentBytes.buffer.slice(torrentBytes.byteOffset, torrentBytes.byteOffset + torrentBytes.byteLength)
             fetchMock.mockResolvedValueOnce(arrayBuffer).mockResolvedValueOnce(undefined)
 
-            const { injectTorrent } = await loadModule()
             const result = await injectTorrent('https://tracker.example.com/torrent/1', buildClient())
 
             expect(result).toBe(true)
@@ -77,7 +70,6 @@ describe('injectTorrent', () => {
             const fetchError = new Error('network error')
             fetchMock.mockRejectedValueOnce(fetchError)
 
-            const { injectTorrent } = await loadModule()
             const result = await injectTorrent('https://tracker.example.com/torrent/1', buildClient())
 
             expect(result).toBe(false)
@@ -91,7 +83,6 @@ describe('injectTorrent', () => {
             const apiError = new Error('qui unreachable')
             fetchMock.mockResolvedValueOnce(Buffer.from('data').buffer).mockRejectedValueOnce(apiError)
 
-            const { injectTorrent } = await loadModule()
             const result = await injectTorrent('https://tracker.example.com/torrent/1', buildClient())
 
             expect(result).toBe(false)

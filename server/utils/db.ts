@@ -5,7 +5,6 @@ import type { Session } from '../model/session'
 import type { DirectoryCache } from '../model/directory-cache'
 import type { GenericTorrentCache } from '../model/generic-torrent-cache'
 import type { Settings } from '../model/settings'
-import type { Language } from '../model/language'
 import type { User } from '../model/user'
 import type { TrackerRequest } from '../model/tracker-request'
 import { createLogger } from './logger'
@@ -18,7 +17,6 @@ export type SettingsDocument = Document<Settings>
 export type DirectoryCacheDocument = Document<DirectoryCache>
 export type GenericTorrentCacheDocument = Document<GenericTorrentCache>
 export type TrackerRequestDocument = Document<TrackerRequest>
-export type LanguageDocument = Document<Language>
 
 const AUTO_COMPACTION_INTERVAL_MS = 60_000
 const dataDir = process.env.DATABASE_DIR ?? join(process.cwd(), 'config', 'database')
@@ -68,13 +66,6 @@ export const trackerUploadRequestCollection = new Datastore<TrackerRequest>({
     timestampData: true,
 })
 
-const languageCollectionDataDir = join(dataDir, 'languages.db')
-export const languageCollection = new Datastore<Language>({
-    filename: languageCollectionDataDir,
-    autoload: true,
-    timestampData: true,
-})
-
 export async function initDatastores() {
     await userCollection.autoloadPromise
     userCollection.setAutocompactionInterval(AUTO_COMPACTION_INTERVAL_MS)
@@ -99,8 +90,4 @@ export async function initDatastores() {
     await trackerUploadRequestCollection.autoloadPromise
     trackerUploadRequestCollection.setAutocompactionInterval(AUTO_COMPACTION_INTERVAL_MS)
     logger.debug(`Tracker upload request datastore initialized: ${trackerUploadRequestCollectionDataDir}`)
-
-    await languageCollection.autoloadPromise
-    languageCollection.setAutocompactionInterval(AUTO_COMPACTION_INTERVAL_MS)
-    logger.debug(`Language datastore initialized: ${languageCollectionDataDir}`)
 }
