@@ -10,6 +10,7 @@ mockNuxtImport('getLanguageOptions', () =>
         const options = [
             { value: 'en', label: 'English' },
             { value: 'ko', label: 'Korean' },
+            { value: 'zh', label: 'Chinese' },
         ]
         for (const value of extraCodes) {
             if (value && !options.some((option) => option.value === value)) options.push({ value, label: value })
@@ -212,6 +213,17 @@ describe('StepMetadata', { timeout: 10000 }, () => {
 
             expect(mockExecute).not.toHaveBeenCalled()
             expect(screen.getByRole('textbox', { name: 'Title' }).getAttribute('value')).toBe('Existing Title')
+        })
+
+        it('normalizes legacy language aliases before displaying them', async () => {
+            const model = createMetadata({ language: ['eng'], originalLanguage: 'cn' })
+
+            await renderSuspended(StepMetadata, {
+                props: { selectedPath, modelValue: model },
+            })
+
+            expect(screen.getByLabelText('Language').textContent).toBe('English')
+            expect(screen.getByLabelText('Original Language').textContent).toBe('Chinese')
         })
 
         it('uses prefetched data without calling execute', async () => {
