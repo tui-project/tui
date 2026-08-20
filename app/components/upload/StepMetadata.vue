@@ -43,23 +43,29 @@ const { pending, data, error, execute } = useGetMetadata()
 onMounted(async () => {
     if (metadata.value) {
         filename.value = metadata.value.filename
-        Object.assign(state, metadata.value.metadata)
+        populateState(metadata.value.metadata)
         showMultiEpisode.value = state.episodeEnd !== undefined
     } else if (prefetched.value) {
         filename.value = prefetched.value.filename
-        Object.assign(state, prefetched.value.metadata)
+        populateState(prefetched.value.metadata)
         showMultiEpisode.value = state.episodeEnd !== undefined
     } else if (selectedPathValue.value) {
         await execute(selectedPathValue.value)
 
         if (data.value) {
-            Object.assign(state, data.value.metadata)
+            populateState(data.value.metadata)
             filename.value = data.value.filename
             prefetched.value = data.value
             showMultiEpisode.value = state.episodeEnd !== undefined
         }
     }
 })
+
+function populateState(value: PartialMetadata) {
+    Object.assign(state, value)
+    state.language = [...new Set(state.language?.map(normalizeLanguageCode).filter(Boolean))]
+    state.originalLanguage = normalizeLanguageCode(state.originalLanguage ?? '')
+}
 
 watch(selectedPathValue, () => {
     metadata.value = undefined
