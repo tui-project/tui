@@ -407,6 +407,7 @@ export type PartialMetadata = {
     episodeEnd?: number
     specialName?: string
     language: string[]
+    mixedAudioLanguages?: string[]
     originalLanguage?: string
     sourceType?: SourceType
     source?: Source
@@ -448,6 +449,7 @@ export const MetadataSchema = z
         episodeEnd: z.number().int().optional(),
         specialName: z.string().trim().min(1).optional(),
         language: z.array(z.string().trim().min(1)).min(1, 'Language is required'),
+        mixedAudioLanguages: z.array(z.string().trim().min(1)).optional(),
         originalLanguage: z.string().trim().min(1, 'Original language is required'),
         source: z.enum(SOURCES, { error: 'Source is required' }),
         sourceType: z.enum(SOURCE_TYPES, { error: 'Type is required' }),

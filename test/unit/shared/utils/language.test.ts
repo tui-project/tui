@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { getLanguageDisplayName, getLanguageOptions, languageListIncludes, languagesMatch, normalizeLanguageCode } from '../../../../shared/types/language'
+import {
+    getLanguageCodeByName,
+    getLanguageDisplayName,
+    getLanguageOptions,
+    hasEnglishAudio,
+    hasOriginalAudio,
+    languageListIncludes,
+    languagesMatch,
+    normalizeLanguageCode,
+} from '../../../../shared/types/language'
 
 describe('language utilities', () => {
     it.each([
@@ -36,6 +45,15 @@ describe('language utilities', () => {
     })
 
     it.each([
+        [' English ', 'en'],
+        ['SPANISH', 'es'],
+        ['Mandarin Chinese', 'cmn'],
+        ['not a language', undefined],
+    ])('resolves the language name "%s" to "%s"', (name, expected) => {
+        expect(getLanguageCodeByName(name)).toBe(expected)
+    })
+
+    it.each([
         ['en', 'eng', true],
         ['cmn', 'zh', true],
         ['zh', 'cmn', true],
@@ -52,6 +70,17 @@ describe('language utilities', () => {
     it('checks a language list using normalized equivalence', () => {
         expect(languageListIncludes(['fr', 'cmn'], 'zh')).toBe(true)
         expect(languageListIncludes(['fr', 'cmn'], 'en')).toBe(false)
+    })
+
+    it('uses identified mixed-track languages for English and original audio checks', () => {
+        const metadata = {
+            language: ['mul'],
+            mixedAudioLanguages: ['en', 'es'],
+            originalLanguage: 'es',
+        } as Metadata
+
+        expect(hasEnglishAudio(metadata)).toBe(true)
+        expect(hasOriginalAudio(metadata)).toBe(true)
     })
 
     it('builds common options with special values last', () => {

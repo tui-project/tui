@@ -25,6 +25,7 @@ export interface ParsedMediainfoMetadata {
     hi10p: boolean
     hdr: HDR[]
     language: string[]
+    mixedAudioLanguages?: string[]
     audioCodec?: AudioCodec
     audioChannels?: AudioChannels
     audioMetadata: AudioMetadata
@@ -80,7 +81,7 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
     const audioTitle = toStringValue(audio, 'Title')
     const audioMetadata = parseAudioMetadata(audioFormatCommercial, audioTitle)
 
-    const language = parseAudioLanguages(tracks)
+    const { language, mixedAudioLanguages } = parseAudioLanguages(tracks)
     const hasTrueHDCompatibilityTrack = audioCodec === AUDIO_CODECS.TRUEHD ? parseTrueHDCompatibilityTrack(tracks) : undefined
     const hasEnglishSubs = parseHasEnglishSubs(tracks)
 
@@ -103,6 +104,7 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
         hasTrueHDCompatibilityTrack,
         hasEnglishSubs,
         language,
+        mixedAudioLanguages,
         tmdbId,
         imdbId,
         tvdbId,
@@ -399,10 +401,11 @@ function parseAudioMetadata(formatCommercialIfAny: string, title: string): Audio
     return undefined
 }
 
-function parseAudioLanguages(tracks: MediaInfoTrack[]): string[] {
+function parseAudioLanguages(tracks: MediaInfoTrack[]): { language: string[]; mixedAudioLanguages?: string[] } {
     logger.trace('Parse audio languages.')
 
     const unique = new Set<string>()
+    const mixed = new Set<string>()
 
     for (const track of tracks) {
         if (!isTrackType(track, 'Audio')) continue
@@ -411,10 +414,29 @@ function parseAudioLanguages(tracks: MediaInfoTrack[]): string[] {
         const language = normalizeLanguageCode(toStringValue(track, 'Language'))
         if (!language) continue
 
+        if (language === 'mul') {
+            const titleLanguages = parseLanguageNamesFromTitle(toStringValue(track, 'Title'))
+            if (titleLanguages.length >= 2) {
+                titleLanguages.forEach((titleLanguage) => mixed.add(titleLanguage))
+            }
+        }
+
         unique.add(language)
     }
 
-    return [...unique].sort((a, b) => a.localeCompare(b))
+    return {
+        language: [...unique].sort((a, b) => a.localeCompare(b)),
+        mixedAudioLanguages: mixed.size ? [...mixed].sort((a, b) => a.localeCompare(b)) : undefined,
+    }
+}
+
+function parseLanguageNamesFromTitle(title: string): string[] {
+    const languages = title
+        .split(/[+/,&;]/)
+        .map(getLanguageCodeByName)
+        .filter((language): language is string => language !== undefined && language !== 'mul')
+
+    return [...new Set(languages)]
 }
 
 function isCommentaryAudioTrack(track: MediaInfoTrack): boolean {

@@ -177,6 +177,7 @@ async function getTitle(metadata: Metadata): Promise<string> {
 
 async function buildLanguageString(languages: string[]): Promise<string> {
     if (!languages.length) return ''
+    if (languageListIncludes(languages, 'mul')) return getLanguageDisplayName('mul').toUpperCase()
     if (languageListIncludes(languages, 'en')) return ''
 
     const displayName = getLanguageDisplayName(languages[0]!)

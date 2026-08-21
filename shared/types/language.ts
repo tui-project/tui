@@ -563,6 +563,8 @@ for (const [iso6392B, iso6392T, iso6391, englishName] of ISO_639_2_LANGUAGES) {
 languageNames.set('cmn', LANGUAGE_NAME_OVERRIDES.cmn!)
 languageNames.set('yue', LANGUAGE_NAME_OVERRIDES.yue!)
 
+const languageCodesByName = new Map([...languageNames].map(([code, name]) => [name.toLowerCase(), code]))
+
 const baseLanguageOptions = [...languageNames]
     .map(([value, label]) => ({ value, label }))
     .sort((first, second) => {
@@ -591,6 +593,10 @@ export function getLanguageDisplayName(code: string): string {
     return languageNames.get(normalized) ?? normalized
 }
 
+export function getLanguageCodeByName(name: string): string | undefined {
+    return languageCodesByName.get(name.trim().toLowerCase())
+}
+
 export function languagesMatch(first: string, second: string): boolean {
     const normalizedFirst = normalizeLanguageCode(first)
     const normalizedSecond = normalizeLanguageCode(second)
@@ -605,11 +611,15 @@ export function languageListIncludes(languages: string[], expected: string): boo
 }
 
 export function hasEnglishAudio(metadata: Metadata): boolean {
-    return languageListIncludes(metadata.language, 'en')
+    return languageListIncludes(getAudioLanguages(metadata), 'en')
 }
 
 export function hasOriginalAudio(metadata: Metadata): boolean {
-    return languageListIncludes(metadata.language, metadata.originalLanguage)
+    return languageListIncludes(getAudioLanguages(metadata), metadata.originalLanguage)
+}
+
+function getAudioLanguages(metadata: Metadata): string[] {
+    return [...metadata.language, ...(metadata.mixedAudioLanguages ?? [])]
 }
 
 export function getLanguageOptions(extraCodes: string[] = [], searchTerm = ''): LanguageOption[] {
