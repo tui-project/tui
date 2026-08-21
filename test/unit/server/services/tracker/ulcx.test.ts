@@ -636,6 +636,18 @@ describe('ulcxTrackerService — checkRules', () => {
             const violations = service.checkRules({ ...baseMetadata, language: ['fr', 'en'], originalLanguage: 'fr' })
             expect(violations.every((v) => v.rule !== 'missing_required_audio')).toBe(true)
         })
+
+        it('returns no violation for languages identified within a single mul audio track', () => {
+            const violations = service.checkRules({
+                ...baseMetadata,
+                language: ['mul'],
+                mixedAudioLanguages: ['en', 'es'],
+                originalLanguage: 'es',
+                hasEnglishSubs: true,
+            })
+
+            expect(violations).toEqual([])
+        })
     })
 
     describe('TrueHD compatibility track rule', () => {

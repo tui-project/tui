@@ -117,6 +117,12 @@ describe('athTrackerService — checkRules', () => {
         expect(service.checkRules({ ...baseMetadata, language: ['ja', 'en'], originalLanguage: 'ja' })).toEqual([])
     })
 
+    it('allows languages identified within a single mul audio track', () => {
+        expect(
+            service.checkRules({ ...baseMetadata, language: ['mul'], mixedAudioLanguages: ['en', 'es'], originalLanguage: 'es', hasEnglishSubs: true })
+        ).toEqual([])
+    })
+
     it('allows English-only audio when original language is non-English (dubbed release)', () => {
         const violations = service.checkRules({ ...baseMetadata, language: ['en'], originalLanguage: 'ja' })
         expect(violations.some((v) => v.rule === 'missing_english')).toBe(false)

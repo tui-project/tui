@@ -796,6 +796,23 @@ describe('StepMetadata', { timeout: 10000 }, () => {
             })
         })
 
+        it('preserves identified mixed-track languages on submit', async () => {
+            const onUpdateModelValue = vi.fn()
+            mockExecute.mockImplementation(() => {
+                mockData.value = createMetadata({ language: ['mul'], mixedAudioLanguages: ['en', 'es'], originalLanguage: 'es' })
+            })
+
+            await renderSuspended(StepMetadata, { props: { selectedPath, 'onUpdate:modelValue': onUpdateModelValue } })
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+            await waitFor(() => {
+                expect(onUpdateModelValue).toHaveBeenCalledWith(
+                    expect.objectContaining({ metadata: expect.objectContaining({ mixedAudioLanguages: ['en', 'es'] }) })
+                )
+            })
+        })
+
         it('preserves episodeEnd on submit when multi-episode toggle is on', async () => {
             const onUpdateModelValue = vi.fn()
             mockExecute.mockImplementation(() => {
