@@ -421,6 +421,14 @@ describe('athTrackerService — getTitle', () => {
             expect(title).toContain('Dual-Audio')
         })
 
+        it('does not treat inferred languages from a single mul track as Dual-Audio', async () => {
+            const title = await service.getTitle({ ...baseMetadata, language: ['mul'], mixedAudioLanguages: ['en', 'es'], originalLanguage: 'es' })
+
+            expect(title).not.toContain('SPANISH')
+            expect(title).toContain('MULTIPLE LANGUAGES')
+            expect(title).not.toContain('Dual-Audio')
+        })
+
         it('omits language component for Dubbed (handled after codec)', async () => {
             const title = await service.getTitle({ ...baseMetadata, language: ['en'], originalLanguage: 'fr' })
             expect(title).not.toContain('FRENCH')

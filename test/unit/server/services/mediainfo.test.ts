@@ -416,6 +416,35 @@ describe('mediainfo service', () => {
                 expect(result.language).toEqual(['en', 'fr'])
             })
 
+            it('resolves multiple languages from a structured mul track title', async () => {
+                mockTracks(
+                    videoTrack(),
+                    audioTrack({
+                        Language: 'mul',
+                        Title: 'DTS-HD Master Audio / 5.1 / 48 kHz / 1950 kbps / 16-bit / Spanish+English',
+                    })
+                )
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+
+                expect(result.language).toEqual(['mul'])
+                expect(result.mixedAudioLanguages).toEqual(['en', 'es'])
+            })
+
+            it.each([
+                ['DTS-HD Master Audio / Spanish', 'only one resolved language'],
+                ['DTS-HD Master Audio / Original Mix', 'no resolved languages'],
+            ])('retains mul when the title has %s (%s)', async (title) => {
+                mockTracks(videoTrack(), audioTrack({ Language: 'mul', Title: title }))
+                const { parseMetadataFromMediainfo } = await loadService()
+
+                const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'REMUX')
+
+                expect(result.language).toEqual(['mul'])
+                expect(result.mixedAudioLanguages).toBeUndefined()
+            })
+
             it('excludes commentary tracks', async () => {
                 mockTracks(
                     videoTrack(),

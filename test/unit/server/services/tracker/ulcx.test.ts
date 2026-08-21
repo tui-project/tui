@@ -351,6 +351,12 @@ describe('ulcxTrackerService — getTitle', () => {
             expect(title).toContain('Dual-Audio')
         })
 
+        it('does not treat inferred languages from a single mul track as Dual-Audio', async () => {
+            const title = await service.getTitle({ ...baseMetadata, language: ['mul'], mixedAudioLanguages: ['en', 'es'], originalLanguage: 'es' })
+
+            expect(title).not.toContain('Dual-Audio')
+        })
+
         it('includes Dual-Audio when Cantonese matches the Chinese macrolanguage', async () => {
             const title = await service.getTitle({ ...baseMetadata, language: ['en', 'yue'], originalLanguage: 'zh' })
             expect(title).toContain('Dual-Audio')
