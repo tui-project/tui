@@ -15,6 +15,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     back: []
+    next: [trackers: TrackerItem[]]
 }>()
 
 const trackerNames = ref<Record<string, string>>({})
@@ -106,24 +107,24 @@ const uploadableTrackers = computed(() =>
     })
 )
 
-const { pending: uploadPending, error: uploadError, execute: executeUpload } = usePostTrackerRequests()
-
 const canSubmit = computed(() => {
-    if (props.selectedTrackers.length === 0 || !props.sourcePath?.trim() || !props.metadata) return false
+    if (props.selectedTrackers.length === 0 || !props.metadata) return false
     return uploadableTrackers.value.length > 0
 })
 
-async function onSubmit() {
-    await executeUpload({ filepath: props.sourcePath!, metadata: props.metadata!, description: props.description!, trackers: uploadableTrackers.value })
+const { pending: uploadPending, error: uploadError, execute: executeUpload } = usePostTrackerRequests()
+const isLegacySubmit = computed(() => Boolean(props.sourcePath?.trim()))
 
-    if (!uploadError.value) {
-        toast.add({
-            title: 'Upload request submitted.',
-            description: 'Your torrent is queued and available from the dashboard.',
-            color: 'success',
-        })
-        await navigateTo('/')
+async function onNext() {
+    if (isLegacySubmit.value) {
+        await executeUpload({ filepath: props.sourcePath!, metadata: props.metadata!, description: props.description!, trackers: uploadableTrackers.value })
+        if (!uploadError.value) {
+            toast.add({ title: 'Upload request submitted.', description: 'Your torrent is queued and available from the dashboard.', color: 'success' })
+            await navigateTo('/')
+        }
+        return
     }
+    emit('next', uploadableTrackers.value)
 }
 </script>
 
@@ -145,7 +146,7 @@ async function onSubmit() {
 
         <div v-else-if="selectedTrackers.length === 0" class="text-sm text-muted">No trackers selected. Go back and select at least one tracker.</div>
 
-        <UForm v-else :state="trackerItems" class="space-y-6" @submit="onSubmit">
+        <UForm v-else :state="trackerItems" class="space-y-6" @submit="onNext">
             <div v-for="item in trackerItems" :key="item.code" class="rounded-xl border border-default/70 bg-elevated/30 p-4 shadow-xs space-y-4">
                 <h3 class="text-sm font-semibold text-highlighted">{{ trackerNames[item.code] ?? item.code }}</h3>
 
@@ -237,9 +238,13 @@ async function onSubmit() {
 
         <StepNavigationButtons
             class="mt-5"
-            :next="{ label: 'Submit Upload', disabled: !canSubmit || titleLoading || rulesLoading || duplicatesLoading || uploadPending, loading: uploadPending }"
+            :next="{
+                label: isLegacySubmit ? 'Submit Upload' : 'Next',
+                disabled: !canSubmit || titleLoading || rulesLoading || duplicatesLoading || uploadPending,
+                loading: uploadPending,
+            }"
             @back="emit('back')"
-            @next="onSubmit"
+            @next="onNext"
         />
     </UCard>
 </template>

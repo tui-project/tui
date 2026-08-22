@@ -807,9 +807,7 @@ describe('StepMetadata', { timeout: 10000 }, () => {
             await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
 
             await waitFor(() => {
-                expect(onUpdateModelValue).toHaveBeenCalledWith(
-                    expect.objectContaining({ metadata: expect.objectContaining({ mixedAudioLanguages: ['en', 'es'] }) })
-                )
+                expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ mixedAudioLanguages: ['en', 'es'] }) }))
             })
         })
 

@@ -268,4 +268,21 @@ describe('StepDescription', () => {
         expect(vm.description).toBe('Keep me')
         expect(executeScreenshotsMock).toHaveBeenCalled()
     })
+
+    it('emits a back event when the back button is clicked', async () => {
+        const user = userEvent.setup({ delay: null })
+        const { emitted } = await renderSuspended(StepDescription)
+
+        await user.click(screen.getByRole('button', { name: 'Back' }))
+
+        expect(emitted('back')).toHaveLength(1)
+    })
+
+    it('shows an error alert when the previous submit failed', async () => {
+        await renderSuspended(StepDescription, {
+            props: { submitError: true },
+        })
+
+        expect(screen.getByText('Failed to submit upload request. Please try again.')).toBeDefined()
+    })
 })

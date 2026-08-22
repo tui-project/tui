@@ -9,6 +9,9 @@ const props = defineProps<{
     selectedPath?: Path
     isHdr?: boolean
     isTv?: boolean
+    submitting?: boolean
+    submitError?: boolean
+    finalStep?: boolean
 }>()
 const emit = defineEmits<{
     back: []
@@ -121,6 +124,8 @@ async function addScreenshots() {
             </div>
         </template>
 
+        <UAlert v-if="submitError" color="error" variant="soft" title="Failed to submit upload request. Please try again." class="mb-4" />
+
         <div class="overflow-hidden rounded-xl border border-default bg-elevated/20 shadow-xs">
             <div class="flex items-center justify-between gap-3 border-b border-default px-4 pt-3">
                 <div class="flex items-center gap-2">
@@ -182,6 +187,11 @@ async function addScreenshots() {
             </div>
         </div>
 
-        <StepNavigationButtons :back="{ disabled: isGeneratingScreenshots }" :next="{ disabled: isGeneratingScreenshots }" @back="emit('back')" @next="emit('next')" />
+        <StepNavigationButtons
+            :back="{ disabled: isGeneratingScreenshots || submitting }"
+            :next="{ label: finalStep ? 'Submit Upload' : 'Next', disabled: isGeneratingScreenshots || submitting, loading: submitting }"
+            @back="emit('back')"
+            @next="emit('next')"
+        />
     </UCard>
 </template>

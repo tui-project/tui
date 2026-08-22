@@ -15,11 +15,6 @@ const stepItems: StepperItem[] = [
         slot: 'metadata',
     },
     {
-        title: 'Description',
-        icon: 'i-lucide-file-text',
-        slot: 'description',
-    },
-    {
         title: 'Select Trackers',
         icon: 'i-lucide-server',
         slot: 'select-trackers',
@@ -28,6 +23,11 @@ const stepItems: StepperItem[] = [
         title: 'Review',
         icon: 'i-lucide-eye',
         slot: 'review',
+    },
+    {
+        title: 'Description',
+        icon: 'i-lucide-file-text',
+        slot: 'description',
     },
 ]
 
@@ -39,6 +39,9 @@ const reviewedMetadata = ref<{ filename: string; metadata: Metadata }>()
 const prefetchedMetadata = ref<{ filename: string; metadata: PartialMetadata }>()
 const description = ref('')
 const fullDescription = computed(() => withFooter(description.value))
+const reviewedTrackers = ref<TrackerItem[]>([])
+const { pending: uploadPending, error: uploadError, execute: executeUpload } = usePostTrackerRequests()
+const toast = useToast()
 
 watch(
     () => selectedPath.value?.value?.trim() ?? '',
@@ -58,6 +61,20 @@ function goToNextStep() {
 function goToPrevStep() {
     stepper.value?.prev()
 }
+
+function finishReview(trackers: TrackerItem[]) {
+    reviewedTrackers.value = trackers
+    goToNextStep()
+}
+
+async function submitUpload() {
+    await executeUpload({ filepath: selectedPath.value!.value, metadata: reviewedMetadata.value!.metadata, description: fullDescription.value, trackers: reviewedTrackers.value })
+
+    if (!uploadError.value) {
+        toast.add({ title: 'Upload request submitted.', description: 'Your torrent is queued and available from the dashboard.', color: 'success' })
+        await navigateTo('/')
+    }
+}
 </script>
 
 <template>
@@ -70,26 +87,23 @@ function goToPrevStep() {
             <template #metadata>
                 <UploadStepMetadata v-model="reviewedMetadata" v-model:prefetched="prefetchedMetadata" :selected-path="selectedPath" @back="goToPrevStep" @next="goToNextStep" />
             </template>
+            <template #select-trackers>
+                <UploadStepSelectTrackers v-model="selectedTrackers" @back="goToPrevStep" @next="goToNextStep" />
+            </template>
+            <template #review>
+                <UploadStepReview :selected-trackers="selectedTrackers" :metadata="reviewedMetadata?.metadata" @back="goToPrevStep" @next="finishReview" />
+            </template>
             <template #description>
                 <UploadStepDescription
                     v-model="description"
                     :selected-path="selectedPath"
                     :is-hdr="Boolean(reviewedMetadata?.metadata.hdr.length)"
                     :is-tv="reviewedMetadata?.metadata.mediaType === 'tv'"
+                    :submitting="uploadPending"
+                    :submit-error="Boolean(uploadError)"
+                    final-step
                     @back="goToPrevStep"
-                    @next="goToNextStep"
-                />
-            </template>
-            <template #select-trackers>
-                <UploadStepSelectTrackers v-model="selectedTrackers" @back="goToPrevStep" @next="goToNextStep" />
-            </template>
-            <template #review>
-                <UploadStepReview
-                    :selected-trackers="selectedTrackers"
-                    :metadata="reviewedMetadata?.metadata"
-                    :source-path="selectedPath?.value"
-                    :description="fullDescription"
-                    @back="goToPrevStep"
+                    @next="submitUpload"
                 />
             </template>
         </UStepper>

@@ -113,15 +113,13 @@ async function advanceToReview() {
     await advanceToMetadata()
     await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
 
-    await waitFor(() => expect(screen.getByText('Add the release notes and BBCode details you want included with this upload.')).toBeTruthy())
-    await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
-
     await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' })).toBeTruthy())
     await fireEvent.click(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Next' })).toHaveProperty('disabled', false))
     await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
 
     await waitFor(() => expect(screen.getByText('Review Upload')).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Next' })).toHaveProperty('disabled', false))
 }
 
 describe('upload page', () => {
@@ -134,6 +132,12 @@ describe('upload page', () => {
         it('starts on the Select Media step', async () => {
             await renderSuspended(UploadPage)
             expect(await screen.findByText('Select media source')).toBeTruthy()
+        })
+
+        it('labels Description as the final step', async () => {
+            await renderSuspended(UploadPage)
+            const stepTitles = screen.getAllByText(/Select Media|Metadata|Select Trackers|Review|Description/, { selector: '[data-slot="title"]' })
+            expect(stepTitles.at(-1)?.textContent).toBe('Description')
         })
     })
 
@@ -191,7 +195,7 @@ describe('upload page', () => {
             await advanceToMetadata()
             await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
 
-            await waitFor(() => expect(screen.getByText('Add the release notes and BBCode details you want included with this upload.')).toBeTruthy())
+            await waitFor(() => expect(screen.getByText('Choose which trackers you want to upload this torrent to.')).toBeTruthy())
             await fireEvent.click(screen.getByRole('button', { name: 'Back' }))
 
             await waitFor(() => expect(screen.getByText('Review Metadata')).toBeTruthy())
@@ -199,23 +203,49 @@ describe('upload page', () => {
         })
     })
 
-    describe('step 3 — description', () => {
+    describe('step 5 — description', () => {
         it('updates description as the user types', async () => {
-            const user = await advanceToMetadata()
+            const user = userEvent.setup({ delay: null })
+            await advanceToReview()
             await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
 
             await waitFor(() => expect(screen.getByPlaceholderText('Description')).toBeTruthy())
             await user.type(screen.getByPlaceholderText('Description'), 'My release notes')
             expect((screen.getByPlaceholderText('Description') as HTMLTextAreaElement).value).toBe('My release notes')
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Submit Upload' }))
+            await waitFor(() =>
+                expect(fetchMock).toHaveBeenCalledWith(
+                    '/api/tracker/requests',
+                    expect.objectContaining({ body: expect.objectContaining({ description: expect.stringContaining('My release notes') }) })
+                )
+            )
+        })
+
+        it('stays on the description step and shows an error when the upload request fails', async () => {
+            await advanceToReview()
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+            await waitFor(() => expect(screen.getByPlaceholderText('Description')).toBeTruthy())
+
+            fetchMock.mockImplementation(async (url: string) => {
+                if (url === '/api/tracker/requests') {
+                    throw new Error('upload failed')
+                }
+                return null
+            })
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Submit Upload' }))
+
+            await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/tracker/requests', expect.anything()))
+            await waitFor(() => expect(screen.getByText('Failed to submit upload request. Please try again.')).toBeTruthy())
+            expect(screen.getByPlaceholderText('Description')).toBeTruthy()
         })
     })
 
-    describe('step 4 — select trackers', () => {
+    describe('step 3 — select trackers', () => {
         it('Next button is disabled until a tracker is checked', async () => {
             await advanceToMetadata()
-            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
-
-            await waitFor(() => expect(screen.getByText('Add the release notes and BBCode details you want included with this upload.')).toBeTruthy())
             await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
 
             await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Upload.cx (ULCX)' })).toBeTruthy())
@@ -224,7 +254,7 @@ describe('upload page', () => {
         })
     })
 
-    describe('step 5 — review', () => {
+    describe('step 4 — review', () => {
         it('threads sourcePath, metadata and selectedTrackers to StepReview', async () => {
             await advanceToReview()
 
