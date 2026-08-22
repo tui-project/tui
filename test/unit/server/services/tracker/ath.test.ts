@@ -118,9 +118,7 @@ describe('athTrackerService — checkRules', () => {
     })
 
     it('allows languages identified within a single mul audio track', () => {
-        expect(
-            service.checkRules({ ...baseMetadata, language: ['mul'], mixedAudioLanguages: ['en', 'es'], originalLanguage: 'es', hasEnglishSubs: true })
-        ).toEqual([])
+        expect(service.checkRules({ ...baseMetadata, language: ['mul'], mixedAudioLanguages: ['en', 'es'], originalLanguage: 'es', hasEnglishSubs: true })).toEqual([])
     })
 
     it('allows English-only audio when original language is non-English (dubbed release)', () => {
