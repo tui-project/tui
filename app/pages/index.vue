@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const FINAL_STATUSES = new Set<string>([STATUS.SUCCESS, STATUS.PARTIAL_SUCCESS, STATUS.FAIL])
 
-const { requests, pending, error } = useStreamTrackerRequests()
+const { requests, pending, connected, error } = useStreamTrackerRequests()
 const { formatStatus, getRequestLabel, getStatusColor, getStatusIcon, getTrackerUploadStatusColor } = useTrackerRequestStatus()
 
 const { execute: executeRetry } = usePatchTrackerRequest()
@@ -43,7 +43,20 @@ async function handleRetry(request: TrackerRequestResponse) {
 <template>
     <PageContainer>
         <PageHeader title="Dashboard" />
-        <UCard title="Recent Uploads" description="The latest upload requests and their current status." variant="subtle">
+        <UCard variant="subtle">
+            <template #header>
+                <div class="flex items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-highlighted font-semibold">Recent Uploads</h2>
+                        <p class="mt-1 text-muted text-sm">The latest upload requests and their current status.</p>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm text-muted">
+                        <span class="size-2 rounded-full" :class="connected ? 'bg-success' : 'bg-error'" />
+                        <span>{{ connected ? 'Live' : error ? 'Reconnecting…' : 'Connecting…' }}</span>
+                    </div>
+                </div>
+            </template>
+
             <UAlert v-if="error" color="error" variant="soft" title="Unable to load recent upload requests." description="Please try again in a moment." />
 
             <div v-else-if="pending" class="space-y-2">
