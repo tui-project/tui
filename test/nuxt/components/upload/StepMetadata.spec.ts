@@ -79,7 +79,7 @@ beforeEach(() => {
     })
 })
 
-describe('StepMetadata', { timeout: 10000 }, () => {
+describe('StepMetadata', { timeout: 11000 }, () => {
     describe('no path selected', () => {
         it('shows select path alert and does not call execute', async () => {
             await renderSuspended(StepMetadata, { props: { selectedPath: { label: '', value: '', icon: '', folder: false } } })

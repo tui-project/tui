@@ -7,6 +7,7 @@ import IndexPage from '../../../app/pages/index.vue'
 const useFetchData = ref<Partial<TrackerRequestResponse>[] | null>(null)
 const useFetchError = ref<Error | null>(null)
 const useFetchPending = ref(false)
+const useFetchConnected = ref(true)
 const executeRetryMock = vi.fn()
 let capturedRetryUrlGetter: (() => string) | null = null
 
@@ -15,6 +16,7 @@ mockNuxtImport('useStreamTrackerRequests', () => {
         requests: computed(() => useFetchData.value ?? []),
         pending: useFetchPending,
         error: useFetchError,
+        connected: useFetchConnected,
     })
 })
 
@@ -40,6 +42,7 @@ describe('index page', () => {
         useFetchData.value = null
         useFetchError.value = null
         useFetchPending.value = false
+        useFetchConnected.value = true
         capturedRetryUrlGetter = null
         executeRetryMock.mockReset()
     })
@@ -107,6 +110,22 @@ describe('index page', () => {
         await renderSuspended(IndexPage)
 
         expect(screen.getByText('Unable to load recent upload requests.')).toBeTruthy()
+    })
+
+    it('shows connecting, live, and reconnecting stream states', async () => {
+        useFetchConnected.value = false
+        await renderSuspended(IndexPage)
+
+        expect(screen.getByText('Connecting…')).toBeTruthy()
+
+        useFetchConnected.value = true
+        await nextTick()
+        expect(screen.getByText('Live')).toBeTruthy()
+
+        useFetchConnected.value = false
+        useFetchError.value = new Error('network error')
+        await nextTick()
+        expect(screen.getByText('Reconnecting…')).toBeTruthy()
     })
 
     it('shows error badge and failed tracker codes for a failed request', async () => {
