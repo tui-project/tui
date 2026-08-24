@@ -29,14 +29,6 @@ const originalLanguageSearchTerm = ref('')
 const selectedLanguageCodes = computed(() => [...(state.language ?? []), state.originalLanguage ?? ''])
 const languageOptions = computed(() => getLanguageOptions(selectedLanguageCodes.value, languageSearchTerm.value))
 const originalLanguageOptions = computed(() => getLanguageOptions(selectedLanguageCodes.value, originalLanguageSearchTerm.value))
-const originalTitle = computed({
-    get: () => state.originalTitle ?? '',
-    set: (value: string) => (state.originalTitle = value || undefined),
-})
-const releaseGroup = computed({
-    get: () => state.releaseGroup ?? '',
-    set: (value: string) => (state.releaseGroup = value || undefined),
-})
 
 const showMultiEpisode = ref(false)
 const isTV = computed(() => state?.mediaType === MEDIA_TYPES.TV)
@@ -140,7 +132,7 @@ function onSubmit(event: FormSubmitEvent<Metadata>) {
                         </UFormField>
 
                         <UFormField label="Original Title">
-                            <UInput v-model="originalTitle" size="xl" class="w-full" placeholder="Enter original title" />
+                            <UInput v-model="state.originalTitle" size="xl" class="w-full" placeholder="Enter original title" />
                         </UFormField>
 
                         <UFormField label="Year" name="year" required>
@@ -227,7 +219,7 @@ function onSubmit(event: FormSubmitEvent<Metadata>) {
                         </UFormField>
 
                         <UFormField label="Release Group">
-                            <UInput v-model="releaseGroup" size="xl" class="w-full" placeholder="Enter release group" />
+                            <UInput v-model="state.releaseGroup" size="xl" class="w-full" placeholder="Enter release group" />
                         </UFormField>
 
                         <UFormField label="Resolution" name="resolution" required>

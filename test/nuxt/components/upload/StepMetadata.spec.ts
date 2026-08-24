@@ -784,6 +784,24 @@ describe('StepMetadata', { timeout: 11000 }, () => {
     })
 
     describe('navigation and submission', () => {
+        it('continues when the locale is removed', async () => {
+            const onNext = vi.fn()
+            const onUpdateModelValue = vi.fn()
+            mockExecute.mockImplementation(() => {
+                mockData.value = createMetadata({ locale: 'US' })
+            })
+
+            await renderSuspended(StepMetadata, { props: { selectedPath, onNext, 'onUpdate:modelValue': onUpdateModelValue } })
+
+            await fireEvent.update(screen.getByRole('textbox', { name: 'Locale' }), '')
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+            await waitFor(() => {
+                expect(onNext).toHaveBeenCalledTimes(1)
+                expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ locale: undefined }) }))
+            })
+        })
+
         it('continues when the original title is removed', async () => {
             const onNext = vi.fn()
 
