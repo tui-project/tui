@@ -73,16 +73,16 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
     return parsedMetadata
 }
 
-function splitReleaseGroup(name: string): { nameWithoutReleaseGroup: string; releaseGroup: string } {
+function splitReleaseGroup(name: string): { nameWithoutReleaseGroup: string; releaseGroup: string | undefined } {
     const nameWithoutExtension = stripFileExtension(name)
     const noGroupMatch = /(?:^|-)[._\s]*NO[._\s-]*(?:GROUP|GRP)\)*$/i.exec(nameWithoutExtension)
-    if (noGroupMatch) return { nameWithoutReleaseGroup: nameWithoutExtension.slice(0, noGroupMatch.index), releaseGroup: '' }
+    if (noGroupMatch) return { nameWithoutReleaseGroup: nameWithoutExtension.slice(0, noGroupMatch.index), releaseGroup: undefined }
 
     const match = /-([^-]+)$/.exec(nameWithoutExtension)
-    if (!match) return { nameWithoutReleaseGroup: nameWithoutExtension, releaseGroup: '' }
+    if (!match) return { nameWithoutReleaseGroup: nameWithoutExtension, releaseGroup: undefined }
 
     const releaseGroup = match[1]!.replace(/\)+$/, '').trim()
-    if (!releaseGroup || /\s/.test(releaseGroup)) return { nameWithoutReleaseGroup: nameWithoutExtension, releaseGroup: '' }
+    if (!releaseGroup || /\s/.test(releaseGroup)) return { nameWithoutReleaseGroup: nameWithoutExtension, releaseGroup: undefined }
 
     return { nameWithoutReleaseGroup: nameWithoutExtension.slice(0, match.index), releaseGroup }
 }

@@ -739,6 +739,19 @@ describe('StepMetadata', { timeout: 11000 }, () => {
     })
 
     describe('validation', () => {
+        it('rejects a whitespace-only release group', async () => {
+            const onNext = vi.fn()
+            mockExecute.mockImplementation(() => {
+                mockData.value = createMetadata({ releaseGroup: ' ' })
+            })
+
+            await renderSuspended(StepMetadata, { props: { selectedPath, onNext } })
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+            await waitFor(() => expect(onNext).not.toHaveBeenCalled())
+        })
+
         it('requires TV-only fields and original language before continuing', async () => {
             const onNext = vi.fn()
             mockExecute.mockImplementation(() => {
@@ -771,6 +784,30 @@ describe('StepMetadata', { timeout: 11000 }, () => {
     })
 
     describe('navigation and submission', () => {
+        it('continues when the original title is removed', async () => {
+            const onNext = vi.fn()
+
+            await renderSuspended(StepMetadata, { props: { selectedPath, onNext } })
+
+            await fireEvent.update(screen.getByRole('textbox', { name: 'Original Title' }), '')
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+            await waitFor(() => expect(onNext).toHaveBeenCalledTimes(1))
+        })
+
+        it('continues when the release group is empty', async () => {
+            const onNext = vi.fn()
+            mockExecute.mockImplementation(() => {
+                mockData.value = createMetadata({ releaseGroup: undefined })
+            })
+
+            await renderSuspended(StepMetadata, { props: { selectedPath, onNext } })
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+            await waitFor(() => expect(onNext).toHaveBeenCalledTimes(1))
+        })
+
         it('emits back and next events', async () => {
             const onBack = vi.fn()
             const onNext = vi.fn()

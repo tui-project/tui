@@ -46,7 +46,7 @@ beforeEach(() => {
         repack: 0,
         proper: 0,
         hybrid: false,
-        releaseGroup: '',
+        releaseGroup: undefined,
     })
     isWithinAnyRoot.mockReturnValue(true)
     resolveMediaFilePath.mockImplementation(async (path) => path)
@@ -137,7 +137,7 @@ describe('GET /api/metadata route handler', () => {
             repack: 0,
             proper: 0,
             hybrid: false,
-            releaseGroup: '',
+            releaseGroup: undefined,
         })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 100 })
         getDetails.mockResolvedValue({ title: 'The Office', original_title: 'The Office', original_language: 'en', year: 2005, external_ids: {} })
@@ -191,7 +191,7 @@ describe('GET /api/metadata route handler', () => {
             repack: 0,
             proper: 0,
             hybrid: false,
-            releaseGroup: '',
+            releaseGroup: undefined,
         })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], imdbId: 'tt999' })
         findByExternalID.mockResolvedValue({ id: 11, title: 'The Office', original_title: 'The Office', original_language: 'en', year: 2005, external_ids: { imdb_id: 'tt999' } })
@@ -226,7 +226,7 @@ describe('GET /api/metadata route handler', () => {
             repack: 0,
             proper: 0,
             hybrid: false,
-            releaseGroup: '',
+            releaseGroup: undefined,
         })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [] })
         findByTitle.mockResolvedValue({ id: 20, title: 'Show Title', original_title: 'Show Title', original_language: 'en', year: 2021 })
@@ -338,7 +338,7 @@ describe('GET /api/metadata route handler', () => {
             repack: 0,
             proper: 0,
             hybrid: false,
-            releaseGroup: '',
+            releaseGroup: undefined,
         })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tvdbId: 222 })
         findByExternalID.mockResolvedValue({ id: 12, title: 'The Office', original_title: 'The Office', original_language: 'en', year: 2005, external_ids: { tvdb_id: 222 } })
@@ -666,7 +666,7 @@ describe('GET /api/metadata route handler', () => {
 
     it('upgrades BluRay source to UHD BluRay when resolution is 2160p', async () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
-        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'BluRay', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'BluRay', repack: 0, proper: 0, hybrid: false, releaseGroup: undefined })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], resolution: '2160p' })
 
         const handler = await loadHandler()
@@ -676,7 +676,7 @@ describe('GET /api/metadata route handler', () => {
 
     it('does not upgrade BluRay source when resolution is not 2160p', async () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
-        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'BluRay', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'BluRay', repack: 0, proper: 0, hybrid: false, releaseGroup: undefined })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], resolution: '1080p' })
 
         const handler = await loadHandler()
@@ -695,7 +695,7 @@ describe('GET /api/metadata route handler', () => {
             repack: 0,
             proper: 0,
             hybrid: false,
-            releaseGroup: '',
+            releaseGroup: undefined,
         })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [] })
         findByTitle.mockResolvedValue(null)
@@ -707,7 +707,7 @@ describe('GET /api/metadata route handler', () => {
 
     it('upgrades DVD source to PAL DVD when videoStandard is PAL', async () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
-        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: undefined })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], videoStandard: 'PAL' })
 
         const handler = await loadHandler()
@@ -717,7 +717,7 @@ describe('GET /api/metadata route handler', () => {
 
     it('upgrades DVD source to PAL DVD when frameRate is 25', async () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
-        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: undefined })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], frameRate: 25 })
 
         const handler = await loadHandler()
@@ -727,7 +727,7 @@ describe('GET /api/metadata route handler', () => {
 
     it('upgrades DVD source to PAL DVD when frameRate is 50', async () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
-        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: undefined })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], frameRate: 50 })
 
         const handler = await loadHandler()
@@ -737,7 +737,7 @@ describe('GET /api/metadata route handler', () => {
 
     it('upgrades DVD source to NTSC DVD when videoStandard is NTSC', async () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
-        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: undefined })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], videoStandard: 'NTSC' })
 
         const handler = await loadHandler()
@@ -747,7 +747,7 @@ describe('GET /api/metadata route handler', () => {
 
     it('upgrades DVD source to NTSC DVD when frameRate is present and not a PAL rate', async () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
-        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: undefined })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], frameRate: 29.97 })
 
         const handler = await loadHandler()
@@ -757,7 +757,7 @@ describe('GET /api/metadata route handler', () => {
 
     it('does not upgrade source when source is not DVD', async () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
-        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'BluRay', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'BluRay', repack: 0, proper: 0, hybrid: false, releaseGroup: undefined })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], videoStandard: 'PAL', frameRate: 25 })
 
         const handler = await loadHandler()
@@ -767,7 +767,7 @@ describe('GET /api/metadata route handler', () => {
 
     it('leaves DVD source unchanged when no videoStandard or frameRate is available', async () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
-        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: '' })
+        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: undefined })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [] })
 
         const handler = await loadHandler()
@@ -786,7 +786,7 @@ describe('GET /api/metadata route handler', () => {
             repack: 0,
             proper: 0,
             hybrid: false,
-            releaseGroup: '',
+            releaseGroup: undefined,
             resolution: '2160p',
         })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], resolution: undefined })
@@ -807,7 +807,7 @@ describe('GET /api/metadata route handler', () => {
             repack: 0,
             proper: 0,
             hybrid: false,
-            releaseGroup: '',
+            releaseGroup: undefined,
             resolution: '2160p',
         })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], resolution: '1080p' })
