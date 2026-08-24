@@ -67,8 +67,8 @@ importers:
         specifier: 1.2.123
         version: 1.2.123
       '@iconify-json/material-symbols':
-        specifier: 1.2.88
-        version: 1.2.88
+        specifier: 1.2.89
+        version: 1.2.89
       '@iconify-json/qlementine-icons':
         specifier: 1.2.15
         version: 1.2.15
@@ -802,8 +802,8 @@ packages:
   '@iconify-json/lucide@1.2.123':
     resolution: {integrity: sha512-0CozmpKXEOEEhltrfT2zt+/t1hez67Y+hM2VJWoIcBKdBrb83VYuKf+b5A0QU9HfQm+RNn2GjFWlTOwi+Ss6IA==}
 
-  '@iconify-json/material-symbols@1.2.88':
-    resolution: {integrity: sha512-lx5EwRkKckCkczozRrKiyrtD+K2/tIn+/kf9HFrUez/6DGMQKb2sI7b+/agN7jItLvmY/VYUajs/ZcEjj6xiaA==}
+  '@iconify-json/material-symbols@1.2.89':
+    resolution: {integrity: sha512-wYJjKAOptNhc8Bq65PPJVEz/4Ozm+b3ZWEB3H65yGw37dr9AvXibW0GkEdVD7qrCtbD6aC6fY7SLmQCuUGtEAQ==}
 
   '@iconify-json/qlementine-icons@1.2.15':
     resolution: {integrity: sha512-orgfRG7pNBC3D11WdVz1pBnBQIiD3AE+OtzzpYd4J2jTlOmHuQcH4GDAIFuETw6UhighakRSySfMJGsvt5uEkQ==}
@@ -7011,7 +7011,7 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
-  '@iconify-json/material-symbols@1.2.88':
+  '@iconify-json/material-symbols@1.2.89':
     dependencies:
       '@iconify/types': 2.0.0
 
