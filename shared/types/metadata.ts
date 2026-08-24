@@ -434,11 +434,13 @@ export type PartialMetadata = {
     originCountry?: string
 }
 
+const optionalFormString = z.union([z.literal('').transform(() => undefined), z.string().trim().min(1)]).optional()
+
 export const MetadataSchema = z
     .object({
         title: z.string().trim().min(1, 'Title is required'),
-        originalTitle: z.string().trim().min(1).optional(),
-        releaseGroup: z.string().trim().min(1).optional(),
+        originalTitle: optionalFormString,
+        releaseGroup: optionalFormString,
         mediaType: z.enum(MEDIA_TYPES, { error: 'Media type is required' }),
         year: z
             .number()
@@ -447,7 +449,7 @@ export const MetadataSchema = z
         season: z.number().int().optional(),
         episode: z.number().int().optional(),
         episodeEnd: z.number().int().optional(),
-        specialName: z.string().trim().min(1).optional(),
+        specialName: optionalFormString,
         language: z.array(z.string().trim().min(1)).min(1, 'Language is required'),
         mixedAudioLanguages: z.array(z.string().trim().min(1)).optional(),
         originalLanguage: z.string().trim().min(1, 'Original language is required'),
@@ -472,7 +474,7 @@ export const MetadataSchema = z
         tmdbId: z.number().int().min(1, 'TMDb ID is required'),
         imdbId: z.string().trim().min(1, 'IMDb ID is required'),
         tvdbId: z.number().int().optional(),
-        locale: z.string().trim().min(1).optional(),
+        locale: optionalFormString,
     })
     .superRefine((metadata, ctx) => {
         if (metadata.mediaType === MEDIA_TYPES.TV) {
