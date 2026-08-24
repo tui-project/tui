@@ -106,10 +106,31 @@ describe('index page', () => {
 
     it('renders an error alert when requests fail to load', async () => {
         useFetchError.value = new Error('network error')
+        useFetchPending.value = true
 
         await renderSuspended(IndexPage)
 
         expect(screen.getByText('Unable to load recent upload requests.')).toBeTruthy()
+    })
+
+    it('keeps loaded requests visible without an error alert while reconnecting', async () => {
+        useFetchData.value = [
+            {
+                ...BASE_REQUEST,
+                id: 'upload-1',
+                filepath: '/media/Movie.2024.mkv',
+                status: 'success',
+                trackers: [],
+            },
+        ]
+        useFetchError.value = new Error('network error')
+        useFetchConnected.value = false
+
+        await renderSuspended(IndexPage)
+
+        expect(screen.getByText('Reconnecting…')).toBeTruthy()
+        expect(screen.getByText('Movie.2024.mkv')).toBeTruthy()
+        expect(screen.queryByText('Unable to load recent upload requests.')).toBeNull()
     })
 
     it('shows connecting, live, and reconnecting stream states', async () => {
