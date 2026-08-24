@@ -51,13 +51,13 @@ async function handleRetry(request: TrackerRequestResponse) {
                         <p class="mt-1 text-muted text-sm">The latest upload requests and their current status.</p>
                     </div>
                     <div class="flex items-center gap-2 text-sm text-muted">
-                        <span class="size-2 rounded-full" :class="connected ? 'bg-success' : 'bg-error'" />
+                        <span class="size-2 rounded-full" :class="connected ? 'bg-success' : error ? 'bg-warning' : 'bg-muted'" />
                         <span>{{ connected ? 'Live' : error ? 'Reconnecting…' : 'Connecting…' }}</span>
                     </div>
                 </div>
             </template>
 
-            <UAlert v-if="error" color="error" variant="soft" title="Unable to load recent upload requests." description="Please try again in a moment." />
+            <UAlert v-if="error && pending" color="error" variant="soft" title="Unable to load recent upload requests." description="Reconnecting…" />
 
             <div v-else-if="pending" class="space-y-2">
                 <USkeleton class="h-20 w-full" />
