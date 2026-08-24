@@ -27,25 +27,25 @@ export interface ParsedNameMetadata {
 export function parseMetadataFromName(name: string): ParsedNameMetadata {
     logger.trace('Parsing metadata from name.', { name })
 
-    const nameWithoutExtension = stripFileExtension(name)
-    const tokens = nameWithoutExtension.split(/[.\s_-]+/).filter(Boolean)
+    const { nameWithoutReleaseGroup, releaseGroup } = splitReleaseGroup(name)
+    const tokens = nameWithoutReleaseGroup.split(/[.\s_-]+/).filter(Boolean)
     const upperTokens = tokens.map((token) => token.toUpperCase())
-    const { season, episode, episodeEnd, index, tokenEnd } = parseSeasonEpisode(nameWithoutExtension)
-    const title = parseTitle(nameWithoutExtension, index, nameWithoutExtension !== name)
-    const specialName = parseSpecialName(nameWithoutExtension, season, episode, tokenEnd)
+
+    const { season, episode, episodeEnd, index, tokenEnd } = parseSeasonEpisode(nameWithoutReleaseGroup)
+    const title = parseTitle(nameWithoutReleaseGroup, index)
+    const specialName = parseSpecialName(nameWithoutReleaseGroup, season, episode, tokenEnd)
     const source = parseSource(upperTokens)
     const sourceType = parseSourceType(upperTokens, source)
     const service = parseService(upperTokens)
-    const cut = parseCut(nameWithoutExtension)
+    const cut = parseCut(nameWithoutReleaseGroup)
     const repack = parseRepackProper(upperTokens, 'REPACK')
     const proper = parseRepackProper(upperTokens, 'PROPER')
     const rerip = parseRepackProper(upperTokens, 'RERIP')
     const hybrid = upperTokens.some((token) => token === 'HYBRID')
-    const ratio = parseRatio(nameWithoutExtension)
-    const releaseGroup = parseReleaseGroup(nameWithoutExtension)
-    const hdr = parseHdr(nameWithoutExtension)
-    const videoCodec = parseVideoCodec(nameWithoutExtension)
-    const resolution = parseResolution(nameWithoutExtension)
+    const ratio = parseRatio(nameWithoutReleaseGroup)
+    const hdr = parseHdr(nameWithoutReleaseGroup)
+    const videoCodec = parseVideoCodec(nameWithoutReleaseGroup)
+    const resolution = parseResolution(nameWithoutReleaseGroup)
 
     const parsedMetadata = {
         title,
@@ -73,11 +73,18 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
     return parsedMetadata
 }
 
-function parseRepackProper(upperTokens: string[], keyword: string): number {
-    for (let n = 9; n >= 2; n--) {
-        if (upperTokens.includes(`${keyword}${n}`)) return n
-    }
-    return upperTokens.includes(keyword) ? 1 : 0
+function splitReleaseGroup(name: string): { nameWithoutReleaseGroup: string; releaseGroup: string } {
+    const nameWithoutExtension = stripFileExtension(name)
+    const noGroupMatch = /(?:^|-)[._\s]*NO[._\s-]*(?:GROUP|GRP)\)*$/i.exec(nameWithoutExtension)
+    if (noGroupMatch) return { nameWithoutReleaseGroup: nameWithoutExtension.slice(0, noGroupMatch.index), releaseGroup: '' }
+
+    const match = /-([^-]+)$/.exec(nameWithoutExtension)
+    if (!match) return { nameWithoutReleaseGroup: nameWithoutExtension, releaseGroup: '' }
+
+    const releaseGroup = match[1]!.replace(/\)+$/, '').trim()
+    if (!releaseGroup || /\s/.test(releaseGroup)) return { nameWithoutReleaseGroup: nameWithoutExtension, releaseGroup: '' }
+
+    return { nameWithoutReleaseGroup: nameWithoutExtension.slice(0, match.index), releaseGroup }
 }
 
 function stripFileExtension(name: string) {
@@ -94,6 +101,13 @@ function stripFileExtension(name: string) {
     const basename = path.basename(name, extension)
 
     return /[-_.\s]/.test(basename) ? basename : name
+}
+
+function parseRepackProper(upperTokens: string[], keyword: string): number {
+    for (let n = 9; n >= 2; n--) {
+        if (upperTokens.includes(`${keyword}${n}`)) return n
+    }
+    return upperTokens.includes(keyword) ? 1 : 0
 }
 
 function parseSeasonEpisode(name: string) {
@@ -134,7 +148,7 @@ function parseSpecialName(name: string, season: number | undefined, episode: num
     const isSpecial = (season === 0 && episode !== undefined) || (season !== undefined && season > 0 && episode === 0)
     if (!isSpecial || tokenEnd < 0) return undefined
 
-    const afterToken = name.slice(tokenEnd).replace(/-([^-]+)$/, '')
+    const afterToken = name.slice(tokenEnd)
     const technicalMarkerMatch = findFileMetadataIndex(afterToken)
     const end = technicalMarkerMatch >= 0 ? technicalMarkerMatch : afterToken.length
     let raw = afterToken
@@ -232,26 +246,13 @@ function parseRatio(name: string): Ratio {
     return undefined
 }
 
-function parseReleaseGroup(name: string) {
-    const match = /-([^-]+)$/.exec(name)
-    return match ? match[1]!.replace(/\)+$/, '').trim() : ''
-}
-
-function parseTitle(name: string, seasonEpisodeIndex: number, isFileName: boolean) {
-    const beforeGroup = name.replace(/-([^-]+)$/, '')
-    const fileMetadataIndex = findFileMetadataIndex(beforeGroup)
-    const cutIndex = seasonEpisodeIndex >= 0 ? seasonEpisodeIndex : fileMetadataIndex >= 0 ? fileMetadataIndex : beforeGroup.length
-    const rawTitle = beforeGroup.slice(0, cutIndex)
-
-    if (isFileName) {
-        return rawTitle
-            .replace(/[._]+/g, ' ')
-            .replace(/\s*\(\d{4}\)\s*$/, '')
-            .trim()
-    }
+function parseTitle(name: string, seasonEpisodeIndex: number) {
+    const fileMetadataIndex = findFileMetadataIndex(name)
+    const cutIndex = seasonEpisodeIndex >= 0 ? seasonEpisodeIndex : fileMetadataIndex >= 0 ? fileMetadataIndex : name.length
+    const rawTitle = name.slice(0, cutIndex)
 
     return rawTitle
-        .replace(/[._-]+/g, ' ')
+        .replace(/[._]+/g, ' ')
         .replace(/\s*\(\d{4}\)\s*$/, '')
         .trim()
 }
