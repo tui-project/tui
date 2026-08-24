@@ -100,6 +100,15 @@ describe('useBbcodeRender composable', () => {
         expect(ordered).toContain('first')
     })
 
+    it('renders list items inside a code block', async () => {
+        const { useBbcodeRender } = await import('../../../../app/composables/useBbcodeRender')
+        const { toHtml } = useBbcodeRender()
+
+        const html = toHtml('[list][code]\n[*]item one\n[*]item two\n[/code][/list]')
+
+        expect(html).toMatch(/<pre[^>]*>[\s\S]*<ul[^>]*class="list-disc ml-5"[^>]*>[\s\S]*<li[^>]*>item one[\s\S]*<li[^>]*>item two[\s\S]*<\/ul>[\s\S]*<\/pre>/)
+    })
+
     it('stores parse errors from invalid BBCode', async () => {
         vi.resetModules()
         vi.doMock('@bbob/html', () => ({

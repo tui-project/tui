@@ -38,13 +38,17 @@ function normalizeTagNames(tree: BBobCoreTagNodeTree): BBobCoreTagNodeTree {
 // Wraps runs of bare [*] lines (outside an existing [list]) with [list]...[/list]
 // so the base preset's list handler processes them correctly.
 function normalizeListItems(content: string): string {
-    return content
+    return normalizeCodeLists(content)
         .split(/(\[list[^\]]*\][\s\S]*?\[\/list\])/gi)
         .map((segment, i) => {
             if (i % 2 === 1) return segment
             return segment.replace(/(\[\*\][^\n]*(?:\n|(?=\[\/)))+/g, (match) => `[list]\n${match}[/list]\n`)
         })
         .join('')
+}
+
+function normalizeCodeLists(content: string): string {
+    return content.replace(/\[list([^\]]*)\]\s*\[code\]([\s\S]*?)\[\/code\]\s*\[\/list\]/gi, '[code][list$1]$2[/list][/code]')
 }
 
 const extendedPresetHTML5 = presetHTML5.extend((tags: PresetTagsDefinition<string>) => ({
