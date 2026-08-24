@@ -55,7 +55,7 @@
         "eslint-config-prettier": "10.1.8",
         "happy-dom": "20.11.6",
         "playwright": "1.62.1",
-        "pnpm": "11.21.0",
+        "pnpm": "11.22.0",
         "prettier": "3.9.6",
         "typescript": "6.0.3",
         "vitest": "4.1.10",
