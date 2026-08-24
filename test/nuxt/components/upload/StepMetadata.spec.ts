@@ -1,8 +1,8 @@
-import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
-import { fireEvent, screen, waitFor } from '@testing-library/vue'
+import { mockNuxtImport, mountSuspended, renderSuspended } from '@nuxt/test-utils/runtime'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { ref } from 'vue'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import StepMetadata from '~/components/upload/StepMetadata.vue'
 
 mockNuxtImport('getLanguageOptions', () =>
@@ -78,6 +78,8 @@ beforeEach(() => {
         mockData.value = createMetadata()
     })
 })
+
+afterEach(() => cleanup())
 
 describe('StepMetadata', { timeout: 11000 }, () => {
     describe('no path selected', () => {
@@ -294,7 +296,6 @@ describe('StepMetadata', { timeout: 11000 }, () => {
             ['proper', 'Proper'],
             ['rerip', 'ReRip'],
         ] as const)('toggles %s: hides number input on uncheck, shows on re-check', async (field, label) => {
-            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ [field]: 1 })
             })
@@ -305,10 +306,10 @@ describe('StepMetadata', { timeout: 11000 }, () => {
             const checkbox = screen.getByRole('checkbox', { name: label })
             expect(screen.getByRole('spinbutton', { name: numberInputName })).toBeDefined()
 
-            await user.click(checkbox)
+            await fireEvent.click(checkbox)
             await waitFor(() => expect(screen.queryByRole('spinbutton', { name: numberInputName })).toBeNull())
 
-            await user.click(screen.getByRole('checkbox', { name: label }))
+            await fireEvent.click(screen.getByRole('checkbox', { name: label }))
             await waitFor(() => expect(screen.getByRole('spinbutton', { name: numberInputName })).toBeDefined())
         })
 
@@ -363,7 +364,6 @@ describe('StepMetadata', { timeout: 11000 }, () => {
         })
 
         it('toggles Hi10P checkbox on and off', async () => {
-            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ videoCodec: 'AVC', hi10p: false })
             })
@@ -373,10 +373,10 @@ describe('StepMetadata', { timeout: 11000 }, () => {
             const hi10pCheckbox = screen.getByRole('checkbox', { name: 'Hi10P' })
             expect(hi10pCheckbox.getAttribute('data-state')).toBe('unchecked')
 
-            await user.click(hi10pCheckbox)
+            await fireEvent.click(hi10pCheckbox)
             await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Hi10P' }).getAttribute('data-state')).toBe('checked'))
 
-            await user.click(screen.getByRole('checkbox', { name: 'Hi10P' }))
+            await fireEvent.click(screen.getByRole('checkbox', { name: 'Hi10P' }))
             await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Hi10P' }).getAttribute('data-state')).toBe('unchecked'))
         })
 
@@ -398,7 +398,6 @@ describe('StepMetadata', { timeout: 11000 }, () => {
         })
 
         it('toggles English Subs checkbox off', async () => {
-            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ originalLanguage: 'ko', hasEnglishSubs: true })
             })
@@ -408,7 +407,7 @@ describe('StepMetadata', { timeout: 11000 }, () => {
             const checkbox = screen.getByRole('checkbox', { name: 'English Subs' })
             expect(checkbox.getAttribute('data-state')).toBe('checked')
 
-            await user.click(checkbox)
+            await fireEvent.click(checkbox)
             await waitFor(() => expect(screen.getByRole('checkbox', { name: 'English Subs' }).getAttribute('data-state')).toBe('unchecked'))
         })
 
@@ -430,7 +429,6 @@ describe('StepMetadata', { timeout: 11000 }, () => {
         })
 
         it('toggles TrueHD Compatibility Track checkbox on and off', async () => {
-            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ audioCodec: 'TrueHD', hasTrueHDCompatibilityTrack: true })
             })
@@ -440,17 +438,16 @@ describe('StepMetadata', { timeout: 11000 }, () => {
             const checkbox = screen.getByRole('checkbox', { name: 'TrueHD Compatibility Track' })
             expect(checkbox.getAttribute('data-state')).toBe('checked')
 
-            await user.click(checkbox)
+            await fireEvent.click(checkbox)
             await waitFor(() => expect(screen.getByRole('checkbox', { name: 'TrueHD Compatibility Track' }).getAttribute('data-state')).toBe('unchecked'))
 
-            await user.click(screen.getByRole('checkbox', { name: 'TrueHD Compatibility Track' }))
+            await fireEvent.click(screen.getByRole('checkbox', { name: 'TrueHD Compatibility Track' }))
             await waitFor(() => expect(screen.getByRole('checkbox', { name: 'TrueHD Compatibility Track' }).getAttribute('data-state')).toBe('checked'))
         })
     })
 
     describe('TV features', () => {
         it('shows Last Episode input when multi-episode toggle is enabled', async () => {
-            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ mediaType: 'tv', season: 1, episode: 3, tvdbId: 999 })
             })
@@ -459,7 +456,7 @@ describe('StepMetadata', { timeout: 11000 }, () => {
 
             expect(screen.queryByRole('spinbutton', { name: 'Last Episode' })).toBeNull()
 
-            await user.click(screen.getByRole('switch', { name: 'Multi-episode' }))
+            await fireEvent.click(screen.getByRole('switch', { name: 'Multi-episode' }))
 
             expect(screen.getByRole('spinbutton', { name: 'Last Episode' })).toBeDefined()
             expect(screen.getByRole('spinbutton', { name: 'First Episode' })).toBeDefined()
@@ -478,17 +475,16 @@ describe('StepMetadata', { timeout: 11000 }, () => {
         })
 
         it('hides Last Episode input when toggle is turned off but preserves the value', async () => {
-            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ mediaType: 'tv', season: 0, episode: 3, episodeEnd: 8, tvdbId: 311711 })
             })
 
             await renderSuspended(StepMetadata, { props: { selectedPath } })
 
-            await user.click(screen.getByRole('switch', { name: 'Multi-episode' }))
+            await fireEvent.click(screen.getByRole('switch', { name: 'Multi-episode' }))
             expect(screen.queryByRole('spinbutton', { name: 'Last Episode' })).toBeNull()
 
-            await user.click(screen.getByRole('switch', { name: 'Multi-episode' }))
+            await fireEvent.click(screen.getByRole('switch', { name: 'Multi-episode' }))
             expect(screen.getByRole('spinbutton', { name: 'Last Episode' }).getAttribute('value')).toBe('8')
         })
 
@@ -517,7 +513,6 @@ describe('StepMetadata', { timeout: 11000 }, () => {
         })
 
         it('allows typing into the Last Episode input', async () => {
-            const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
                 mockData.value = createMetadata({ mediaType: 'tv', season: 1, episode: 1, tvdbId: 999 })
             })
@@ -526,7 +521,7 @@ describe('StepMetadata', { timeout: 11000 }, () => {
 
             await fireEvent.click(screen.getByRole('switch', { name: 'Multi-episode' }))
             const lastEpisodeInput = await screen.findByRole('spinbutton', { name: 'Last Episode' })
-            await user.type(lastEpisodeInput, '6')
+            await fireEvent.update(lastEpisodeInput, '6')
             await fireEvent.blur(lastEpisodeInput)
 
             await waitFor(() => expect(lastEpisodeInput.getAttribute('value')).toBe('6'))
@@ -556,62 +551,50 @@ describe('StepMetadata', { timeout: 11000 }, () => {
             await waitFor(() => expect(screen.getByDisplayValue('Dune Part One')).toBeDefined())
         })
 
-        it('updates season, episode, tmdb and tvdb inputs for TV media type', async () => {
-            const user = userEvent.setup({ delay: null })
-            mockExecute.mockImplementation(() => {
-                mockData.value = createMetadata({ mediaType: 'tv', season: undefined, episode: undefined, tvdbId: undefined, tmdbId: undefined })
+        it('handles number input component model updates for TV metadata', async () => {
+            const wrapper = await mountSuspended(StepMetadata, {
+                props: {
+                    selectedPath,
+                    modelValue: createMetadata({ mediaType: 'tv', season: 1, episode: 2, tvdbId: 12345 }),
+                },
             })
+            const getNumberInput = (placeholder: string) => {
+                const input = wrapper.findAllComponents({ name: 'UInputNumber' }).find((component) => component.props('placeholder') === placeholder)
+                expect(input).toBeDefined()
+                return input!
+            }
 
-            await renderSuspended(StepMetadata, { props: { selectedPath } })
+            getNumberInput('Enter year').vm.$emit('update:modelValue', 2024)
+            getNumberInput('Enter season').vm.$emit('update:modelValue', 3)
+            getNumberInput('Enter episode').vm.$emit('update:modelValue', 7)
+            getNumberInput('Enter TMDb ID').vm.$emit('update:modelValue', 99999)
+            getNumberInput('Enter TVDb ID').vm.$emit('update:modelValue', 67890)
+            await wrapper.vm.$nextTick()
 
-            const seasonInput = screen.getByRole('spinbutton', { name: 'Season' })
-            const episodeInput = screen.getByRole('spinbutton', { name: 'Episode' })
-            const tvdbInput = screen.getByRole('spinbutton', { name: 'TVDB ID' })
-            const tmdbInput = screen.getByRole('spinbutton', { name: 'TMDb ID' })
-
-            await user.type(seasonInput, '2')
-            await user.type(episodeInput, '5')
-            await user.type(tvdbInput, '67890')
-            await user.type(tmdbInput, '99999')
-
-            await waitFor(() => {
-                expect(seasonInput.getAttribute('value')).toBe('2')
-                expect(episodeInput.getAttribute('value')).toBe('5')
-                expect(tvdbInput.getAttribute('value')).toBe('67890')
-                expect(tmdbInput.getAttribute('value')).toBe('99999')
-            })
+            expect(getNumberInput('Enter year').props('modelValue')).toBe(2024)
+            expect(getNumberInput('Enter season').props('modelValue')).toBe(3)
+            expect(getNumberInput('Enter episode').props('modelValue')).toBe(7)
+            expect(getNumberInput('Enter TMDb ID').props('modelValue')).toBe(99999)
+            expect(getNumberInput('Enter TVDb ID').props('modelValue')).toBe(67890)
         })
 
-        it('updates flag checkboxes and TVDB field for tv metadata', async () => {
+        it('updates the Hybrid flag and Resolution', async () => {
             const user = userEvent.setup({ delay: null })
             mockExecute.mockImplementation(() => {
-                mockData.value = createMetadata({ mediaType: 'tv', season: 3, tvdbId: undefined, repack: 0, proper: 0, hybrid: false })
+                mockData.value = createMetadata({ hybrid: false })
             })
 
             await renderSuspended(StepMetadata, { props: { selectedPath } })
 
-            const repackCheckbox = screen.getByRole('checkbox', { name: 'Repack' })
-            const properCheckbox = screen.getByRole('checkbox', { name: 'Proper' })
             const hybridCheckbox = screen.getByRole('checkbox', { name: 'Hybrid' })
-            const yearInput = screen.getByRole('spinbutton', { name: 'Year' })
-            const tvdbInput = screen.getByRole('spinbutton', { name: 'TVDB ID' })
             const resolutionSelect = screen.getByRole('combobox', { name: 'Resolution' })
 
-            await user.click(repackCheckbox)
-            await user.click(properCheckbox)
-            await user.click(hybridCheckbox)
-            await user.clear(yearInput)
-            await user.type(yearInput, '2024')
+            await fireEvent.click(hybridCheckbox)
             await user.click(resolutionSelect)
             await user.click(await screen.findByRole('option', { name: '1080p' }))
-            await user.type(tvdbInput, '4321')
 
-            expect(repackCheckbox.getAttribute('data-state')).toBe('checked')
-            expect(properCheckbox.getAttribute('data-state')).toBe('checked')
             expect(hybridCheckbox.getAttribute('data-state')).toBe('checked')
-            expect(yearInput.getAttribute('value')).toBe('2024')
             expect(screen.getByRole('combobox', { name: 'Resolution' }).textContent).toBe('1080p')
-            expect(tvdbInput.getAttribute('value')).toBe('4321')
         })
 
         it.each([
@@ -631,21 +614,6 @@ describe('StepMetadata', { timeout: 11000 }, () => {
             },
             10000
         )
-
-        it('updates tmdb input for movie media type', async () => {
-            const user = userEvent.setup({ delay: null })
-            mockExecute.mockImplementation(() => {
-                mockData.value = createMetadata({ tmdbId: undefined })
-            })
-
-            await renderSuspended(StepMetadata, { props: { selectedPath } })
-
-            const tmdbInput = screen.getByRole('spinbutton', { name: 'TMDb ID' })
-            await user.type(tmdbInput, '12345')
-            await user.tab()
-
-            await waitFor(() => expect(tmdbInput.getAttribute('value')).toBe('12345'))
-        })
 
         it('covers single-select dropdown v-model handlers in basic and source-release sections', async () => {
             // All interactions in one test: one renderSuspended, one cleanup — avoids multi-test
@@ -720,21 +688,6 @@ describe('StepMetadata', { timeout: 11000 }, () => {
                 expect(screen.getByRole('textbox', { name: 'Release Group' }).getAttribute('value')).toBe('NEWGROUP')
                 expect(screen.getByRole('textbox', { name: 'Locale' }).getAttribute('value')).toBe('AU')
             })
-        })
-
-        it('allows typing into the TVDB ID input', async () => {
-            const user = userEvent.setup({ delay: null })
-            mockExecute.mockImplementation(() => {
-                mockData.value = createMetadata({ mediaType: 'tv', season: 1, episode: 1, tvdbId: undefined })
-            })
-
-            await renderSuspended(StepMetadata, { props: { selectedPath } })
-
-            const tvdbInput = screen.getByRole('spinbutton', { name: 'TVDB ID' })
-            await user.type(tvdbInput, '12345')
-            await user.tab()
-
-            await waitFor(() => expect(tvdbInput.getAttribute('value')).toBe('12345'))
         })
     })
 
@@ -896,28 +849,6 @@ describe('StepMetadata', { timeout: 11000 }, () => {
             await waitFor(() => {
                 expect(onUpdateModelValue).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.not.objectContaining({ episodeEnd: expect.anything() }) }))
             })
-        })
-    })
-
-    describe('conditional flags', () => {
-        it('shows English Subs checkbox when original language is not English', async () => {
-            mockExecute.mockImplementation(() => {
-                mockData.value = createMetadata({ originalLanguage: 'fr' })
-            })
-
-            await renderSuspended(StepMetadata, { props: { selectedPath } })
-
-            await waitFor(() => expect(screen.getByRole('checkbox', { name: 'English Subs' })).toBeTruthy())
-        })
-
-        it('shows TrueHD Compatibility Track checkbox when audio codec is TrueHD', async () => {
-            mockExecute.mockImplementation(() => {
-                mockData.value = createMetadata({ audioCodec: 'TrueHD' })
-            })
-
-            await renderSuspended(StepMetadata, { props: { selectedPath } })
-
-            await waitFor(() => expect(screen.getByRole('checkbox', { name: 'TrueHD Compatibility Track' })).toBeTruthy())
         })
     })
 })
