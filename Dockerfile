@@ -12,7 +12,7 @@ COPY . .
 RUN pnpm nuxt prepare && NODE_OPTIONS=--max-old-space-size=3072 pnpm nuxt build
 
 # ---- runner stage ----
-FROM mwader/static-ffmpeg:8.1.2 AS ffmpeg
+FROM mwader/static-ffmpeg:9.0 AS ffmpeg
 
 FROM node:26-alpine AS runner
 RUN apk add --no-cache mediainfo
