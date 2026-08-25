@@ -190,18 +190,12 @@ function checkRules(metadata: Metadata): RuleViolation[] {
 
     const violations: RuleViolation[] = []
 
-    if (metadata.releaseGroup) {
-        const group = metadata.releaseGroup.toLowerCase()
-        if (BANNED_GROUPS.has(group)) {
-            const forbiddenTypes = BANNED_GROUPS.get(group)!
-            const isBanned = forbiddenTypes === null || forbiddenTypes.has(metadata.sourceType)
-            if (isBanned) {
-                violations.push({
-                    rule: 'banned_release_group',
-                    message: `Release group "${metadata.releaseGroup}" is banned${forbiddenTypes === null ? '' : ` for ${[...forbiddenTypes].join(', ')} releases`}.`,
-                })
-            }
-        }
+    if (metadata.releaseGroup && isBannedReleaseGroup(metadata.releaseGroup, metadata.sourceType)) {
+        const forbiddenTypes = BANNED_GROUPS.get(metadata.releaseGroup.toLowerCase())!
+        violations.push({
+            rule: 'banned_release_group',
+            message: `Release group "${metadata.releaseGroup}" is banned${forbiddenTypes === null ? '' : ` for ${[...forbiddenTypes].join(', ')} releases`}.`,
+        })
     }
 
     if (metadata.audioCodec === AUDIO_CODECS.TRUEHD && !metadata.hasTrueHDCompatibilityTrack) {
@@ -230,6 +224,13 @@ function checkRules(metadata: Metadata): RuleViolation[] {
     logger.debug('Tracker rules check completed.', { metadataTitle: metadata.title, violationCount: violations.length, violations: violations.map((violation) => violation.rule) })
 
     return violations
+}
+
+function isBannedReleaseGroup(releaseGroup: string | undefined, sourceType: SourceType): boolean {
+    if (!releaseGroup) return false
+    const forbiddenTypes = BANNED_GROUPS.get(releaseGroup.toLowerCase())
+
+    return forbiddenTypes === null || forbiddenTypes?.has(sourceType) === true
 }
 
 function getExtraFields(metadata: Metadata): Record<string, string> {
@@ -281,6 +282,7 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata): 
         revision: Math.max(metadata.repack, metadata.proper, metadata.rerip),
         hasOriginalAudio: hasOriginalAudio(metadata),
         hybrid: metadata.hybrid,
+        isBannedReleaseGroup: isBannedReleaseGroup(metadata.releaseGroup, metadata.sourceType),
     }
 
     const existingContexts = candidates.map((torrent) => {
@@ -292,6 +294,7 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata): 
             revision: Math.max(torrent.repack, torrent.proper, torrent.rerip),
             hasOriginalAudio: torrent.hasOriginalAudio,
             hybrid: torrent.hybrid,
+            isBannedReleaseGroup: isBannedReleaseGroup(torrent.releaseGroup, torrent.sourceType),
         }
         return { torrent, existingContext }
     })
@@ -343,6 +346,8 @@ function getSlot(resolution: Resolution, sourceType: SourceType, tier: HdrTier, 
 }
 
 const TRUMP_RULES: TorrentRule[] = [
+    // An allowed upload can trump an existing release from a banned group
+    (upload, existing) => !upload.isBannedReleaseGroup && existing.isBannedReleaseGroup,
     // Disc DV trumps a hybrid source in the same DV slot
     (upload, existing) => !upload.hybrid && existing.hybrid && upload.hdrTier === 'DV',
     // DV/HDR over HDR, DV/HDR10+ over HDR10+

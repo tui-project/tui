@@ -252,6 +252,7 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata) {
         hasOriginalAudio: hasOriginalAudio(metadata),
         hybrid: metadata.hybrid,
         isNoGrp: !metadata.releaseGroup,
+        isBannedReleaseGroup: isBannedReleaseGroup(metadata.releaseGroup),
     }
 
     const existingContexts = candidates.map((torrent) => {
@@ -264,6 +265,7 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata) {
             hasOriginalAudio: torrent.hasOriginalAudio,
             hybrid: torrent.hybrid,
             isNoGrp: /\bNOGROUP\b/i.test(torrent.name),
+            isBannedReleaseGroup: isBannedReleaseGroup(torrent.releaseGroup),
         }
         return { torrent, context }
     })
@@ -282,7 +284,13 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata) {
     return duplicates
 }
 
+function isBannedReleaseGroup(releaseGroup: string | undefined): boolean {
+    return releaseGroup ? BANNED_GROUPS.has(releaseGroup.toLowerCase()) : false
+}
+
 const TRUMP_RULES: TorrentRule<TorrentContext>[] = [
+    // An allowed upload can trump an existing release from a banned group
+    (upload, existing) => !upload.isBannedReleaseGroup && existing.isBannedReleaseGroup,
     // Disc DV trumps a hybrid source in the same DV slot
     (upload, existing) => !upload.hybrid && existing.hybrid && upload.hdrTier === 'DV',
     // DV/HDR over HDR, DV/HDR10+ over HDR10+

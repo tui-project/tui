@@ -43,6 +43,7 @@ export type TorrentContext = {
     revision: number
     hasOriginalAudio: boolean
     hybrid: boolean
+    isBannedReleaseGroup: boolean
 }
 
 export type TorrentRule<T extends TorrentContext = TorrentContext> = (upload: T, existing: T) => boolean

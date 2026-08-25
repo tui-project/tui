@@ -25,6 +25,7 @@ export type TorrentResult = {
     cut?: string
     ratio?: string
     hybrid: boolean
+    releaseGroup?: string
 }
 
 type Attributes = {
@@ -184,6 +185,7 @@ function mapTorrentAttributes(attrs: Attributes): TorrentResult {
         cut: parsed.cut,
         ratio: parsed.ratio,
         hybrid: parsed.hybrid,
+        releaseGroup: parsed.releaseGroup,
     }
 }
 
