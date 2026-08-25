@@ -778,6 +778,29 @@ describe('athTrackerService — findDuplicates', () => {
         expect(result[0]).toMatchObject({ trumpable: false })
     })
 
+    it.each([
+        ['an always-banned group', 'YIFY', SOURCE_TYPES.ENCODE, true],
+        ['a group banned for the existing source type', 'EVO', SOURCE_TYPES.ENCODE, true],
+        ['a conditionally banned group on an allowed source type', 'EVO', SOURCE_TYPES.REMUX, false],
+    ] as const)('handles %s when determining whether the duplicate is trumpable', async (_, releaseGroup, sourceType, trumpable) => {
+        mockParsedDefault({ releaseGroup })
+        fetchMock.mockResolvedValue({ data: [makeAthCandidate({ type_id: sourceType === SOURCE_TYPES.REMUX ? 2 : 3 })] })
+        const result = await service.findDuplicates({ ...baseMetadata, sourceType })
+        expect(result[0]).toMatchObject({ trumpable })
+    })
+
+    it('does not make an allowed duplicate trumpable solely because the upload group is banned', async () => {
+        mockParsedDefault({ releaseGroup: 'GROUP' })
+        const result = await service.findDuplicates({ ...baseMetadata, releaseGroup: 'YIFY' })
+        expect(result[0]).toMatchObject({ trumpable: false })
+    })
+
+    it('does not allow a banned upload group to trump another banned release group', async () => {
+        mockParsedDefault({ releaseGroup: 'YIFY' })
+        const result = await service.findDuplicates({ ...baseMetadata, releaseGroup: 'RARBG' })
+        expect(result[0]).toMatchObject({ trumpable: false })
+    })
+
     describe('slot system', () => {
         function mockParsed(overrides: Record<string, unknown> = {}) {
             vi.mocked(parseMetadataFromName).mockReturnValue({

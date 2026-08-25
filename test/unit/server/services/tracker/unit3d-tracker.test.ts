@@ -316,8 +316,17 @@ describe('getTorrents', () => {
         expect(result!.hasOriginalAudio).toBe(expected)
     })
 
-    it('maps hdr, videoCodec, repack, proper, rerip, season, episode from parseMetadataFromName', async () => {
-        vi.mocked(parseMetadataFromName).mockReturnValueOnce({ season: 2, episode: 5, repack: 1, proper: 0, rerip: 1, hdr: ['DV', 'HDR'], videoCodec: 'x265' } as never)
+    it('maps parsed torrent metadata from parseMetadataFromName', async () => {
+        vi.mocked(parseMetadataFromName).mockReturnValueOnce({
+            season: 2,
+            episode: 5,
+            repack: 1,
+            proper: 0,
+            rerip: 1,
+            hdr: ['DV', 'HDR'],
+            videoCodec: 'x265',
+            releaseGroup: 'GROUP',
+        } as never)
         vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ data: [makeTorrentEntry()] }))
         const [result] = await getTorrents(URL, API_KEY, { tmdbId: 1 })
         expect(result!.hdr).toEqual(['DV', 'HDR'])
@@ -327,6 +336,7 @@ describe('getTorrents', () => {
         expect(result!.rerip).toBe(1)
         expect(result!.season).toBe(2)
         expect(result!.episode).toBe(5)
+        expect(result!.releaseGroup).toBe('GROUP')
     })
 })
 

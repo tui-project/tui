@@ -1047,6 +1047,28 @@ describe('ulcxTrackerService — findDuplicates', () => {
         expect(result[0]).toMatchObject({ trumpable: false })
     })
 
+    it.each([
+        ['YIFY', true],
+        ['yify', true],
+        ['BHDStudio', false],
+    ] as const)('marks existing release group %s as trumpable when banned: %s', async (releaseGroup, trumpable) => {
+        mockParsed({ hdr: [], videoCodec: 'x264', releaseGroup })
+        const result = await service.findDuplicates(baseMetadata)
+        expect(result[0]).toMatchObject({ trumpable })
+    })
+
+    it('does not make an allowed duplicate trumpable solely because the upload group is banned', async () => {
+        mockParsed({ hdr: [], videoCodec: 'x264', releaseGroup: 'GROUP' })
+        const result = await service.findDuplicates({ ...baseMetadata, releaseGroup: 'YIFY' })
+        expect(result[0]).toMatchObject({ trumpable: false })
+    })
+
+    it('does not allow a banned upload group to trump another banned release group', async () => {
+        mockParsed({ hdr: [], videoCodec: 'x264', releaseGroup: 'YIFY' })
+        const result = await service.findDuplicates({ ...baseMetadata, releaseGroup: 'RARBG' })
+        expect(result[0]).toMatchObject({ trumpable: false })
+    })
+
     it('marks a NOGROUP existing release as trumpable by a named-group upload', async () => {
         mockParsed({ hdr: [], videoCodec: 'x264' })
         fetchMock.mockResolvedValue({ data: [makeUlcxCandidate({ name: 'Movie 2024 1080p BluRay x264-NOGROUP' })] })
