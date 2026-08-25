@@ -1,7 +1,7 @@
 FROM node:26-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable && corepack prepare pnpm@11.21.0 --activate
+RUN npm install --global pnpm@11.22.0
 
 # ---- build stage ----
 FROM base AS build
