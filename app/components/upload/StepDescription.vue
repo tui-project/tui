@@ -5,13 +5,16 @@ import { usePostScreenshots } from '~/composables/usePostScreenshots'
 import StepNavigationButtons from './StepNavigationButtons.vue'
 
 const description = defineModel<string>({ default: '' })
+const logoFetched = defineModel<boolean>('logoFetched', { default: false })
 const props = defineProps<{
     selectedPath?: Path
     isHdr?: boolean
-    isTv?: boolean
     submitting?: boolean
     submitError?: boolean
     finalStep?: boolean
+    tmdbId?: number
+    mediaType?: MediaType
+    originalLanguage?: string
 }>()
 const emit = defineEmits<{
     back: []
@@ -33,6 +36,7 @@ const { toHtml, error } = useBbcodeRender()
 const { applyImageLoading } = usePreviewImageLoadingState()
 const { pending: isGeneratingScreenshots, errorMessage: screenshotErrorMessage, data: screenshotResult, execute: generateScreenshots } = usePostScreenshots()
 const { withFooter } = useDescriptionFooter()
+const { pending: isFetchingLogo, data: logoUrl, execute: getLogo } = useGetLogo()
 
 const toolbarActions: ToolbarAction[] = [
     { label: 'Bold', icon: 'i-lucide-bold', openTag: '[b]', closeTag: '[/b]' },
@@ -47,9 +51,20 @@ const previewBody = computed(() => (hasDescription.value ? description.value : '
 const previewContent = computed(() => withFooter(previewBody.value))
 const renderedPreview = computed(() => toHtml(previewContent.value))
 
-watch([activeTab, renderedPreview], async () => {
-    await nextTick()
+watchPostEffect(() => {
+    void renderedPreview.value
     applyImageLoading(preview.value, activeTab.value === 'preview', hasDescription.value)
+})
+
+onMounted(async () => {
+    if (!props.tmdbId || !props.mediaType || !props.originalLanguage || logoFetched.value) return
+
+    await getLogo({ tmdbId: props.tmdbId, mediaType: props.mediaType, originalLanguage: props.originalLanguage })
+    if (!logoUrl.value || description.value.includes(logoUrl.value)) return
+
+    const logo = `[center][img=500]${logoUrl.value}[/img][/center]`
+    description.value = description.value ? `${logo}\n\n${description.value}` : logo
+    logoFetched.value = true
 })
 
 function insertTag(action: ToolbarAction) {
@@ -98,7 +113,7 @@ async function addScreenshots() {
         return
     }
 
-    await generateScreenshots({ path: props.selectedPath!.value, hdr: !!props.isHdr, tv: !!props.isTv })
+    await generateScreenshots({ path: props.selectedPath!.value, hdr: !!props.isHdr, tv: props.mediaType === MEDIA_TYPES.TV })
 
     const response = screenshotResult.value
     if (!response) {
@@ -126,7 +141,11 @@ async function addScreenshots() {
 
         <UAlert v-if="submitError" color="error" variant="soft" title="Failed to submit upload request. Please try again." class="mb-4" />
 
-        <div class="overflow-hidden rounded-xl border border-default bg-elevated/20 shadow-xs">
+        <div v-if="isFetchingLogo" role="status" aria-label="Fetching TMDB logo" class="mb-4">
+            <USkeleton class="h-20 w-full" />
+        </div>
+
+        <div v-else class="overflow-hidden rounded-xl border border-default bg-elevated/20 shadow-xs">
             <div class="flex items-center justify-between gap-3 border-b border-default px-4 pt-3">
                 <div class="flex items-center gap-2">
                     <UButton label="Write" color="neutral" :variant="activeTab === 'write' ? 'solid' : 'ghost'" @click="activeTab = 'write'" />
@@ -147,7 +166,7 @@ async function addScreenshots() {
                             size="sm"
                             :icon="action.icon"
                             :aria-label="action.label"
-                            :disabled="isGeneratingScreenshots"
+                            :disabled="isGeneratingScreenshots || isFetchingLogo"
                             @click="insertTag(action)"
                         />
                     </div>
@@ -158,7 +177,7 @@ async function addScreenshots() {
                         size="sm"
                         icon="i-lucide-images"
                         class="shrink-0"
-                        :disabled="!props.selectedPath?.value"
+                        :disabled="!props.selectedPath?.value || isFetchingLogo"
                         :loading="isGeneratingScreenshots"
                         @click="addScreenshots"
                     />
@@ -174,7 +193,7 @@ async function addScreenshots() {
                         id="upload-description"
                         ref="editor"
                         v-model="description"
-                        :disabled="isGeneratingScreenshots"
+                        :disabled="isGeneratingScreenshots || isFetchingLogo"
                         class="min-h-72 w-full resize-y rounded-lg border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-inverted"
                         placeholder="Description"
                     />
@@ -188,8 +207,8 @@ async function addScreenshots() {
         </div>
 
         <StepNavigationButtons
-            :back="{ disabled: isGeneratingScreenshots || submitting }"
-            :next="{ label: finalStep ? 'Submit Upload' : 'Next', disabled: isGeneratingScreenshots || submitting, loading: submitting }"
+            :back="{ disabled: isGeneratingScreenshots || isFetchingLogo || submitting }"
+            :next="{ label: finalStep ? 'Submit Upload' : 'Next', disabled: isGeneratingScreenshots || isFetchingLogo || submitting, loading: submitting }"
             @back="emit('back')"
             @next="emit('next')"
         />

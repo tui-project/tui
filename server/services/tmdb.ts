@@ -4,6 +4,7 @@ import { createLogger } from '../utils/logger'
 const logger = createLogger('tmdb')
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
+const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/original'
 const TMDB_API_KEY_REQUIRED_ERROR = 'tmdb api key is required'
 const NON_LATIN_SCRIPT_REGEX = /[^\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]/u
 
@@ -42,6 +43,12 @@ export interface TMDbSearchResult {
     origin_country?: string
     locale?: string
     external_ids: TMDbExternalIDs
+}
+
+interface TMDbImage {
+    iso_3166_1: string | null
+    iso_639_1: string | null
+    file_path: string
 }
 
 export async function findByTitle(title: string, mediaType: MediaType): Promise<TMDbSearchResult | null> {
@@ -326,5 +333,29 @@ export async function getAlternativeTitles(tmdbId: number, mediaType: MediaType)
     } catch (error: unknown) {
         logger.warn('Get alternative titles request failed.', { mediaType, endpoint: path, tmdbId, error })
         return []
+    }
+}
+
+export async function getLogo(tmdbId: number, mediaType: MediaType, originalLanguage: string): Promise<string | null> {
+    logger.trace('Get logo', { tmdbId, mediaType, originalLanguage })
+
+    const apiKey = await getApiKey()
+    const path = `${TMDB_BASE_URL}/${mediaType}/${tmdbId}/images`
+
+    try {
+        const response = await $fetch<{ logos: TMDbImage[] }>(path, {
+            query: { api_key: apiKey },
+        })
+
+        logger.trace('Get logo response received.', { tmdbId, mediaType, response })
+
+        const logo = response.logos.find((item) => item.iso_3166_1 === 'US' && item.iso_639_1 === 'en') ?? response.logos.find((item) => item.iso_639_1 === originalLanguage)
+
+        logger.debug('Selected logo.', { tmdbId, mediaType, logo })
+
+        return logo ? `${TMDB_IMAGE_BASE_URL}${logo.file_path}` : null
+    } catch (error: unknown) {
+        logger.warn('Get logo request failed.', { tmdbId, mediaType, endpoint: path, error })
+        return null
     }
 }
