@@ -191,6 +191,48 @@ describe('upload page', () => {
             await waitFor(() => expect(fetchMock.mock.calls.filter((args) => args[0] === '/api/metadata')).toHaveLength(2))
         })
 
+        it('clears the description when a different path is selected', async () => {
+            fetchMock.mockImplementation(async (url: string) => {
+                if (url === '/api/paths')
+                    return [
+                        { path: '/media/Movie.2024.mkv', folder: false },
+                        { path: '/media/Other.2023.mkv', folder: false },
+                    ]
+                if (url === '/api/metadata') return { filename: FILENAME, metadata: fetchedMetadata }
+                if (url === '/api/settings') return { trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx' }] }
+                if (url === '/api/tracker/ULCX/title') return { title: 'Movie title' }
+                if (url === '/api/tracker/ULCX/rules') return { violations: [] }
+                if (url === '/api/tracker/ULCX/duplicates') return { duplicates: [] }
+                return null
+            })
+
+            const user = userEvent.setup({ delay: null })
+            await advanceToReview()
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+            await user.type(screen.getByPlaceholderText('Description'), 'Old description')
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+            await fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+            await fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+            await fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+
+            await user.click(screen.getByRole('combobox'))
+            await user.click(await screen.findByRole('option', { name: '/media/Other.2023.mkv' }))
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+            await waitFor(() => expect(screen.getByRole('textbox', { name: 'Title' }).getAttribute('value')).toBe('Movie'))
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+            const trackerCheckbox = (await screen.findByRole('checkbox', { name: 'Upload.cx (ULCX)' })) as HTMLInputElement
+            if (!trackerCheckbox.checked) await fireEvent.click(trackerCheckbox)
+            await waitFor(() => expect(screen.getByRole('button', { name: 'Next' })).toHaveProperty('disabled', false))
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+            await waitFor(() => expect(screen.getByText('Review Upload')).toBeTruthy())
+            await waitFor(() => expect(screen.getByRole('button', { name: 'Next' })).toHaveProperty('disabled', false))
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+            expect(((await screen.findByPlaceholderText('Description')) as HTMLTextAreaElement).value).toBe('')
+        })
+
         it('preserves filename after back-navigating to the metadata step', async () => {
             await advanceToMetadata()
             await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
@@ -204,6 +246,28 @@ describe('upload page', () => {
     })
 
     describe('step 5 — description', () => {
+        it('automatically adds the fetched logo to the description', async () => {
+            fetchMock.mockImplementation(async (url: string) => {
+                if (url === '/api/paths') return [{ path: '/media/Movie.2024.mkv', folder: false }]
+                if (url === '/api/metadata') return { filename: FILENAME, metadata: fetchedMetadata }
+                if (url === '/api/settings') return { trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx' }] }
+                if (url === '/api/tracker/ULCX/title') return { title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP' }
+                if (url === '/api/tracker/ULCX/rules') return { violations: [] }
+                if (url === '/api/tracker/ULCX/duplicates') return { duplicates: [] }
+                if (url === '/api/logo') return 'https://image.tmdb.org/t/p/original/logo.png'
+                return null
+            })
+
+            await advanceToReview()
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+            await waitFor(() => {
+                expect((screen.getByPlaceholderText('Description') as HTMLTextAreaElement).value).toBe(
+                    '[center][img=500]https://image.tmdb.org/t/p/original/logo.png[/img][/center]'
+                )
+            })
+        })
+
         it('updates description as the user types', async () => {
             const user = userEvent.setup({ delay: null })
             await advanceToReview()

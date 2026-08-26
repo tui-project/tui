@@ -18,6 +18,9 @@ const bbcodeError = ref<string | undefined>(undefined)
 const screenshotLoading = ref(false)
 const screenshotFetchError = ref<{ data?: { message?: string; data?: { missingFields?: string[] } } } | undefined>(undefined)
 const screenshotData = ref<{ screenshots: Array<{ order: number; url: string; thumbnailUrl?: string }> } | null>(null)
+const logoData = ref<string | null>(null)
+const logoLoading = ref(false)
+const executeLogoMock = vi.fn()
 
 vi.mock('~/composables/useBbcodeRender', () => ({
     useBbcodeRender: () => ({
@@ -56,6 +59,14 @@ vi.mock('~/composables/usePostScreenshots', () => ({
     }),
 }))
 
+vi.mock('~/composables/useGetLogo', () => ({
+    useGetLogo: () => ({
+        data: logoData,
+        pending: logoLoading,
+        execute: executeLogoMock,
+    }),
+}))
+
 describe('StepDescription', () => {
     beforeEach(() => {
         executeScreenshotsMock.mockReset()
@@ -64,6 +75,85 @@ describe('StepDescription', () => {
         screenshotLoading.value = false
         screenshotFetchError.value = undefined
         screenshotData.value = null
+        logoData.value = null
+        logoLoading.value = false
+        executeLogoMock.mockReset()
+    })
+
+    it('automatically prepends the selected TMDB logo when the step mounts', async () => {
+        executeLogoMock.mockImplementation(async () => {
+            logoData.value = 'https://image.tmdb.org/t/p/original/logo.png'
+        })
+
+        await renderSuspended(StepDescription, {
+            props: {
+                tmdbId: 42,
+                mediaType: 'tv',
+                originalLanguage: 'ja',
+                modelValue: 'Existing copy',
+            },
+        })
+
+        await waitFor(() => {
+            expect(executeLogoMock).toHaveBeenCalledWith({ tmdbId: 42, mediaType: 'tv', originalLanguage: 'ja' })
+            expect((screen.getByRole('textbox', { name: 'Description' }) as HTMLTextAreaElement).value).toBe(
+                '[center][img=500]https://image.tmdb.org/t/p/original/logo.png[/img][/center]\n\nExisting copy'
+            )
+        })
+    })
+
+    it('sets the logo as the description when the description is empty', async () => {
+        executeLogoMock.mockImplementation(async () => {
+            logoData.value = 'https://image.tmdb.org/t/p/original/logo.png'
+        })
+
+        await renderSuspended(StepDescription, {
+            props: { tmdbId: 42, mediaType: 'movie', originalLanguage: 'en' },
+        })
+
+        await waitFor(() => {
+            expect((screen.getByRole('textbox', { name: 'Description' }) as HTMLTextAreaElement).value).toBe(
+                '[center][img=500]https://image.tmdb.org/t/p/original/logo.png[/img][/center]'
+            )
+        })
+    })
+
+    it('leaves the description unchanged when TMDB has no matching logo', async () => {
+        executeLogoMock.mockResolvedValue(undefined)
+
+        await renderSuspended(StepDescription, {
+            props: { tmdbId: 42, mediaType: 'movie', originalLanguage: 'fr', modelValue: 'Existing copy' },
+        })
+
+        await waitFor(() => expect(executeLogoMock).toHaveBeenCalledTimes(1))
+        expect((screen.getByRole('textbox', { name: 'Description' }) as HTMLTextAreaElement).value).toBe('Existing copy')
+    })
+
+    it('does not fetch a logo when it was already fetched', async () => {
+        await renderSuspended(StepDescription, {
+            props: {
+                tmdbId: 42,
+                mediaType: 'movie',
+                originalLanguage: 'en',
+                logoFetched: true,
+            },
+        })
+
+        expect(executeLogoMock).not.toHaveBeenCalled()
+    })
+
+    it('shows a loading status and disables editing and navigation while fetching a logo', async () => {
+        logoLoading.value = true
+
+        await renderSuspended(StepDescription, {
+            props: { selectedPath, tmdbId: 42, mediaType: 'movie', originalLanguage: 'en' },
+        })
+
+        expect(screen.getByRole('status', { name: 'Fetching TMDB logo' })).toBeDefined()
+        expect(screen.queryByPlaceholderText('Description')).toBeNull()
+        expect(screen.queryByRole('button', { name: 'Add screenshots' })).toBeNull()
+        expect(screen.getByRole('button', { name: 'Back' }).getAttribute('disabled')).not.toBeNull()
+        expect(screen.getByRole('button', { name: 'Next' }).getAttribute('disabled')).not.toBeNull()
     })
 
     it('renders the write state and inserts toolbar tags around a selection', async () => {
@@ -146,7 +236,7 @@ describe('StepDescription', () => {
             props: {
                 selectedPath,
                 isHdr: true,
-                isTv: true,
+                mediaType: 'tv',
                 modelValue: 'Intro',
             },
         })

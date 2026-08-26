@@ -38,6 +38,7 @@ const selectedTrackers = ref<string[]>([])
 const reviewedMetadata = ref<{ filename: string; metadata: Metadata }>()
 const prefetchedMetadata = ref<{ filename: string; metadata: PartialMetadata }>()
 const description = ref('')
+const logoFetched = ref(false)
 const fullDescription = computed(() => withFooter(description.value))
 const reviewedTrackers = ref<TrackerItem[]>([])
 const { pending: uploadPending, error: uploadError, execute: executeUpload } = usePostTrackerRequests()
@@ -51,6 +52,8 @@ watch(
         }
         reviewedMetadata.value = undefined
         prefetchedMetadata.value = undefined
+        description.value = ''
+        logoFetched.value = false
     }
 )
 
@@ -96,11 +99,14 @@ async function submitUpload() {
             <template #description>
                 <UploadStepDescription
                     v-model="description"
+                    v-model:logo-fetched="logoFetched"
                     :selected-path="selectedPath"
                     :is-hdr="Boolean(reviewedMetadata?.metadata.hdr.length)"
-                    :is-tv="reviewedMetadata?.metadata.mediaType === 'tv'"
                     :submitting="uploadPending"
                     :submit-error="Boolean(uploadError)"
+                    :tmdb-id="reviewedMetadata?.metadata.tmdbId"
+                    :media-type="reviewedMetadata?.metadata.mediaType"
+                    :original-language="reviewedMetadata?.metadata.originalLanguage"
                     final-step
                     @back="goToPrevStep"
                     @next="submitUpload"

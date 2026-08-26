@@ -608,3 +608,51 @@ describe('tmdb service — getAlternativeTitles', () => {
         await expect(getAlternativeTitles(1, 'movie')).resolves.toEqual([])
     })
 })
+
+describe('tmdb service — getLogo', () => {
+    beforeEach(() => getSettings.mockResolvedValue({ tmdbApiKey: 'key' }))
+
+    it('prefers the first US English logo over an original-language logo', async () => {
+        const { getLogo } = await loadTMDbService()
+        vi.stubGlobal(
+            '$fetch',
+            vi.fn().mockResolvedValue({
+                logos: [
+                    { iso_3166_1: 'JP', iso_639_1: 'ja', file_path: '/japanese.png' },
+                    { iso_3166_1: 'US', iso_639_1: 'en', file_path: '/english.png' },
+                    { iso_3166_1: 'US', iso_639_1: 'en', file_path: '/second.png' },
+                ],
+            })
+        )
+
+        await expect(getLogo(10, 'movie', 'ja')).resolves.toBe('https://image.tmdb.org/t/p/original/english.png')
+    })
+
+    it('falls back to the first logo matching the original language', async () => {
+        const { getLogo } = await loadTMDbService()
+        const fetchMock = vi.fn().mockResolvedValue({
+            logos: [
+                { iso_3166_1: 'GB', iso_639_1: 'en', file_path: '/gb.png' },
+                { iso_3166_1: 'FR', iso_639_1: 'fr', file_path: '/french.png' },
+            ],
+        })
+        vi.stubGlobal('$fetch', fetchMock)
+
+        await expect(getLogo(20, 'tv', 'fr')).resolves.toBe('https://image.tmdb.org/t/p/original/french.png')
+        expect(fetchMock).toHaveBeenCalledWith('https://api.themoviedb.org/3/tv/20/images', { query: { api_key: 'key' } })
+    })
+
+    it('returns null when no logo matches either rule', async () => {
+        const { getLogo } = await loadTMDbService()
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ logos: [{ iso_3166_1: null, iso_639_1: null, file_path: '/neutral.png' }] }))
+
+        await expect(getLogo(30, 'movie', 'de')).resolves.toBeNull()
+    })
+
+    it('returns null when the images request fails', async () => {
+        const { getLogo } = await loadTMDbService()
+        vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('network error')))
+
+        await expect(getLogo(30, 'movie', 'de')).resolves.toBeNull()
+    })
+})
