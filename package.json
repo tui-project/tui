@@ -41,7 +41,7 @@
     "devDependencies": {
         "@bbob/types": "4.4.1",
         "@iconify-json/heroicons": "1.2.3",
-        "@iconify-json/lucide": "1.2.124",
+        "@iconify-json/lucide": "1.2.125",
         "@iconify-json/material-symbols": "1.2.89",
         "@iconify-json/qlementine-icons": "1.2.15",
         "@nuxt/test-utils": "4.1.0",
