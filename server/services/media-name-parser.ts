@@ -19,6 +19,7 @@ export interface ParsedNameMetadata {
     hybrid: boolean
     releaseGroup?: string
     title: string
+    originalTitle?: string
     hdr: HDR[]
     videoCodec: VideoCodec | undefined
     resolution: Resolution | undefined
@@ -32,7 +33,7 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
     const upperTokens = tokens.map((token) => token.toUpperCase())
 
     const { season, episode, episodeEnd, index, tokenEnd } = parseSeasonEpisode(nameWithoutReleaseGroup)
-    const title = parseTitle(nameWithoutReleaseGroup, index)
+    const { title, originalTitle } = parseTitles(nameWithoutReleaseGroup, index)
     const specialName = parseSpecialName(nameWithoutReleaseGroup, season, episode, tokenEnd)
     const source = parseSource(upperTokens)
     const sourceType = parseSourceType(upperTokens, source)
@@ -49,6 +50,7 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
 
     const parsedMetadata = {
         title,
+        originalTitle,
         season,
         episode,
         episodeEnd,
@@ -246,11 +248,23 @@ function parseRatio(name: string): Ratio {
     return undefined
 }
 
-function parseTitle(name: string, seasonEpisodeIndex: number) {
+function parseTitles(name: string, seasonEpisodeIndex: number): { title: string; originalTitle?: string } {
     const fileMetadataIndex = findFileMetadataIndex(name)
     const cutIndex = seasonEpisodeIndex >= 0 ? seasonEpisodeIndex : fileMetadataIndex >= 0 ? fileMetadataIndex : name.length
     const rawTitle = name.slice(0, cutIndex)
+    const akaMatch = /[.\s_-]+a(?:\.[\s_-]*)?k(?:\.[\s_-]*)?a[.\s_-]+/i.exec(rawTitle)
 
+    if (akaMatch) {
+        return {
+            title: normalizeTitle(rawTitle.slice(0, akaMatch.index)),
+            originalTitle: normalizeTitle(rawTitle.slice(akaMatch.index + akaMatch[0].length)),
+        }
+    }
+
+    return { title: normalizeTitle(rawTitle) }
+}
+
+function normalizeTitle(rawTitle: string): string {
     return rawTitle
         .replace(/[._]+/g, ' ')
         .replace(/\s*\(\d{4}\)\s*$/, '')
