@@ -204,6 +204,15 @@ describe('GET /api/metadata route handler', () => {
 
     it('falls back to title lookup when no ids are present', async () => {
         getQuery.mockReturnValue({ path: '/media/The.Movie.2020.mkv' })
+        parseMetadataFromName.mockReturnValue({
+            title: 'The Movie',
+            originalTitle: 'Filename Original',
+            sourceType: 'WEB-DL',
+            source: 'Web',
+            repack: 0,
+            proper: 0,
+            hybrid: false,
+        })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [] })
         findByTitle.mockResolvedValue({ id: 13, title: 'Title Match', original_title: 'Original Match', original_language: 'de', year: 2020 })
 
@@ -211,6 +220,7 @@ describe('GET /api/metadata route handler', () => {
         await expect(handler({} as never)).resolves.toMatchObject({
             metadata: { tmdbId: 13, title: 'Title Match', originalTitle: 'Original Match', originalLanguage: 'de', year: 2020 },
         })
+        expect(findByTitle).toHaveBeenCalledWith('The Movie', 'movie')
     })
 
     it('uses tv media type when season exists and queries tmdb with tv', async () => {
