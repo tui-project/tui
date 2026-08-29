@@ -5,7 +5,7 @@ import { getSettings } from '../repositories/settings-repository'
 import { createLogger } from '../utils/logger'
 import { parseMetadataFromName, type ParsedNameMetadata } from '../services/media-name-parser'
 import { parseMetadataFromMediainfo, type ParsedMediainfoMetadata } from '../services/mediainfo'
-import { findByExternalID, findByTitle, findLocale, getAlternativeTitles, getDetails, getExternalIDs, ID_TYPES } from '../services/tmdb'
+import { findByExternalID, findByTitle, findLocale, getDetails, ID_TYPES, type TMDbAlternativeTitle } from '../services/tmdb'
 import { isWithinAnyRoot, resolveMediaFilePath } from '../utils/file-system'
 import { parseValidatedQuery } from '../utils/request-validator'
 import { findTvdbSpecial, findTvdbSpecialRange } from '../services/tvdb'
@@ -49,97 +49,11 @@ async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataF
     logger.trace('Building metadata', { metadataFromFilename, metadataFromMediainfo })
 
     const { videoStandard, frameRate, ...mediainfoFields } = metadataFromMediainfo
-    const metadata: PartialMetadata = {
-        ...metadataFromFilename,
-        ...withDefined(mediainfoFields),
-    }
+    const metadata: PartialMetadata = { ...metadataFromFilename, ...withDefined(mediainfoFields) }
     metadata.mediaType = metadata.season === undefined ? 'movie' : 'tv'
 
-    if (metadata.tmdbId) {
-        const details = await getDetails(String(metadata.tmdbId), metadata.mediaType)
-        if (details) {
-            logger.debug('TMDB enrichment using existing TMDB ID.', { tmdbId: metadata.tmdbId, mediaType: metadata.mediaType, details })
-
-            metadata.title = details.title
-            metadata.originalTitle = details.original_title
-            metadata.originalLanguage = details.original_language
-            metadata.year = details.year
-            metadata.imdbId = details.external_ids?.imdb_id
-            metadata.tvdbId = details.external_ids?.tvdb_id
-            metadata.originCountry = details.origin_country
-            if (metadata.title && metadata.mediaType === MEDIA_TYPES.TV) metadata.locale = await findLocale(metadata?.title, metadata.tmdbId, metadata.mediaType)
-        }
-    } else if (metadata.imdbId) {
-        const findResult = await findByExternalID(metadata.imdbId, ID_TYPES.IMDB, metadata.mediaType)
-        if (findResult) {
-            logger.debug('TMDB enrichment using IMDb ID.', { imdbId: metadata.imdbId, mediaType: metadata.mediaType, findResult })
-
-            metadata.tmdbId = findResult.id
-            metadata.title = findResult.title
-            metadata.originalTitle = findResult.original_title
-            metadata.originalLanguage = findResult.original_language
-            metadata.year = findResult.year
-            metadata.imdbId = findResult.external_ids?.imdb_id ?? metadata.imdbId
-            metadata.tvdbId = findResult.external_ids?.tvdb_id ?? undefined
-            if (metadata.title && metadata.mediaType === MEDIA_TYPES.TV) metadata.locale = await findLocale(metadata.title, metadata.tmdbId, metadata.mediaType)
-        }
-    } else if (metadata.tvdbId !== undefined) {
-        const findResult = await findByExternalID(String(metadata.tvdbId), ID_TYPES.TVDB, metadata.mediaType)
-        if (findResult) {
-            logger.debug('TMDB enrichment using TVDB ID.', { tvdbId: metadata.tvdbId, mediaType: metadata.mediaType, findResult })
-
-            metadata.tmdbId = findResult.id
-            metadata.title = findResult.title
-            metadata.originalTitle = findResult.original_title
-            metadata.originalLanguage = findResult.original_language
-            metadata.year = findResult.year
-            metadata.imdbId = findResult.external_ids?.imdb_id
-            metadata.tvdbId = findResult.external_ids?.tvdb_id ?? undefined
-            if (metadata.title && metadata.mediaType === MEDIA_TYPES.TV) metadata.locale = await findLocale(metadata.title, metadata.tmdbId, metadata.mediaType)
-        }
-    } else {
-        const searchResult = await findByTitle(metadata.title!, metadata.mediaType)
-        if (searchResult) {
-            logger.debug('TMDB enrichment using title lookup.', { title: metadata?.title, mediaType: metadata.mediaType, searchResult })
-
-            metadata.tmdbId = searchResult.id
-            metadata.title = searchResult.title
-            metadata.originalTitle = searchResult.original_title
-            metadata.originalLanguage = searchResult.original_language
-            metadata.year = searchResult.year
-            metadata.originCountry = searchResult.origin_country
-            metadata.locale = searchResult.locale
-
-            const externalIDs = await getExternalIDs(String(metadata.tmdbId), metadata.mediaType)
-            if (externalIDs) {
-                logger.debug('TMDB external IDs.', { tmdbId: metadata.tmdbId, mediaType: metadata.mediaType, externalIDs })
-
-                metadata.imdbId = externalIDs.imdb_id
-                metadata.tvdbId = externalIDs.tvdb_id
-            }
-        }
-    }
-
-    if (isForeignMediaWithoutOriginalTitle(metadata) && metadata.tmdbId) {
-        const alternativeTitles = await getAlternativeTitles(metadata.tmdbId, metadata.mediaType)
-
-        logger.debug('Fetching TMDB alternative titles for transliteration.', {
-            tmdbId: metadata.tmdbId,
-            mediaType: metadata.mediaType,
-            originCountry: metadata.originCountry,
-            alternativeTitles,
-        })
-
-        const byType = alternativeTitles.find((entry) => entry.type === 'transliteration')
-
-        let transliteration = byType
-        if (!transliteration && metadata.title) {
-            const originCountry = metadata.originCountry ?? (await getDetails(String(metadata.tmdbId), metadata.mediaType))?.origin_country
-            transliteration = alternativeTitles.find((entry) => entry.iso_3166_1 === originCountry)
-        }
-
-        if (transliteration) metadata.originalTitle = transliteration.title
-    }
+    if (!metadata.tmdbId) await resolveTmdbId(metadata, metadata.mediaType)
+    if (metadata.tmdbId) await enrichMetadataFromTmdbDetails(metadata, metadata.tmdbId, metadata.mediaType)
 
     if (isSpecialEpisode(metadata) && metadata.tvdbId) {
         if (metadata.episode != null && metadata.episodeEnd != null) {
@@ -181,8 +95,92 @@ async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataF
     return metadata
 }
 
-function isForeignMediaWithoutOriginalTitle(metadata: PartialMetadata): boolean {
-    return !!metadata.originalLanguage && metadata.originalLanguage !== 'en' && !metadata.originalTitle
+async function resolveTmdbId(metadata: PartialMetadata, mediaType: MediaType): Promise<void> {
+    logger.trace('Resolving TMDB ID.', {
+        ...(metadata.imdbId && { imdbId: metadata.imdbId }),
+        ...(metadata.tvdbId && { tvdbId: metadata.tvdbId }),
+        title: metadata.title,
+        mediaType,
+    })
+
+    if (metadata.imdbId) {
+        const findResult = await findByExternalID(metadata.imdbId, ID_TYPES.IMDB, mediaType)
+        if (findResult) {
+            logger.debug('TMDB ID resolved using IMDb ID.', { imdbId: metadata.imdbId, mediaType, findResult })
+            metadata.tmdbId = findResult.id
+        }
+    } else if (metadata.tvdbId !== undefined) {
+        const findResult = await findByExternalID(String(metadata.tvdbId), ID_TYPES.TVDB, mediaType)
+        if (findResult) {
+            logger.debug('TMDB ID resolved using TVDB ID.', { tvdbId: metadata.tvdbId, mediaType, findResult })
+            metadata.tmdbId = findResult.id
+        }
+    } else {
+        const searchResult = await findByTitle(metadata.title!, mediaType)
+        if (searchResult) {
+            logger.debug('TMDB ID resolved using title lookup.', { title: metadata.title, mediaType, searchResult })
+            metadata.tmdbId = searchResult.id
+        }
+    }
+}
+
+async function enrichMetadataFromTmdbDetails(metadata: PartialMetadata, tmdbId: number, mediaType: MediaType): Promise<void> {
+    logger.trace('Enriching metadata from TMDB details.', { tmdbId, mediaType })
+
+    const details = await getDetails(String(tmdbId), mediaType)
+    if (details) {
+        logger.debug('TMDB enrichment using details.', { tmdbId, mediaType, details })
+
+        metadata.title = details.title
+        metadata.originalTitle = selectTransliteration(details.alternative_titles, details.origin_country, details.title) ?? details.original_title
+        metadata.originalLanguage = details.original_language
+        metadata.year = details.year
+        metadata.imdbId = details.external_ids?.imdb_id ?? metadata.imdbId
+        metadata.tvdbId = details.external_ids?.tvdb_id ?? metadata.tvdbId
+        metadata.originCountry = details.origin_country
+
+        if (metadata.title && mediaType === MEDIA_TYPES.TV && !metadata.locale) {
+            metadata.locale = await findLocale(metadata.title, tmdbId, mediaType)
+        }
+    }
+}
+
+function selectTransliteration(alternativeTitles: TMDbAlternativeTitle[] = [], originCountry: string | undefined, preferredTitle: string | undefined): string | undefined {
+    logger.trace('Selecting a transliteration from TMDB alternative titles.', { originCountry, alternativeTitles })
+
+    const transliteration = alternativeTitles
+        .map((title) => ({ title, selectionPriority: getSelectionPriority(title, originCountry) }))
+        .filter(({ title, selectionPriority }) => isLatinTitle(title.title) && selectionPriority > 0)
+        .toSorted(
+            (left, right) =>
+                right.selectionPriority - left.selectionPriority ||
+                Number(right.title.title === preferredTitle) - Number(left.title.title === preferredTitle) ||
+                Number(hasLatinDiacritics(right.title.title)) - Number(hasLatinDiacritics(left.title.title)) ||
+                left.title.title.localeCompare(right.title.title)
+        )[0]?.title.title
+
+    logger.debug('Selected transliteration from TMDB alternative titles.', { originCountry, alternativeTitles, selected: transliteration })
+
+    return transliteration
+}
+
+function getSelectionPriority(entry: TMDbAlternativeTitle, originCountry: string | undefined): number {
+    if (isRomanizationType(entry.type)) return 3
+    if (entry.iso_3166_1 === originCountry) return 2
+    if (entry.iso_3166_1 === 'US') return 1
+    return 0
+}
+
+function isLatinTitle(title: string): boolean {
+    return /\p{Script=Latin}/u.test(title) && !/[^\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]/u.test(title)
+}
+
+function isRomanizationType(type: string): boolean {
+    return type.toLowerCase() === 'transliteration' || type.toLowerCase() === 'romanized'
+}
+
+function hasLatinDiacritics(title: string): boolean {
+    return /[^\p{ASCII}]/u.test(title)
 }
 
 function isSpecialEpisode(metadata: PartialMetadata): boolean {
