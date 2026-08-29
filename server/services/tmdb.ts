@@ -26,6 +26,16 @@ interface TMDbItem {
     media_type: MediaType
     origin_country?: string[]
     external_ids: TMDbExternalIDs
+    alternative_titles?: {
+        results?: TMDbAlternativeTitle[]
+        titles?: TMDbAlternativeTitle[]
+    }
+}
+
+export interface TMDbAlternativeTitle {
+    iso_3166_1: string
+    title: string
+    type: string
 }
 
 export interface TMDbExternalIDs {
@@ -41,8 +51,8 @@ export interface TMDbSearchResult {
     year: number
     media_type: MediaType
     origin_country?: string
-    locale?: string
     external_ids: TMDbExternalIDs
+    alternative_titles: TMDbAlternativeTitle[]
 }
 
 interface TMDbImage {
@@ -82,12 +92,7 @@ export async function findByTitle(title: string, mediaType: MediaType): Promise<
             return null
         }
 
-        if (match.media_type === MEDIA_TYPES.TV) {
-            const locale = detectLocale(match, results, mediaType)
-            return { ...match, locale }
-        } else {
-            return match
-        }
+        return match
     } catch (error: unknown) {
         logger.warn('Find by title request failed.', { mediaType, endpoint: path, trimmedTitle, error })
         return null
@@ -116,6 +121,7 @@ function toSearchResult(item: TMDbItem, mediaType: MediaType): TMDbSearchResult 
         media_type: mediaType,
         origin_country: item.origin_country?.[0],
         external_ids: item.external_ids,
+        alternative_titles: item.alternative_titles?.results ?? item.alternative_titles?.titles ?? [],
     }
 }
 
@@ -153,16 +159,6 @@ function extractYearFromDate(value: string | undefined) {
     return year
 }
 
-function detectLocale(match: TMDbSearchResult, allResults: TMDbSearchResult[], mediaType: MediaType): string | undefined {
-    logger.trace('Detecting locale.', { match, allResults })
-
-    const duplicates = allResults.filter((item) => item.title === match.title && (mediaType !== MEDIA_TYPES.MOVIE || item.year === match.year)).sort((a, b) => a.year - b.year)
-    if (duplicates.length < 2 || duplicates[0]?.id === match.id) return undefined
-    if (duplicates[0]?.origin_country === match.origin_country) return undefined
-
-    return match.origin_country
-}
-
 export async function findLocale(title: string, tmdbId: number, mediaType: MediaType): Promise<string | undefined> {
     logger.trace('Find Locale.', { title, tmdbId, mediaType })
 
@@ -191,6 +187,16 @@ export async function findLocale(title: string, tmdbId: number, mediaType: Media
         logger.warn('Locale search request failed.', { title: trimmedTitle, tmdbId, mediaType, endpoint: path, error })
         return undefined
     }
+}
+
+function detectLocale(match: TMDbSearchResult, allResults: TMDbSearchResult[], mediaType: MediaType): string | undefined {
+    logger.trace('Detecting locale.', { match, allResults })
+
+    const duplicates = allResults.filter((item) => item.title === match.title && (mediaType !== MEDIA_TYPES.MOVIE || item.year === match.year)).sort((a, b) => a.year - b.year)
+    if (duplicates.length < 2 || duplicates[0]?.id === match.id) return undefined
+    if (duplicates[0]?.origin_country === match.origin_country) return undefined
+
+    return match.origin_country
 }
 
 export async function findByExternalID(externalID: string, idType: IDType, mediaType: MediaType): Promise<TMDbSearchResult | null> {
@@ -269,7 +275,7 @@ export async function getDetails(tmdbID: string, mediaType: MediaType): Promise<
         const response = await $fetch<TMDbItem>(path, {
             query: {
                 api_key: apiKey,
-                append_to_response: 'external_ids',
+                append_to_response: 'external_ids,alternative_titles',
             },
         })
 
@@ -309,30 +315,6 @@ export async function getExternalIDs(tmdbID: string, mediaType: MediaType): Prom
     } catch (error: unknown) {
         logger.warn('Get external IDs request failed.', { path, error })
         return null
-    }
-}
-
-export async function getAlternativeTitles(tmdbId: number, mediaType: MediaType): Promise<{ iso_3166_1: string; title: string; type: string }[]> {
-    logger.trace('Get alternative titles', { tmdbId, mediaType })
-
-    const apiKey = await getApiKey()
-    const path = `${TMDB_BASE_URL}/${mediaType}/${tmdbId}/alternative_titles`
-
-    logger.trace('Get alternative titles request prepared.', { mediaType, endpoint: path, tmdbId })
-
-    try {
-        const response = await $fetch<{ results?: { iso_3166_1: string; title: string; type: string }[]; titles?: { iso_3166_1: string; title: string; type: string }[] }>(path, {
-            query: { api_key: apiKey },
-        })
-
-        const entries = response.results ?? response.titles ?? []
-
-        logger.trace('Get alternative titles response received.', { mediaType, tmdbId, entries })
-
-        return entries
-    } catch (error: unknown) {
-        logger.warn('Get alternative titles request failed.', { mediaType, endpoint: path, tmdbId, error })
-        return []
     }
 }
 

@@ -83,7 +83,7 @@ describe('tmdb service', () => {
         await expect(findByTitle('Movie', 'movie')).resolves.toBeNull()
     })
 
-    it('returns no locale for movie when same-year duplicate exists but match is first result', async () => {
+    it('returns the first movie result when a same-year duplicate exists', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByTitle } = await loadTMDbService()
 
@@ -100,7 +100,7 @@ describe('tmdb service', () => {
         await expect(findByTitle('Funny Games', 'movie')).resolves.toMatchObject({ id: 1, origin_country: 'AT' })
     })
 
-    it('returns locale for tv duplicate when match is not earliest', async () => {
+    it('returns the first tv result without resolving locale', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByTitle } = await loadTMDbService()
 
@@ -114,7 +114,7 @@ describe('tmdb service', () => {
             })
         )
 
-        await expect(findByTitle('The Office', 'tv')).resolves.toMatchObject({ id: 10, origin_country: 'US' })
+        await expect(findByTitle('The Office', 'tv')).resolves.toEqual(expect.not.objectContaining({ locale: expect.anything() }))
     })
 
     it('finds by external id and normalizes prefixed id', async () => {
@@ -245,7 +245,7 @@ describe('tmdb service', () => {
         expect(result?.external_ids?.imdb_id).toBeUndefined()
     })
 
-    it('gets details with external ids via append_to_response', async () => {
+    it('gets movie details with external ids and normalized alternative titles', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { getDetails } = await loadTMDbService()
 
@@ -256,10 +256,40 @@ describe('tmdb service', () => {
             original_language: 'en',
             origin_country: ['US'],
             external_ids: { imdb_id: 'tt001', tvdb_id: 2 },
+            alternative_titles: { titles: [{ iso_3166_1: 'US', title: 'Film Alt', type: '' }] },
         })
         vi.stubGlobal('$fetch', fetchMock)
 
-        await expect(getDetails('movie/88', 'movie')).resolves.toMatchObject({ id: 88, title: 'Film', year: 2019, external_ids: { imdb_id: 'tt001', tvdb_id: 2 } })
+        await expect(getDetails('movie/88', 'movie')).resolves.toMatchObject({
+            id: 88,
+            title: 'Film',
+            year: 2019,
+            external_ids: { imdb_id: 'tt001', tvdb_id: 2 },
+            alternative_titles: [{ iso_3166_1: 'US', title: 'Film Alt', type: '' }],
+        })
+        expect(fetchMock).toHaveBeenCalledWith('https://api.themoviedb.org/3/movie/88', {
+            query: { api_key: 'key', append_to_response: 'external_ids,alternative_titles' },
+        })
+    })
+
+    it('normalizes alternative titles from TV details results', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { getDetails } = await loadTMDbService()
+        vi.stubGlobal(
+            '$fetch',
+            vi.fn().mockResolvedValue({
+                id: 89,
+                name: 'Show',
+                first_air_date: '2020-01-01',
+                original_language: 'zh',
+                external_ids: {},
+                alternative_titles: { results: [{ iso_3166_1: 'CN', title: 'Shou', type: 'romanized' }] },
+            })
+        )
+
+        await expect(getDetails('89', 'tv')).resolves.toMatchObject({
+            alternative_titles: [{ iso_3166_1: 'CN', title: 'Shou', type: 'romanized' }],
+        })
     })
 
     it('returns null when details request fails', async () => {
@@ -338,6 +368,23 @@ describe('tmdb service', () => {
         )
 
         await expect(findLocale('The Office', 1, 'tv')).resolves.toBeUndefined()
+    })
+
+    it('findLocale returns undefined when duplicates are from the same country', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { findLocale } = await loadTMDbService()
+
+        vi.stubGlobal(
+            '$fetch',
+            vi.fn().mockResolvedValue({
+                results: [
+                    { id: 2, media_type: 'tv', name: 'The Office', first_air_date: '2005-03-24', origin_country: ['US'] },
+                    { id: 1, media_type: 'tv', name: 'The Office', first_air_date: '2001-07-09', origin_country: ['US'] },
+                ],
+            })
+        )
+
+        await expect(findLocale('The Office', 2, 'tv')).resolves.toBeUndefined()
     })
 
     it('findLocale returns undefined when tmdbId not found in results', async () => {
@@ -469,7 +516,7 @@ describe('tmdb service', () => {
         })
     })
 
-    it('detectLocale movie duplicate filter excludes items with different year', async () => {
+    it('returns the first movie result when another match has a different year', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByTitle } = await loadTMDbService()
         vi.stubGlobal(
@@ -485,7 +532,7 @@ describe('tmdb service', () => {
         await expect(findByTitle('Funny Games', 'movie')).resolves.toMatchObject({ id: 2, origin_country: 'US' })
     })
 
-    it('detectLocale picks earlier result when second item has smaller year', async () => {
+    it('returns the first tv result when a later result has an earlier year', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByTitle } = await loadTMDbService()
         vi.stubGlobal(
@@ -501,7 +548,7 @@ describe('tmdb service', () => {
         await expect(findByTitle('Shameless', 'tv')).resolves.toMatchObject({ id: 20, origin_country: 'US' })
     })
 
-    it('detectLocale returns undefined when only one result matches title', async () => {
+    it('returns the first movie result when only one result matches the title', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByTitle } = await loadTMDbService()
         vi.stubGlobal(
@@ -517,7 +564,7 @@ describe('tmdb service', () => {
         await expect(findByTitle('Funny Games', 'movie')).resolves.toMatchObject({ id: 1, origin_country: 'AT' })
     })
 
-    it('detectLocale returns undefined when tv duplicates are from the same country', async () => {
+    it('returns the first tv result when duplicates are from the same country', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByTitle } = await loadTMDbService()
         vi.stubGlobal(
@@ -530,10 +577,10 @@ describe('tmdb service', () => {
             })
         )
 
-        await expect(findByTitle('Queer Eye', 'tv')).resolves.toMatchObject({ id: 20, origin_country: 'US', locale: undefined })
+        await expect(findByTitle('Queer Eye', 'tv')).resolves.toMatchObject({ id: 20, origin_country: 'US' })
     })
 
-    it('detectLocale returns undefined when movie duplicates are from the same country', async () => {
+    it('returns the first movie result when duplicates are from the same country', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByTitle } = await loadTMDbService()
         vi.stubGlobal(
@@ -549,7 +596,7 @@ describe('tmdb service', () => {
         await expect(findByTitle('Halloween', 'movie')).resolves.toMatchObject({ id: 2, origin_country: 'US' })
     })
 
-    it('detectLocale returns undefined locale when one item has undefined year (NaN sort keeps match as first)', async () => {
+    it('returns the first tv result when another result has no year', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByTitle } = await loadTMDbService()
         vi.stubGlobal(
@@ -562,50 +609,7 @@ describe('tmdb service', () => {
             })
         )
 
-        // id 9 has year=undefined → NaN sort; stable sort keeps id:10 first → it IS the earliest → no locale
-        await expect(findByTitle('Show', 'tv')).resolves.toMatchObject({ id: 10, origin_country: 'US', locale: undefined })
-    })
-})
-
-describe('tmdb service — getAlternativeTitles', () => {
-    it('returns entries from tv results array', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { getAlternativeTitles } = await loadTMDbService()
-        const entries = [
-            { iso_3166_1: 'ES', title: 'Por cuatro perras', type: '' },
-            { iso_3166_1: 'US', title: 'My Two Cents', type: 'transliteration' },
-        ]
-        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ results: entries }))
-
-        await expect(getAlternativeTitles(304597, 'tv')).resolves.toEqual(entries)
-    })
-
-    it('returns entries from movie titles array', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { getAlternativeTitles } = await loadTMDbService()
-        const entries = [
-            { iso_3166_1: 'RU', title: 'Neposlushnaya', type: 'transliteration' },
-            { iso_3166_1: 'US', title: 'Naughty', type: 'imdb title' },
-        ]
-        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ titles: entries }))
-
-        await expect(getAlternativeTitles(1057491, 'movie')).resolves.toEqual(entries)
-    })
-
-    it('returns empty array when results and titles arrays are both absent', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { getAlternativeTitles } = await loadTMDbService()
-        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ id: 1 }))
-
-        await expect(getAlternativeTitles(1, 'movie')).resolves.toEqual([])
-    })
-
-    it('returns empty array when fetch fails', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { getAlternativeTitles } = await loadTMDbService()
-        vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('network error')))
-
-        await expect(getAlternativeTitles(1, 'movie')).resolves.toEqual([])
+        await expect(findByTitle('Show', 'tv')).resolves.toMatchObject({ id: 10, origin_country: 'US' })
     })
 })
 

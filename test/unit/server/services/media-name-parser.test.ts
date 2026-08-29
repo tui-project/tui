@@ -1425,6 +1425,29 @@ describe('media name parser', () => {
                 originalTitle: 'Original Title',
             },
         },
+        {
+            name: 'parses uppercase AKA titles',
+            input: 'Jattilainen.AKA.The.Mine.2016.BluRay.Remux.1080p.AVC.DTS-HD.MA.5.1-NCmt.mkv',
+            expected: {
+                season: undefined,
+                episode: undefined,
+                sourceType: 'REMUX',
+                source: 'BluRay',
+                service: undefined,
+                cut: undefined,
+                ratio: undefined,
+                repack: 0,
+                proper: 0,
+                rerip: 0,
+                hybrid: false,
+                hdr: [],
+                videoCodec: 'AVC',
+                resolution: '1080p',
+                releaseGroup: 'NCmt',
+                title: 'Jattilainen',
+                originalTitle: 'The Mine',
+            },
+        },
     ])('$name', ({ input, expected }) => {
         expect(parseMetadataFromName(input)).toEqual({ originalTitle: undefined, ...expected })
     })
