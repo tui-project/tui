@@ -656,6 +656,27 @@ describe('GET /api/metadata route handler', () => {
         expect(result.metadata.originalTitle).toBe('Фильм')
     })
 
+    it('preserves a distinct original title over untyped regional alternatives', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 105110 })
+        getDetails.mockResolvedValue({
+            title: 'Murder Mansion',
+            original_title: 'La mansión de la niebla',
+            original_language: 'es',
+            year: 1972,
+            origin_country: 'ES',
+            external_ids: { imdb_id: 'tt0067396' },
+            alternative_titles: [
+                { iso_3166_1: 'US', title: 'Maniac Mansion', type: '' },
+                { iso_3166_1: 'US', title: 'The Murder Mansion', type: '' },
+            ],
+        })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.metadata.originalTitle).toBe('La mansión de la niebla')
+    })
+
     it('skips details enrichment when tmdbId is absent', async () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [] })
