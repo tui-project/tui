@@ -5,7 +5,8 @@ import { useGetMetadata } from '~/composables/useGetMetadata'
 
 const props = defineProps<{ selectedPath?: Path }>()
 const metadata = defineModel<{ filename: string; metadata: Metadata } | undefined>()
-const prefetched = defineModel<{ filename: string; metadata: PartialMetadata } | undefined>('prefetched')
+const prefetched = defineModel<MetadataResponse | undefined>('prefetched')
+const logoUrl = defineModel<string | undefined>('logoUrl')
 const emit = defineEmits<{
     back: []
     next: []
@@ -48,6 +49,7 @@ onMounted(async () => {
     } else if (prefetched.value) {
         filename.value = prefetched.value.filename
         populateState(prefetched.value.metadata)
+        logoUrl.value = prefetched.value.logoUrl
         showMultiEpisode.value = state.episodeEnd !== undefined
     } else if (selectedPathValue.value) {
         await execute(selectedPathValue.value)
@@ -56,6 +58,7 @@ onMounted(async () => {
             populateState(data.value.metadata)
             filename.value = data.value.filename
             prefetched.value = data.value
+            logoUrl.value = data.value.logoUrl
             showMultiEpisode.value = state.episodeEnd !== undefined
         }
     }
@@ -70,6 +73,7 @@ function populateState(value: PartialMetadata) {
 watch(selectedPathValue, () => {
     metadata.value = undefined
     prefetched.value = undefined
+    logoUrl.value = undefined
 })
 
 function onToggleMultiEpisode(value: boolean) {

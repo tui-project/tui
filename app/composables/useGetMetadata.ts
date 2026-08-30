@@ -6,7 +6,7 @@ export function useGetMetadata() {
         data,
         error,
         execute: _execute,
-    } = useApiFetch<{ filename: string; metadata: PartialMetadata }>('/api/metadata', {
+    } = useApiFetch<MetadataResponse>('/api/metadata', {
         query: { path: pathRef },
         immediate: false,
         watch: false,

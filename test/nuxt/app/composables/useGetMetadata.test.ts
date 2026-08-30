@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const executeMock = vi.fn()
 const pendingRef = ref(false)
-const dataRef = ref<{ filename: string; metadata: PartialMetadata } | null>(null)
+const dataRef = ref<MetadataResponse | null>(null)
 const errorRef = ref<unknown>(null)
 let capturedQuery: { path: Ref<string | undefined> } | undefined
 
@@ -40,17 +40,7 @@ describe('useGetMetadata', () => {
         expect(executeMock).not.toHaveBeenCalled()
     })
 
-    it('sets the path query param and calls execute when execute is called', async () => {
-        const { Wrapper, getComposable } = makeWrapper()
-        await renderSuspended(Wrapper)
-
-        await getComposable().execute('/some/path')
-
-        expect(capturedQuery?.path.value).toBe('/some/path')
-        expect(executeMock).toHaveBeenCalled()
-    })
-
-    it('updates the path for each execute call', async () => {
+    it('updates the path and executes each request', async () => {
         const { Wrapper, getComposable } = makeWrapper()
         await renderSuspended(Wrapper)
 
@@ -59,10 +49,11 @@ describe('useGetMetadata', () => {
 
         await getComposable().execute('/second/path')
         expect(capturedQuery?.path.value).toBe('/second/path')
+        expect(executeMock).toHaveBeenCalledTimes(2)
     })
 
     it('exposes data from useApiFetch', async () => {
-        const response = { filename: 'movie.mkv', metadata: { title: 'My Movie' } as PartialMetadata }
+        const response = { filename: 'movie.mkv', metadata: { title: 'My Movie' } as PartialMetadata, logoUrl: 'https://image.tmdb.org/t/p/original/logo.png' }
         executeMock.mockImplementation(async () => {
             dataRef.value = response
         })

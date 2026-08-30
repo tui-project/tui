@@ -38,22 +38,43 @@ export default defineEventHandler(async (event) => {
     const metadataFromFilename = parseMetadataFromName(filename)
     const mediaFilePath = await resolveMediaFilePath(path)
     const metadataFromMediainfo = await parseMetadataFromMediainfo(mediaFilePath, metadataFromFilename.sourceType)
-    const metadata = await buildMetadata(metadataFromFilename, metadataFromMediainfo)
+    const { metadata, logoUrl } = await buildMetadata(metadataFromFilename, metadataFromMediainfo)
 
     logger.trace('Metadata response ready.', { filename, mediaType: metadata.mediaType })
 
-    return { filename, metadata }
+    return { filename, metadata, logoUrl }
 })
 
-async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataFromMediainfo: ParsedMediainfoMetadata): Promise<PartialMetadata> {
+async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataFromMediainfo: ParsedMediainfoMetadata): Promise<{ metadata: PartialMetadata; logoUrl?: string }> {
     logger.trace('Building metadata', { metadataFromFilename, metadataFromMediainfo })
 
+    let logoUrl: string | undefined
     const { videoStandard, frameRate, ...mediainfoFields } = metadataFromMediainfo
     const metadata: PartialMetadata = { ...metadataFromFilename, ...withDefined(mediainfoFields) }
     metadata.mediaType = metadata.season === undefined ? 'movie' : 'tv'
 
     if (!metadata.tmdbId) await resolveTmdbId(metadata, metadata.mediaType)
-    if (metadata.tmdbId) await enrichMetadataFromTmdbDetails(metadata, metadata.tmdbId, metadata.mediaType)
+    if (metadata.tmdbId) {
+        logger.trace('Enriching metadata from TMDB details.', { tmdbId: metadata.tmdbId, mediaType: metadata.mediaType })
+
+        const details = await getDetails(String(metadata.tmdbId), metadata.mediaType)
+        if (details) {
+            logger.debug('TMDB enrichment using details.', { tmdbId: metadata.tmdbId, mediaType: metadata.mediaType, details })
+
+            metadata.title = details.title
+            metadata.originalTitle = selectTransliteration(details.alternative_titles, details.origin_country, details.title) ?? details.original_title
+            metadata.originalLanguage = details.original_language
+            metadata.year = details.year
+            metadata.imdbId = details.external_ids?.imdb_id ?? metadata.imdbId
+            metadata.tvdbId = details.external_ids?.tvdb_id ?? metadata.tvdbId
+            metadata.originCountry = details.origin_country
+            logoUrl = details.logo_url
+
+            if (metadata.title && metadata.mediaType === MEDIA_TYPES.TV && !metadata.locale) {
+                metadata.locale = await findLocale(metadata.title, metadata.tmdbId, metadata.mediaType)
+            }
+        }
+    }
 
     if (isSpecialEpisode(metadata) && metadata.tvdbId) {
         if (metadata.episode != null && metadata.episodeEnd != null) {
@@ -92,7 +113,7 @@ async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataF
 
     logger.debug('Metadata build completed.', { metadata })
 
-    return metadata
+    return { metadata, logoUrl }
 }
 
 async function resolveTmdbId(metadata: PartialMetadata, mediaType: MediaType): Promise<void> {
@@ -120,27 +141,6 @@ async function resolveTmdbId(metadata: PartialMetadata, mediaType: MediaType): P
         if (searchResult) {
             logger.debug('TMDB ID resolved using title lookup.', { title: metadata.title, mediaType, searchResult })
             metadata.tmdbId = searchResult.id
-        }
-    }
-}
-
-async function enrichMetadataFromTmdbDetails(metadata: PartialMetadata, tmdbId: number, mediaType: MediaType): Promise<void> {
-    logger.trace('Enriching metadata from TMDB details.', { tmdbId, mediaType })
-
-    const details = await getDetails(String(tmdbId), mediaType)
-    if (details) {
-        logger.debug('TMDB enrichment using details.', { tmdbId, mediaType, details })
-
-        metadata.title = details.title
-        metadata.originalTitle = selectTransliteration(details.alternative_titles, details.origin_country, details.title) ?? details.original_title
-        metadata.originalLanguage = details.original_language
-        metadata.year = details.year
-        metadata.imdbId = details.external_ids?.imdb_id ?? metadata.imdbId
-        metadata.tvdbId = details.external_ids?.tvdb_id ?? metadata.tvdbId
-        metadata.originCountry = details.origin_country
-
-        if (metadata.title && mediaType === MEDIA_TYPES.TV && !metadata.locale) {
-            metadata.locale = await findLocale(metadata.title, tmdbId, mediaType)
         }
     }
 }

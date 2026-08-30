@@ -102,10 +102,18 @@ describe('GET /api/metadata route handler', () => {
     it('uses tmdb id when present and reads external ids from details response', async () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 100 })
-        getDetails.mockResolvedValue({ title: 'Detail Title', original_title: 'Original', original_language: 'en', year: 2024, external_ids: { imdb_id: 'tt123', tvdb_id: 456 } })
+        getDetails.mockResolvedValue({
+            title: 'Detail Title',
+            original_title: 'Original',
+            original_language: 'en',
+            year: 2024,
+            external_ids: { imdb_id: 'tt123', tvdb_id: 456 },
+            logo_url: 'https://image.tmdb.org/t/p/original/logo.png',
+        })
 
         const handler = await loadHandler()
         await expect(handler({} as never)).resolves.toMatchObject({
+            logoUrl: 'https://image.tmdb.org/t/p/original/logo.png',
             metadata: {
                 tmdbId: 100,
                 title: 'Detail Title',
@@ -905,54 +913,20 @@ describe('GET /api/metadata route handler', () => {
         expect(findByTitle).toHaveBeenCalledWith(undefined, 'movie')
     })
 
-    it('upgrades DVD source to PAL DVD when videoStandard is PAL', async () => {
+    it.each([
+        { mediainfo: { videoStandard: 'PAL' }, expected: 'PAL DVD' },
+        { mediainfo: { frameRate: 25 }, expected: 'PAL DVD' },
+        { mediainfo: { frameRate: 50 }, expected: 'PAL DVD' },
+        { mediainfo: { videoStandard: 'NTSC' }, expected: 'NTSC DVD' },
+        { mediainfo: { frameRate: 29.97 }, expected: 'NTSC DVD' },
+    ])('upgrades DVD source to $expected for $mediainfo', async ({ mediainfo, expected }) => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
         parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: undefined })
-        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], videoStandard: 'PAL' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], ...mediainfo })
 
         const handler = await loadHandler()
         const result = await handler({} as never)
-        expect(result.metadata.source).toBe('PAL DVD')
-    })
-
-    it('upgrades DVD source to PAL DVD when frameRate is 25', async () => {
-        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
-        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: undefined })
-        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], frameRate: 25 })
-
-        const handler = await loadHandler()
-        const result = await handler({} as never)
-        expect(result.metadata.source).toBe('PAL DVD')
-    })
-
-    it('upgrades DVD source to PAL DVD when frameRate is 50', async () => {
-        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
-        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: undefined })
-        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], frameRate: 50 })
-
-        const handler = await loadHandler()
-        const result = await handler({} as never)
-        expect(result.metadata.source).toBe('PAL DVD')
-    })
-
-    it('upgrades DVD source to NTSC DVD when videoStandard is NTSC', async () => {
-        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
-        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: undefined })
-        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], videoStandard: 'NTSC' })
-
-        const handler = await loadHandler()
-        const result = await handler({} as never)
-        expect(result.metadata.source).toBe('NTSC DVD')
-    })
-
-    it('upgrades DVD source to NTSC DVD when frameRate is present and not a PAL rate', async () => {
-        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
-        parseMetadataFromName.mockReturnValue({ title: 'Movie', sourceType: 'ENCODE', source: 'DVD', repack: 0, proper: 0, hybrid: false, releaseGroup: undefined })
-        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], frameRate: 29.97 })
-
-        const handler = await loadHandler()
-        const result = await handler({} as never)
-        expect(result.metadata.source).toBe('NTSC DVD')
+        expect(result.metadata.source).toBe(expected)
     })
 
     it('does not upgrade source when source is not DVD', async () => {

@@ -434,6 +434,12 @@ export type PartialMetadata = {
     originCountry?: string
 }
 
+export type MetadataResponse = {
+    filename: string
+    metadata: PartialMetadata
+    logoUrl?: string
+}
+
 const optionalFormString = z.union([z.literal('').transform(() => undefined), z.string().trim().min(1)]).optional()
 
 export const MetadataSchema = z
