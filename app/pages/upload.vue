@@ -36,9 +36,9 @@ const currentStep = ref(0)
 const selectedPath = ref<Path>()
 const selectedTrackers = ref<string[]>([])
 const reviewedMetadata = ref<{ filename: string; metadata: Metadata }>()
-const prefetchedMetadata = ref<{ filename: string; metadata: PartialMetadata }>()
+const prefetchedMetadata = ref<MetadataResponse>()
 const description = ref('')
-const logoFetched = ref(false)
+const logoUrl = ref<string>()
 const fullDescription = computed(() => withFooter(description.value))
 const reviewedTrackers = ref<TrackerItem[]>([])
 const { pending: uploadPending, error: uploadError, execute: executeUpload } = usePostTrackerRequests()
@@ -53,7 +53,7 @@ watch(
         reviewedMetadata.value = undefined
         prefetchedMetadata.value = undefined
         description.value = ''
-        logoFetched.value = false
+        logoUrl.value = undefined
     }
 )
 
@@ -88,7 +88,14 @@ async function submitUpload() {
                 <UploadStepSelectMedia v-model="selectedPath" @next="goToNextStep" />
             </template>
             <template #metadata>
-                <UploadStepMetadata v-model="reviewedMetadata" v-model:prefetched="prefetchedMetadata" :selected-path="selectedPath" @back="goToPrevStep" @next="goToNextStep" />
+                <UploadStepMetadata
+                    v-model="reviewedMetadata"
+                    v-model:prefetched="prefetchedMetadata"
+                    v-model:logo-url="logoUrl"
+                    :selected-path="selectedPath"
+                    @back="goToPrevStep"
+                    @next="goToNextStep"
+                />
             </template>
             <template #select-trackers>
                 <UploadStepSelectTrackers v-model="selectedTrackers" @back="goToPrevStep" @next="goToNextStep" />
@@ -99,14 +106,12 @@ async function submitUpload() {
             <template #description>
                 <UploadStepDescription
                     v-model="description"
-                    v-model:logo-fetched="logoFetched"
                     :selected-path="selectedPath"
                     :is-hdr="Boolean(reviewedMetadata?.metadata.hdr.length)"
                     :submitting="uploadPending"
                     :submit-error="Boolean(uploadError)"
-                    :tmdb-id="reviewedMetadata?.metadata.tmdbId"
+                    :logo-url="logoUrl"
                     :media-type="reviewedMetadata?.metadata.mediaType"
-                    :original-language="reviewedMetadata?.metadata.originalLanguage"
                     final-step
                     @back="goToPrevStep"
                     @next="submitUpload"

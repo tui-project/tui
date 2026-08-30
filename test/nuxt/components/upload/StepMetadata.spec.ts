@@ -29,6 +29,7 @@ const selectedPath: Path = {
 function createMetadata(overrides: Partial<Metadata> = {}, filename = 'movie.mkv') {
     return {
         filename,
+        logoUrl: undefined,
         metadata: {
             releaseGroup: 'FLUX',
             mediaType: 'movie',

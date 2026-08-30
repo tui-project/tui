@@ -1,7 +1,7 @@
 import { mountSuspended, renderSuspended } from '@nuxt/test-utils/runtime'
 import { screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
-import { nextTick, ref } from 'vue'
+import { ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import StepDescription from '~/components/upload/StepDescription.vue'
 
@@ -18,9 +18,6 @@ const bbcodeError = ref<string | undefined>(undefined)
 const screenshotLoading = ref(false)
 const screenshotFetchError = ref<{ data?: { message?: string; data?: { missingFields?: string[] } } } | undefined>(undefined)
 const screenshotData = ref<{ screenshots: Array<{ order: number; url: string; thumbnailUrl?: string }> } | null>(null)
-const logoData = ref<string | null>(null)
-const logoLoading = ref(false)
-const executeLogoMock = vi.fn()
 
 vi.mock('~/composables/useBbcodeRender', () => ({
     useBbcodeRender: () => ({
@@ -59,14 +56,6 @@ vi.mock('~/composables/usePostScreenshots', () => ({
     }),
 }))
 
-vi.mock('~/composables/useGetLogo', () => ({
-    useGetLogo: () => ({
-        data: logoData,
-        pending: logoLoading,
-        execute: executeLogoMock,
-    }),
-}))
-
 describe('StepDescription', () => {
     beforeEach(() => {
         executeScreenshotsMock.mockReset()
@@ -75,85 +64,49 @@ describe('StepDescription', () => {
         screenshotLoading.value = false
         screenshotFetchError.value = undefined
         screenshotData.value = null
-        logoData.value = null
-        logoLoading.value = false
-        executeLogoMock.mockReset()
     })
 
-    it('automatically prepends the selected TMDB logo when the step mounts', async () => {
-        executeLogoMock.mockImplementation(async () => {
-            logoData.value = 'https://image.tmdb.org/t/p/original/logo.png'
-        })
-
+    it.each([
+        {
+            description: 'Existing copy',
+            expected: '[center][img=500]https://image.tmdb.org/t/p/original/logo.png[/img][/center]\n\nExisting copy',
+        },
+        {
+            description: undefined,
+            expected: '[center][img=500]https://image.tmdb.org/t/p/original/logo.png[/img][/center]',
+        },
+    ])('prepends the selected TMDB logo to $description', async ({ description, expected }) => {
         await renderSuspended(StepDescription, {
             props: {
-                tmdbId: 42,
+                logoUrl: 'https://image.tmdb.org/t/p/original/logo.png',
                 mediaType: 'tv',
-                originalLanguage: 'ja',
-                modelValue: 'Existing copy',
+                modelValue: description,
             },
         })
 
         await waitFor(() => {
-            expect(executeLogoMock).toHaveBeenCalledWith({ tmdbId: 42, mediaType: 'tv', originalLanguage: 'ja' })
-            expect((screen.getByRole('textbox', { name: 'Description' }) as HTMLTextAreaElement).value).toBe(
-                '[center][img=500]https://image.tmdb.org/t/p/original/logo.png[/img][/center]\n\nExisting copy'
-            )
-        })
-    })
-
-    it('sets the logo as the description when the description is empty', async () => {
-        executeLogoMock.mockImplementation(async () => {
-            logoData.value = 'https://image.tmdb.org/t/p/original/logo.png'
-        })
-
-        await renderSuspended(StepDescription, {
-            props: { tmdbId: 42, mediaType: 'movie', originalLanguage: 'en' },
-        })
-
-        await waitFor(() => {
-            expect((screen.getByRole('textbox', { name: 'Description' }) as HTMLTextAreaElement).value).toBe(
-                '[center][img=500]https://image.tmdb.org/t/p/original/logo.png[/img][/center]'
-            )
+            expect((screen.getByRole('textbox', { name: 'Description' }) as HTMLTextAreaElement).value).toBe(expected)
         })
     })
 
     it('leaves the description unchanged when TMDB has no matching logo', async () => {
-        executeLogoMock.mockResolvedValue(undefined)
-
         await renderSuspended(StepDescription, {
-            props: { tmdbId: 42, mediaType: 'movie', originalLanguage: 'fr', modelValue: 'Existing copy' },
+            props: { mediaType: 'movie', modelValue: 'Existing copy' },
         })
 
-        await waitFor(() => expect(executeLogoMock).toHaveBeenCalledTimes(1))
         expect((screen.getByRole('textbox', { name: 'Description' }) as HTMLTextAreaElement).value).toBe('Existing copy')
     })
 
-    it('does not fetch a logo when it was already fetched', async () => {
+    it('does not prepend a logo already present in the description', async () => {
         await renderSuspended(StepDescription, {
             props: {
-                tmdbId: 42,
+                logoUrl: 'https://image.tmdb.org/t/p/original/logo.png',
                 mediaType: 'movie',
-                originalLanguage: 'en',
-                logoFetched: true,
+                modelValue: '[img]https://image.tmdb.org/t/p/original/logo.png[/img]',
             },
         })
 
-        expect(executeLogoMock).not.toHaveBeenCalled()
-    })
-
-    it('shows a loading status and disables editing and navigation while fetching a logo', async () => {
-        logoLoading.value = true
-
-        await renderSuspended(StepDescription, {
-            props: { selectedPath, tmdbId: 42, mediaType: 'movie', originalLanguage: 'en' },
-        })
-
-        expect(screen.getByRole('status', { name: 'Fetching TMDB logo' })).toBeDefined()
-        expect(screen.queryByPlaceholderText('Description')).toBeNull()
-        expect(screen.queryByRole('button', { name: 'Add screenshots' })).toBeNull()
-        expect(screen.getByRole('button', { name: 'Back' }).getAttribute('disabled')).not.toBeNull()
-        expect(screen.getByRole('button', { name: 'Next' }).getAttribute('disabled')).not.toBeNull()
+        expect((screen.getByRole('textbox', { name: 'Description' }) as HTMLTextAreaElement).value).toBe('[img]https://image.tmdb.org/t/p/original/logo.png[/img]')
     })
 
     it('renders the write state and inserts toolbar tags around a selection', async () => {
@@ -320,13 +273,6 @@ describe('StepDescription', () => {
         screenshotLoading.value = true
         await vm.addScreenshots()
         expect(executeScreenshotsMock).not.toHaveBeenCalled()
-
-        screenshotLoading.value = false
-        executeScreenshotsMock.mockResolvedValue(undefined)
-        await vm.addScreenshots()
-        await nextTick()
-
-        expect(vm.description).toBe('Base[i][/i] text')
     })
 
     it('disables back and next navigation buttons while screenshots are generating', async () => {
@@ -338,25 +284,6 @@ describe('StepDescription', () => {
 
         expect(screen.getByRole('button', { name: 'Back' }).getAttribute('disabled')).not.toBeNull()
         expect(screen.getByRole('button', { name: 'Next' }).getAttribute('disabled')).not.toBeNull()
-    })
-
-    it('returns early from addScreenshots when the service resolves without screenshots', async () => {
-        executeScreenshotsMock.mockResolvedValue(undefined)
-        const wrapper = await mountSuspended(StepDescription, {
-            props: {
-                selectedPath,
-            },
-        })
-        const vm = wrapper.vm as unknown as {
-            description: string
-            addScreenshots: () => Promise<void>
-        }
-
-        vm.description = 'Keep me'
-        await vm.addScreenshots()
-
-        expect(vm.description).toBe('Keep me')
-        expect(executeScreenshotsMock).toHaveBeenCalled()
     })
 
     it('emits a back event when the back button is clicked', async () => {

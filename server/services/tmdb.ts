@@ -30,6 +30,9 @@ interface TMDbItem {
         results?: TMDbAlternativeTitle[]
         titles?: TMDbAlternativeTitle[]
     }
+    images?: {
+        logos: TMDbImage[]
+    }
 }
 
 export interface TMDbAlternativeTitle {
@@ -53,6 +56,7 @@ export interface TMDbSearchResult {
     origin_country?: string
     external_ids: TMDbExternalIDs
     alternative_titles: TMDbAlternativeTitle[]
+    logo_url?: string
 }
 
 interface TMDbImage {
@@ -122,6 +126,7 @@ function toSearchResult(item: TMDbItem, mediaType: MediaType): TMDbSearchResult 
         origin_country: item.origin_country?.[0],
         external_ids: item.external_ids,
         alternative_titles: item.alternative_titles?.results ?? item.alternative_titles?.titles ?? [],
+        logo_url: selectLogoUrl(item.images?.logos ?? [], item.original_language),
     }
 }
 
@@ -157,6 +162,12 @@ function extractYearFromDate(value: string | undefined) {
     }
 
     return year
+}
+
+function selectLogoUrl(logos: TMDbImage[], originalLanguage: string) {
+    const logo = logos.find((item) => item.iso_3166_1 === 'US' && item.iso_639_1 === 'en') ?? logos.find((item) => item.iso_639_1 === originalLanguage)
+
+    return logo ? `${TMDB_IMAGE_BASE_URL}${logo.file_path}` : undefined
 }
 
 export async function findLocale(title: string, tmdbId: number, mediaType: MediaType): Promise<string | undefined> {
@@ -275,7 +286,7 @@ export async function getDetails(tmdbID: string, mediaType: MediaType): Promise<
         const response = await $fetch<TMDbItem>(path, {
             query: {
                 api_key: apiKey,
-                append_to_response: 'external_ids,alternative_titles',
+                append_to_response: 'external_ids,alternative_titles,images',
             },
         })
 
@@ -284,30 +295,6 @@ export async function getDetails(tmdbID: string, mediaType: MediaType): Promise<
         return toSearchResult(response, mediaType)
     } catch (error: unknown) {
         logger.warn('Get details request failed.', { mediaType, endpoint: path, tmdbID: normalizedTMDbID, error })
-        return null
-    }
-}
-
-export async function getLogo(tmdbId: number, mediaType: MediaType, originalLanguage: string): Promise<string | null> {
-    logger.trace('Get logo', { tmdbId, mediaType, originalLanguage })
-
-    const apiKey = await getApiKey()
-    const path = `${TMDB_BASE_URL}/${mediaType}/${tmdbId}/images`
-
-    try {
-        const response = await $fetch<{ logos: TMDbImage[] }>(path, {
-            query: { api_key: apiKey },
-        })
-
-        logger.trace('Get logo response received.', { tmdbId, mediaType, response })
-
-        const logo = response.logos.find((item) => item.iso_3166_1 === 'US' && item.iso_639_1 === 'en') ?? response.logos.find((item) => item.iso_639_1 === originalLanguage)
-
-        logger.debug('Selected logo.', { tmdbId, mediaType, logo })
-
-        return logo ? `${TMDB_IMAGE_BASE_URL}${logo.file_path}` : null
-    } catch (error: unknown) {
-        logger.warn('Get logo request failed.', { tmdbId, mediaType, endpoint: path, error })
         return null
     }
 }

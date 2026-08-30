@@ -249,12 +249,11 @@ describe('upload page', () => {
         it('automatically adds the fetched logo to the description', async () => {
             fetchMock.mockImplementation(async (url: string) => {
                 if (url === '/api/paths') return [{ path: '/media/Movie.2024.mkv', folder: false }]
-                if (url === '/api/metadata') return { filename: FILENAME, metadata: fetchedMetadata }
+                if (url === '/api/metadata') return { filename: FILENAME, metadata: fetchedMetadata, logoUrl: 'https://image.tmdb.org/t/p/original/logo.png' }
                 if (url === '/api/settings') return { trackers: [{ selected: true, code: 'ULCX', name: 'Upload.cx' }] }
                 if (url === '/api/tracker/ULCX/title') return { title: 'Movie 2024 1080p BluRay ENCODE H.264 DTS-HD MA 5.1-GROUP' }
                 if (url === '/api/tracker/ULCX/rules') return { violations: [] }
                 if (url === '/api/tracker/ULCX/duplicates') return { duplicates: [] }
-                if (url === '/api/logo') return 'https://image.tmdb.org/t/p/original/logo.png'
                 return null
             })
 
