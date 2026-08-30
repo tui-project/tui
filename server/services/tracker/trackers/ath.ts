@@ -221,6 +221,13 @@ function checkRules(metadata: Metadata): RuleViolation[] {
         })
     }
 
+    if (hasAdditionalMainAudioLanguage(metadata)) {
+        violations.push({
+            rule: 'additional_main_audio_language',
+            message: 'Main audio tracks may only use the original language or English.',
+        })
+    }
+
     logger.debug('Tracker rules check completed.', { metadataTitle: metadata.title, violationCount: violations.length, violations: violations.map((violation) => violation.rule) })
 
     return violations
@@ -231,6 +238,16 @@ function isBannedReleaseGroup(releaseGroup: string | undefined, sourceType: Sour
     const forbiddenTypes = BANNED_GROUPS.get(releaseGroup.toLowerCase())
 
     return forbiddenTypes === null || forbiddenTypes?.has(sourceType) === true
+}
+
+function hasAdditionalMainAudioLanguage(metadata: Metadata): boolean {
+    const resolvedMixedLanguages = metadata.mixedAudioLanguages ?? []
+    const audioLanguages = [...metadata.language.filter((language) => language !== 'mul' || !resolvedMixedLanguages.length), ...resolvedMixedLanguages]
+    const allowedLanguages = [hasEnglishAudio(metadata) ? 'en' : undefined, hasOriginalAudio(metadata) ? metadata.originalLanguage : undefined].filter(
+        (language): language is string => language !== undefined
+    )
+
+    return audioLanguages.some((language) => !allowedLanguages.some((allowedLanguage) => languagesMatch(language, allowedLanguage)))
 }
 
 function getExtraFields(metadata: Metadata): Record<string, string> {

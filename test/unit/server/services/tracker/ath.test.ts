@@ -117,8 +117,39 @@ describe('athTrackerService — checkRules', () => {
         expect(service.checkRules({ ...baseMetadata, language: ['ja', 'en'], originalLanguage: 'ja' })).toEqual([])
     })
 
+    it('flags an additional main audio language', () => {
+        const violations = service.checkRules({ ...baseMetadata, language: ['ja', 'en', 'fr'], originalLanguage: 'ja' })
+
+        expect(violations).toContainEqual({
+            rule: 'additional_main_audio_language',
+            message: 'Main audio tracks may only use the original language or English.',
+        })
+    })
+
+    it.each([
+        [['ja'], 'ja'],
+        [['en'], 'ja'],
+        [['ja', 'en'], 'ja'],
+        [['cmn', 'en'], 'zh'],
+    ])('allows main audio languages %j for original language %s', (language, originalLanguage) => {
+        const violations = service.checkRules({ ...baseMetadata, language, originalLanguage, hasEnglishSubs: true })
+
+        expect(violations.some((violation) => violation.rule === 'additional_main_audio_language')).toBe(false)
+    })
+
     it('allows languages identified within a single mul audio track', () => {
         expect(service.checkRules({ ...baseMetadata, language: ['mul'], mixedAudioLanguages: ['en', 'es'], originalLanguage: 'es', hasEnglishSubs: true })).toEqual([])
+    })
+
+    it('flags an additional language identified within a mul audio track', () => {
+        const violations = service.checkRules({
+            ...baseMetadata,
+            language: ['mul'],
+            mixedAudioLanguages: ['en', 'es', 'fr'],
+            originalLanguage: 'es',
+        })
+
+        expect(violations.some((violation) => violation.rule === 'additional_main_audio_language')).toBe(true)
     })
 
     it('allows English-only audio when original language is non-English (dubbed release)', () => {
