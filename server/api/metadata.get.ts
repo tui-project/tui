@@ -62,7 +62,7 @@ async function buildMetadata(metadataFromFilename: ParsedNameMetadata, metadataF
             logger.debug('TMDB enrichment using details.', { tmdbId: metadata.tmdbId, mediaType: metadata.mediaType, details })
 
             metadata.title = details.title
-            metadata.originalTitle = selectTransliteration(details.alternative_titles, details.origin_country, details.title) ?? details.original_title
+            metadata.originalTitle = selectOriginalTitle(details.original_title, details.alternative_titles, details.origin_country, details.title)
             metadata.originalLanguage = details.original_language
             metadata.year = details.year
             metadata.imdbId = details.external_ids?.imdb_id ?? metadata.imdbId
@@ -145,10 +145,15 @@ async function resolveTmdbId(metadata: PartialMetadata, mediaType: MediaType): P
     }
 }
 
-function selectTransliteration(alternativeTitles: TMDbAlternativeTitle[] = [], originCountry: string | undefined, preferredTitle: string | undefined): string | undefined {
+function selectOriginalTitle(
+    originalTitle: string | undefined,
+    alternativeTitles: TMDbAlternativeTitle[] = [],
+    originCountry: string | undefined,
+    preferredTitle: string | undefined
+): string | undefined {
     logger.trace('Selecting a transliteration from TMDB alternative titles.', { originCountry, alternativeTitles })
 
-    const transliteration = alternativeTitles
+    const rankedTitles = alternativeTitles
         .map((title) => ({ title, selectionPriority: getSelectionPriority(title, originCountry) }))
         .filter(({ title, selectionPriority }) => isLatinTitle(title.title) && selectionPriority > 0)
         .toSorted(
@@ -157,11 +162,13 @@ function selectTransliteration(alternativeTitles: TMDbAlternativeTitle[] = [], o
                 Number(right.title.title === preferredTitle) - Number(left.title.title === preferredTitle) ||
                 Number(hasLatinDiacritics(right.title.title)) - Number(hasLatinDiacritics(left.title.title)) ||
                 left.title.title.localeCompare(right.title.title)
-        )[0]?.title.title
+        )
+    const transliteration = rankedTitles.find(({ title }) => isRomanizationType(title.type))?.title.title
+    const selected = transliteration ?? (originalTitle && originalTitle !== preferredTitle ? originalTitle : (rankedTitles[0]?.title.title ?? originalTitle))
 
-    logger.debug('Selected transliteration from TMDB alternative titles.', { originCountry, alternativeTitles, selected: transliteration })
+    logger.debug('Selected original title from TMDB details.', { originCountry, alternativeTitles, originalTitle, selected })
 
-    return transliteration
+    return selected
 }
 
 function getSelectionPriority(entry: TMDbAlternativeTitle, originCountry: string | undefined): number {
