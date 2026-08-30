@@ -53,6 +53,51 @@ describe('tmdb service', () => {
         })
     })
 
+    it('prefers the matching release year and exact title over TMDB response order', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { findByTitle } = await loadTMDbService()
+
+        const fetchMock = vi.fn().mockResolvedValue({
+            results: [
+                {
+                    id: 1147732,
+                    media_type: 'movie',
+                    title: 'Mansion Murder',
+                    original_title: 'Mansion Murder',
+                    original_language: 'cn',
+                    release_date: '2003-01-01',
+                },
+                {
+                    id: 5702,
+                    media_type: 'movie',
+                    title: 'The Murder Mansion',
+                    original_title: 'La mansión de la niebla',
+                    original_language: 'es',
+                    release_date: '1972-03-01',
+                    alternative_titles: { titles: [{ iso_3166_1: 'US', title: 'Murder Mansion', type: '' }] },
+                },
+            ],
+        })
+        vi.stubGlobal('$fetch', fetchMock)
+
+        await expect(findByTitle('Murder Mansion', 'movie', 1972)).resolves.toMatchObject({ id: 5702, year: 1972 })
+        expect(fetchMock).toHaveBeenCalledWith('https://api.themoviedb.org/3/search/movie', {
+            query: { api_key: 'key', query: 'Murder Mansion', primary_release_year: 1972 },
+        })
+    })
+
+    it('filters TV title searches by first air year', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { findByTitle } = await loadTMDbService()
+        const fetchMock = vi.fn().mockResolvedValue({ results: [] })
+        vi.stubGlobal('$fetch', fetchMock)
+
+        await expect(findByTitle('The Show', 'tv', 2020)).resolves.toBeNull()
+        expect(fetchMock).toHaveBeenCalledWith('https://api.themoviedb.org/3/search/tv', {
+            query: { api_key: 'key', query: 'The Show', first_air_date_year: 2020 },
+        })
+    })
+
     it('returns null when title is blank', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByTitle } = await loadTMDbService()
@@ -63,14 +108,11 @@ describe('tmdb service', () => {
         expect(fetchMock).not.toHaveBeenCalled()
     })
 
-    it('returns null when no matching results for media type', async () => {
+    it('returns null when title search returns no results', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByTitle } = await loadTMDbService()
 
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({ results: [{ id: 1, media_type: 'tv', name: 'Show', original_language: 'en', first_air_date: '2020-01-01', origin_country: ['US'] }] })
-        )
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ results: [] }))
 
         await expect(findByTitle('Show', 'movie')).resolves.toBeNull()
     })

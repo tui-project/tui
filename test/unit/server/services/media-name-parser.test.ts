@@ -1449,6 +1449,7 @@ describe('media name parser', () => {
             },
         },
     ])('$name', ({ input, expected }) => {
-        expect(parseMetadataFromName(input)).toEqual({ originalTitle: undefined, ...expected })
+        const yearMatches = [...input.matchAll(/\b((?:19|20)\d{2})\b/g)]
+        expect(parseMetadataFromName(input)).toEqual({ originalTitle: undefined, year: yearMatches.length > 0 ? Number(yearMatches.at(-1)![1]) : undefined, ...expected })
     })
 })

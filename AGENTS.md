@@ -91,6 +91,8 @@ For browser assertions in e2e page tests:
 
 When multiple test cases share the same logic and differ only in input/output values, use `it.each(...)` instead of repeating the test body. This applies across all test types — unit, nuxt, and e2e. Examples where `it.each` is appropriate: validating every enum value produces the correct output, checking a flag is set correctly for each member of a set, or asserting a rule fires for each banned item in a list.
 
+For every change, review the tests you touch and the closely related tests for redundant or duplicate coverage. Refactor repeated setup and assertions into focused helpers, and consolidate data-driven cases with `it.each(...)` where it improves clarity. Keep distinct behavior in separate tests, and do not reduce meaningful coverage solely to make the suite shorter.
+
 Unit tests should cover non-route modules (for example repositories and utilities) under `test/unit/server`.
 
 Examples:
@@ -182,6 +184,7 @@ Do not inline duplicate or trump logic inside the loop — all conditions belong
 ## Editing Notes
 
 - Keep changes small and aligned with existing patterns.
+- Before adding a new helper, search the existing shared and common utilities for equivalent or adaptable functionality. Prefer improving and reusing an existing utility when its behavior can remain appropriate for all current callers.
 - Prefer single-responsibility methods: each method should do one clear job, and complex flows should be split into focused helper methods.
 - Avoid unrelated refactors while implementing a feature.
 - Keep persisted filenames stable unless a migration is intended. For example, `userCollection` still writes to `users.db`.

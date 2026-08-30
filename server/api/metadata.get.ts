@@ -137,9 +137,9 @@ async function resolveTmdbId(metadata: PartialMetadata, mediaType: MediaType): P
             metadata.tmdbId = findResult.id
         }
     } else {
-        const searchResult = await findByTitle(metadata.title!, mediaType)
+        const searchResult = await findByTitle(metadata.title!, mediaType, metadata.year)
         if (searchResult) {
-            logger.debug('TMDB ID resolved using title lookup.', { title: metadata.title, mediaType, searchResult })
+            logger.debug('TMDB ID resolved using title lookup.', { title: metadata.title, year: metadata.year, mediaType, searchResult })
             metadata.tmdbId = searchResult.id
         }
     }
