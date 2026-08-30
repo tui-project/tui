@@ -4,6 +4,7 @@ import { createLogger } from '../utils/logger'
 const logger = createLogger('media-name-parser')
 
 export interface ParsedNameMetadata {
+    year?: number
     season?: number
     episode?: number
     episodeEnd?: number
@@ -34,6 +35,7 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
 
     const { season, episode, episodeEnd, index, tokenEnd } = parseSeasonEpisode(nameWithoutReleaseGroup)
     const { title, originalTitle } = parseTitles(nameWithoutReleaseGroup, index)
+    const year = parseYear(nameWithoutReleaseGroup)
     const specialName = parseSpecialName(nameWithoutReleaseGroup, season, episode, tokenEnd)
     const source = parseSource(upperTokens)
     const sourceType = parseSourceType(upperTokens, source)
@@ -51,6 +53,7 @@ export function parseMetadataFromName(name: string): ParsedNameMetadata {
     const parsedMetadata = {
         title,
         originalTitle,
+        year,
         season,
         episode,
         episodeEnd,
@@ -144,6 +147,12 @@ function parseSeasonEpisode(name: string) {
         index: seasonOnlyMatch ? seasonOnlyMatch.index : -1,
         tokenEnd: seasonOnlyMatch ? seasonOnlyMatch.index + seasonOnlyMatch[0].length : -1,
     }
+}
+
+function parseYear(name: string): number | undefined {
+    const matches = [...name.matchAll(/\b((?:19|20)\d{2})\b/g)]
+
+    return matches.length > 0 ? Number(matches.at(-1)![1]) : undefined
 }
 
 function parseSpecialName(name: string, season: number | undefined, episode: number | undefined, tokenEnd: number): string | undefined {

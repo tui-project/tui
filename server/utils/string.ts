@@ -29,10 +29,10 @@ export function normalisePositiveInteger(input: unknown) {
 
 export function normaliseSearchString(s: string): string {
     return s
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '')
+        .normalize('NFKD')
+        .replace(/\p{Diacritic}/gu, '')
+        .replace(/[^\p{Letter}\p{Number}]+/gu, ' ')
         .replace(/\s+/g, ' ')
         .trim()
+        .toLocaleLowerCase('en')
 }

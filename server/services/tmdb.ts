@@ -1,5 +1,6 @@
 import { getSettings } from '../repositories/settings-repository'
 import { createLogger } from '../utils/logger'
+import { normaliseSearchString } from '../utils/string'
 
 const logger = createLogger('tmdb')
 
@@ -23,7 +24,7 @@ interface TMDbItem {
     original_language: string
     release_date?: string
     first_air_date?: string
-    media_type: MediaType
+    media_type?: MediaType
     origin_country?: string[]
     external_ids: TMDbExternalIDs
     alternative_titles?: {
@@ -65,8 +66,8 @@ interface TMDbImage {
     file_path: string
 }
 
-export async function findByTitle(title: string, mediaType: MediaType): Promise<TMDbSearchResult | null> {
-    logger.trace('Find by title', { title, mediaType })
+export async function findByTitle(title: string, mediaType: MediaType, year?: number): Promise<TMDbSearchResult | null> {
+    logger.trace('Find by title', { title, mediaType, year })
 
     const trimmedTitle = title.trim().normalize('NFC')
     if (!trimmedTitle) {
@@ -75,7 +76,7 @@ export async function findByTitle(title: string, mediaType: MediaType): Promise<
     }
 
     const apiKey = await getApiKey()
-    const path = `${TMDB_BASE_URL}/search/multi`
+    const path = `${TMDB_BASE_URL}/search/${mediaType}`
 
     logger.trace('Find by title request prepared.', { mediaType, endpoint: path, trimmedTitle })
 
@@ -84,19 +85,23 @@ export async function findByTitle(title: string, mediaType: MediaType): Promise<
             query: {
                 api_key: apiKey,
                 query: trimmedTitle,
+                ...(year !== undefined && { [mediaType === 'movie' ? 'primary_release_year' : 'first_air_date_year']: year }),
             },
         })
 
         logger.trace('Find by title response received.', { title, mediaType, response })
 
-        const results = response.results.filter((item) => item.media_type === mediaType).map((item) => toSearchResult(item, mediaType))
-        const match = results[0]
+        const normalizedTitle = normaliseSearchString(title)
+        const match = response.results
+            .map((item) => toSearchResult(item, mediaType))
+            .toSorted((left, right) => getTitleMatchScore(right, normalizedTitle, year) - getTitleMatchScore(left, normalizedTitle, year))[0]
+
         if (!match) {
             logger.warn('Find by title response returned no matching result for media type.', { mediaType })
             return null
+        } else {
+            return match
         }
-
-        return match
     } catch (error: unknown) {
         logger.warn('Find by title request failed.', { mediaType, endpoint: path, trimmedTitle, error })
         return null
@@ -168,6 +173,14 @@ function selectLogoUrl(logos: TMDbImage[], originalLanguage: string) {
     const logo = logos.find((item) => item.iso_3166_1 === 'US' && item.iso_639_1 === 'en') ?? logos.find((item) => item.iso_639_1 === originalLanguage)
 
     return logo ? `${TMDB_IMAGE_BASE_URL}${logo.file_path}` : undefined
+}
+
+function getTitleMatchScore(result: TMDbSearchResult, normalizedTitle: string, year: number | undefined): number {
+    const titleMatches = [result.title, result.original_title, ...result.alternative_titles.map(({ title }) => title)].some(
+        (candidate) => normaliseSearchString(candidate) === normalizedTitle
+    )
+
+    return Number(year !== undefined && result.year === year) * 2 + Number(titleMatches)
 }
 
 export async function findLocale(title: string, tmdbId: number, mediaType: MediaType): Promise<string | undefined> {

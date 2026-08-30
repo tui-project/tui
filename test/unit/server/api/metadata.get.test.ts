@@ -226,6 +226,7 @@ describe('GET /api/metadata route handler', () => {
         getQuery.mockReturnValue({ path: '/media/The.Movie.2020.mkv' })
         parseMetadataFromName.mockReturnValue({
             title: 'The Movie',
+            year: 2020,
             originalTitle: 'Filename Original',
             sourceType: 'WEB-DL',
             source: 'Web',
@@ -241,7 +242,7 @@ describe('GET /api/metadata route handler', () => {
         await expect(handler({} as never)).resolves.toMatchObject({
             metadata: { tmdbId: 13, title: 'Detail Match', originalTitle: 'Detail Original', originalLanguage: 'de', year: 2021, originCountry: 'DE' },
         })
-        expect(findByTitle).toHaveBeenCalledWith('The Movie', 'movie')
+        expect(findByTitle).toHaveBeenCalledWith('The Movie', 'movie', 2020)
         expect(getDetails).toHaveBeenCalledWith('13', 'movie')
     })
 
@@ -265,7 +266,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         await expect(handler({} as never)).resolves.toMatchObject({ metadata: { mediaType: 'tv', tmdbId: 20 } })
-        expect(findByTitle).toHaveBeenCalledWith('The Show', 'tv')
+        expect(findByTitle).toHaveBeenCalledWith('The Show', 'tv', undefined)
     })
 
     it('applies external ids from details on title lookup path', async () => {
@@ -910,7 +911,7 @@ describe('GET /api/metadata route handler', () => {
 
         const handler = await loadHandler()
         await expect(handler({} as never)).resolves.toBeTruthy()
-        expect(findByTitle).toHaveBeenCalledWith(undefined, 'movie')
+        expect(findByTitle).toHaveBeenCalledWith(undefined, 'movie', undefined)
     })
 
     it.each([

@@ -59,9 +59,11 @@ describe('string utils', () => {
         ['Hello World', 'hello world'],
         ['  Hello   World  ', 'hello world'],
         ['Númenór', 'numenor'],
-        ['Khazad-dûm', 'khazaddum'],
+        ['Khazad-dûm', 'khazad dum'],
         ['Stories of the Second Age – Númenór', 'stories of the second age numenor'],
-        ['Stories of the Second Age – Khazad-dûm', 'stories of the second age khazaddum'],
+        ['Stories of the Second Age – Khazad-dûm', 'stories of the second age khazad dum'],
+        ['Spider-Man', 'spider man'],
+        ['東京 2026', '東京 2026'],
     ])('normaliseSearchString %j -> %j', (input, expected) => {
         expect(normaliseSearchString(input)).toBe(expected)
     })
