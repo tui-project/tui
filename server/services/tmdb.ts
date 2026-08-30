@@ -288,36 +288,6 @@ export async function getDetails(tmdbID: string, mediaType: MediaType): Promise<
     }
 }
 
-export async function getExternalIDs(tmdbID: string, mediaType: MediaType): Promise<TMDbExternalIDs | null> {
-    logger.trace('Get external IDs', { tmdbID, mediaType })
-
-    const normalizedTMDbID = normalizeTMDbID(tmdbID)
-    if (!normalizedTMDbID) {
-        logger.warn('Get external IDs failed due to empty ID.', { mediaType })
-        return null
-    }
-
-    const apiKey = await getApiKey()
-    const path = `${TMDB_BASE_URL}/${mediaType}/${normalizedTMDbID}/external_ids`
-
-    logger.trace('Get external IDs request prepared.', { mediaType, endpoint: path, tmdbID: normalizedTMDbID })
-
-    try {
-        const response = await $fetch<TMDbExternalIDs>(path, {
-            query: {
-                api_key: apiKey,
-            },
-        })
-
-        logger.trace('Get external IDs response received.', { mediaType, tmdbID: normalizedTMDbID, response })
-
-        return response
-    } catch (error: unknown) {
-        logger.warn('Get external IDs request failed.', { path, error })
-        return null
-    }
-}
-
 export async function getLogo(tmdbId: number, mediaType: MediaType, originalLanguage: string): Promise<string | null> {
     logger.trace('Get logo', { tmdbId, mediaType, originalLanguage })
 

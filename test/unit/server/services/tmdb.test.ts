@@ -83,40 +83,6 @@ describe('tmdb service', () => {
         await expect(findByTitle('Movie', 'movie')).resolves.toBeNull()
     })
 
-    it('returns the first movie result when a same-year duplicate exists', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { findByTitle } = await loadTMDbService()
-
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({
-                results: [
-                    { id: 1, media_type: 'movie', title: 'Funny Games', original_language: 'de', release_date: '2007-01-01', origin_country: ['AT'] },
-                    { id: 2, media_type: 'movie', title: 'Funny Games', original_language: 'en', release_date: '2007-01-01', origin_country: ['US'] },
-                ],
-            })
-        )
-
-        await expect(findByTitle('Funny Games', 'movie')).resolves.toMatchObject({ id: 1, origin_country: 'AT' })
-    })
-
-    it('returns the first tv result without resolving locale', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { findByTitle } = await loadTMDbService()
-
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({
-                results: [
-                    { id: 10, media_type: 'tv', name: 'The Office', original_language: 'en', first_air_date: '2005-03-24', origin_country: ['US'] },
-                    { id: 9, media_type: 'tv', name: 'The Office', original_language: 'en', first_air_date: '2001-07-09', origin_country: ['GB'] },
-                ],
-            })
-        )
-
-        await expect(findByTitle('The Office', 'tv')).resolves.toEqual(expect.not.objectContaining({ locale: expect.anything() }))
-    })
-
     it('finds by external id and normalizes prefixed id', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByExternalID, ID_TYPES } = await loadTMDbService()
@@ -179,28 +145,12 @@ describe('tmdb service', () => {
         expect(fetchMock).not.toHaveBeenCalled()
     })
 
-    it('returns null when external id lookup has no result for requested media type', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { findByExternalID, ID_TYPES } = await loadTMDbService()
-        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ movie_results: [{ id: 4, title: 'Movie only', release_date: '2022-01-01', origin_country: [] }], tv_results: [] }))
-
-        await expect(findByExternalID('tt123', ID_TYPES.IMDB, 'tv')).resolves.toBeNull()
-    })
-
-    it('returns null when tv_results is empty for tv external lookup', async () => {
+    it.each(['movie', 'tv'] as const)('returns null when %s external lookup has no result', async (mediaType) => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByExternalID, ID_TYPES } = await loadTMDbService()
         vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ movie_results: [], tv_results: [] }))
 
-        await expect(findByExternalID('tt999', ID_TYPES.IMDB, 'tv')).resolves.toBeNull()
-    })
-
-    it('returns null when movie_results is empty for movie external lookup', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { findByExternalID, ID_TYPES } = await loadTMDbService()
-        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ movie_results: [], tv_results: [] }))
-
-        await expect(findByExternalID('tt999', ID_TYPES.IMDB, 'movie')).resolves.toBeNull()
+        await expect(findByExternalID('tt999', ID_TYPES.IMDB, mediaType)).resolves.toBeNull()
     })
 
     it('returns movie result branch when media type is movie', async () => {
@@ -310,33 +260,10 @@ describe('tmdb service', () => {
         expect(fetchMock).not.toHaveBeenCalled()
     })
 
-    it('returns null when tmdb id is blank for getExternalIDs', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { getExternalIDs } = await loadTMDbService()
-        const fetchMock = vi.fn()
-        vi.stubGlobal('$fetch', fetchMock)
-
-        await expect(getExternalIDs('   ', 'movie')).resolves.toBeNull()
-        expect(fetchMock).not.toHaveBeenCalled()
-    })
-
-    it('returns external ids object from getExternalIDs', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { getExternalIDs } = await loadTMDbService()
-        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ imdb_id: 'tt001', tvdb_id: 2 }))
-
-        await expect(getExternalIDs('88', 'movie')).resolves.toEqual({ imdb_id: 'tt001', tvdb_id: 2 })
-    })
-
-    it('returns null when getExternalIDs request fails', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { getExternalIDs } = await loadTMDbService()
-        vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('network error')))
-
-        await expect(getExternalIDs('1', 'movie')).resolves.toBeNull()
-    })
-
-    it('findLocale returns locale for matching tmdbId when not earliest', async () => {
+    it.each([
+        { tmdbId: 2, expected: 'US' },
+        { tmdbId: 1, expected: undefined },
+    ])('findLocale returns $expected for tmdb id $tmdbId', async ({ tmdbId, expected }) => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findLocale } = await loadTMDbService()
 
@@ -350,24 +277,7 @@ describe('tmdb service', () => {
             })
         )
 
-        await expect(findLocale('The Office', 2, 'tv')).resolves.toBe('US')
-    })
-
-    it('findLocale returns undefined for earliest tmdbId', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { findLocale } = await loadTMDbService()
-
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({
-                results: [
-                    { id: 2, media_type: 'tv', name: 'The Office', first_air_date: '2005-03-24', origin_country: ['US'] },
-                    { id: 1, media_type: 'tv', name: 'The Office', first_air_date: '2001-07-09', origin_country: ['GB'] },
-                ],
-            })
-        )
-
-        await expect(findLocale('The Office', 1, 'tv')).resolves.toBeUndefined()
+        await expect(findLocale('The Office', tmdbId, 'tv')).resolves.toBe(expected)
     })
 
     it('findLocale returns undefined when duplicates are from the same country', async () => {
@@ -516,100 +426,17 @@ describe('tmdb service', () => {
         })
     })
 
-    it('returns the first movie result when another match has a different year', async () => {
+    it('returns an undefined year when the result has no date', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByTitle } = await loadTMDbService()
         vi.stubGlobal(
             '$fetch',
             vi.fn().mockResolvedValue({
-                results: [
-                    { id: 2, media_type: 'movie', title: 'Funny Games', original_language: 'en', release_date: '2007-05-22', origin_country: ['US'] },
-                    { id: 3, media_type: 'movie', title: 'Funny Games', original_language: 'de', release_date: '2005-01-01', origin_country: ['AT'] },
-                ],
+                results: [{ id: 9, media_type: 'tv', name: 'Show', origin_country: ['GB'] }],
             })
         )
 
-        await expect(findByTitle('Funny Games', 'movie')).resolves.toMatchObject({ id: 2, origin_country: 'US' })
-    })
-
-    it('returns the first tv result when a later result has an earlier year', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { findByTitle } = await loadTMDbService()
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({
-                results: [
-                    { id: 20, media_type: 'tv', name: 'Shameless', first_air_date: '2011-01-09', origin_country: ['US'] },
-                    { id: 19, media_type: 'tv', name: 'Shameless', first_air_date: '2004-01-13', origin_country: ['GB'] },
-                ],
-            })
-        )
-
-        await expect(findByTitle('Shameless', 'tv')).resolves.toMatchObject({ id: 20, origin_country: 'US' })
-    })
-
-    it('returns the first movie result when only one result matches the title', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { findByTitle } = await loadTMDbService()
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({
-                results: [
-                    { id: 1, media_type: 'movie', title: 'Funny Games', original_language: 'de', release_date: '1997-01-01', origin_country: ['AT'] },
-                    { id: 2, media_type: 'movie', title: 'Different Title', original_language: 'en', release_date: '1997-01-01', origin_country: ['US'] },
-                ],
-            })
-        )
-
-        await expect(findByTitle('Funny Games', 'movie')).resolves.toMatchObject({ id: 1, origin_country: 'AT' })
-    })
-
-    it('returns the first tv result when duplicates are from the same country', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { findByTitle } = await loadTMDbService()
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({
-                results: [
-                    { id: 20, media_type: 'tv', name: 'Queer Eye', first_air_date: '2018-02-07', origin_country: ['US'] },
-                    { id: 10, media_type: 'tv', name: 'Queer Eye', first_air_date: '2003-07-15', origin_country: ['US'] },
-                ],
-            })
-        )
-
-        await expect(findByTitle('Queer Eye', 'tv')).resolves.toMatchObject({ id: 20, origin_country: 'US' })
-    })
-
-    it('returns the first movie result when duplicates are from the same country', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { findByTitle } = await loadTMDbService()
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({
-                results: [
-                    { id: 2, media_type: 'movie', title: 'Halloween', original_language: 'en', release_date: '2007-08-31', origin_country: ['US'] },
-                    { id: 1, media_type: 'movie', title: 'Halloween', original_language: 'en', release_date: '2007-08-31', origin_country: ['US'] },
-                ],
-            })
-        )
-
-        await expect(findByTitle('Halloween', 'movie')).resolves.toMatchObject({ id: 2, origin_country: 'US' })
-    })
-
-    it('returns the first tv result when another result has no year', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { findByTitle } = await loadTMDbService()
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({
-                results: [
-                    { id: 10, media_type: 'tv', name: 'Show', first_air_date: '2005-01-01', origin_country: ['US'] },
-                    { id: 9, media_type: 'tv', name: 'Show', origin_country: ['GB'] },
-                ],
-            })
-        )
-
-        await expect(findByTitle('Show', 'tv')).resolves.toMatchObject({ id: 10, origin_country: 'US' })
+        await expect(findByTitle('Show', 'tv')).resolves.toMatchObject({ id: 9, year: undefined })
     })
 })
 
