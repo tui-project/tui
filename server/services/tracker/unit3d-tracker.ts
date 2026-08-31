@@ -57,6 +57,8 @@ const RESOLUTION_IDS = BiMap<Resolution, number>([
     [RESOLUTIONS['1080p'], 3],
     [RESOLUTIONS['1080i'], 4],
     [RESOLUTIONS['720p'], 5],
+    // UNIT3D's Other resolution is used for Aither's supported 1440p slot.
+    [RESOLUTIONS['1440p'], 10],
     [RESOLUTIONS['576p'], 6],
     [RESOLUTIONS['576i'], 7],
     [RESOLUTIONS['480p'], 8],

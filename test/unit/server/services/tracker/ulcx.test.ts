@@ -728,7 +728,6 @@ describe('ulcxTrackerService — checkRules', () => {
             const violations = service.checkRules({ ...baseMetadata, language: ['en', 'de'], originalLanguage: 'en' })
             expect(violations.some((violation) => violation.rule === 'additional_main_audio_language')).toBe(true)
         })
-
     })
 })
 
@@ -1111,15 +1110,19 @@ describe('ulcxTrackerService — findDuplicates', () => {
         ['non-repack upload vs REPACK1 existing', { repack: 0, proper: 0, rerip: 0 }, { repack: 1, proper: 0, rerip: 0 }],
         ['REPACK1 upload vs REPACK1 existing', { repack: 1, proper: 0, rerip: 0 }, { repack: 1, proper: 0, rerip: 0 }],
         ['REPACK1 upload vs REPACK2 existing', { repack: 1, proper: 0, rerip: 0 }, { repack: 2, proper: 0, rerip: 0 }],
+        ['REPACK1 upload vs RERIP1 existing', { repack: 1, proper: 0, rerip: 0 }, { repack: 0, proper: 0, rerip: 1 }],
     ] as const)('does not mark as trumpable: %s', async (_, upload, existing) => {
         mockParsed({ ...existing, hdr: [], videoCodec: 'x264' })
         const result = await service.findDuplicates({ ...baseMetadata, ...upload })
         expect(result[0]).toMatchObject({ trumpable: false })
     })
 
-    it('marks an existing Dubbed release as trumpable when the upload carries the original audio', async () => {
+    it.each([
+        ['dubbed-only', 'Movie 2024 1080p BluRay Dubbed x264-GROUP'],
+        ['original-only', 'Movie 2024 1080p BluRay x264-GROUP'],
+    ])('marks an existing %s release as trumpable when the upload is dual audio', async (_, name) => {
         mockParsed({ hdr: [], videoCodec: 'x264' })
-        fetchMock.mockResolvedValue({ data: [makeUlcxCandidate({ name: 'Movie 2024 1080p BluRay Dubbed x264-GROUP' })] })
+        fetchMock.mockResolvedValue({ data: [makeUlcxCandidate({ name })] })
         const result = await service.findDuplicates({ ...baseMetadata, language: ['ja', 'en'], originalLanguage: 'ja' })
         expect(result).toHaveLength(1)
         expect(result[0]).toMatchObject({ trumpable: true })
@@ -1133,9 +1136,9 @@ describe('ulcxTrackerService — findDuplicates', () => {
         expect(result[0]).toMatchObject({ trumpable: false })
     })
 
-    it('marks foreign-only audio as trumpable by dual audio', async () => {
-        fetchMock.mockResolvedValue({ data: [makeUlcxCandidate({ name: 'Movie 2024 1080p BluRay x264-GROUP' })] })
-        const result = await service.findDuplicates({ ...baseMetadata, language: ['ja', 'en'], originalLanguage: 'ja' })
+    it('marks hybrid DV/HDR as trumpable by equivalent disc DV/HDR', async () => {
+        mockParsed({ hdr: [HDR_TYPES.DV, HDR_TYPES.HDR10], videoCodec: 'x264', hybrid: true })
+        const result = await service.findDuplicates({ ...baseMetadata, hdr: [HDR_TYPES.DV, HDR_TYPES.HDR10], hybrid: false })
         expect(result[0]).toMatchObject({ trumpable: true })
     })
 

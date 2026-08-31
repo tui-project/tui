@@ -306,6 +306,7 @@ export const [RESOLUTIONS, RESOLUTION_OPTIONS] = makeConst({
     '720p': { value: '720p', label: '720p' },
     '1080i': { value: '1080i', label: '1080i' },
     '1080p': { value: '1080p', label: '1080p' },
+    '1440p': { value: '1440p', label: '1440p' },
     '2160p': { value: '2160p', label: '2160p' },
     '4320p': { value: '4320p', label: '4320p' },
 })
