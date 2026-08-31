@@ -40,13 +40,21 @@ export type TorrentContext = {
     slot: string
     hdrTier: HdrTier
     sourceRank: number
-    revision: number
+    repack: number
+    proper: number
+    rerip: number
     hasOriginalAudio: boolean
     hybrid: boolean
     isBannedReleaseGroup: boolean
 }
 
 export type TorrentRule<T extends TorrentContext = TorrentContext> = (upload: T, existing: T) => boolean
+
+const DUAL_AUDIO_RELEASE_NAME_PATTERN = /\bDual[ ._-]*Audio\b/i
+
+export function hasDualAudioReleaseName(name: string): boolean {
+    return DUAL_AUDIO_RELEASE_NAME_PATTERN.test(name)
+}
 
 export const ENCODE_SIZE_TIERS = {
     COMPACT: 'Compact',
@@ -89,4 +97,14 @@ export function getVideoCodecFamily(codec: string | null | undefined): 'avc' | '
 export function getEncodeSizeTier(resolution: Resolution, videoBitrate: number): EncodeSizeTier {
     const compactLimit = resolution === RESOLUTIONS['2160p'] || resolution === RESOLUTIONS['4320p'] ? 18_000_000 : 12_000_000
     return videoBitrate <= compactLimit ? ENCODE_SIZE_TIERS.COMPACT : ENCODE_SIZE_TIERS.TRANSPARENT
+}
+
+export function correctionTrumps(upload: TorrentContext, existing: TorrentContext): boolean {
+    const existingIsOriginal = existing.repack === 0 && existing.proper === 0 && existing.rerip === 0
+    if (existingIsOriginal) return upload.repack > 0 || upload.proper > 0 || upload.rerip > 0
+    return (
+        (existing.repack > 0 && upload.repack > existing.repack) ||
+        (existing.proper > 0 && upload.proper > existing.proper) ||
+        (existing.rerip > 0 && upload.rerip > existing.rerip)
+    )
 }

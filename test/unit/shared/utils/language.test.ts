@@ -5,6 +5,7 @@ import {
     getLanguageOptions,
     hasEnglishAudio,
     hasOriginalAudio,
+    isDualAudio,
     languageListIncludes,
     languagesMatch,
     normalizeLanguageCode,
@@ -81,6 +82,15 @@ describe('language utilities', () => {
 
         expect(hasEnglishAudio(metadata)).toBe(true)
         expect(hasOriginalAudio(metadata)).toBe(true)
+    })
+
+    it.each([
+        ['en', ['en'], false],
+        ['es', ['es'], false],
+        ['es', ['en'], false],
+        ['es', ['en', 'es'], true],
+    ])('identifies %s audio languages %j as dual audio: %s', (originalLanguage, language, expected) => {
+        expect(isDualAudio({ originalLanguage, language } as Metadata)).toBe(expected)
     })
 
     it('builds common options with special values last', () => {

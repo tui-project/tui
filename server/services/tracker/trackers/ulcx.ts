@@ -10,6 +10,8 @@ import {
     getVideoCodecFamily,
     getEncodeSizeTier,
     hasAdditionalMainAudioLanguage,
+    hasDualAudioReleaseName,
+    correctionTrumps,
 } from '../util/tracker-util'
 import type { RuleViolation, TrackerService, TrackerUploadOptions } from '../tracker'
 import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
@@ -294,9 +296,11 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata) {
         slot: getSlot(metadata.sourceType, uploadHdrTier, metadata.videoCodec, metadata.service, metadata.cut, metadata.ratio, getMetadataEncodeSizeTier(metadata)),
         hdrTier: uploadHdrTier,
         sourceRank: WEB_SOURCE_RANK[metadata.sourceType] ?? 0,
-        revision: Math.max(metadata.repack, metadata.proper, metadata.rerip),
+        repack: metadata.repack,
+        proper: metadata.proper,
+        rerip: metadata.rerip,
         hasOriginalAudio: hasOriginalAudio(metadata),
-        isDualAudio: metadata.originalLanguage !== 'en' && hasEnglishAudio(metadata) && hasOriginalAudio(metadata),
+        isDualAudio: isDualAudio(metadata),
         hybrid: metadata.hybrid,
         isNoGrp: !metadata.releaseGroup,
         isBannedReleaseGroup: isBannedReleaseGroup(metadata.releaseGroup),
@@ -316,9 +320,11 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata) {
             ),
             hdrTier,
             sourceRank: WEB_SOURCE_RANK[torrent.sourceType] ?? 0,
-            revision: Math.max(torrent.repack, torrent.proper, torrent.rerip),
+            repack: torrent.repack,
+            proper: torrent.proper,
+            rerip: torrent.rerip,
             hasOriginalAudio: torrent.hasOriginalAudio,
-            isDualAudio: /\bDual[ ._-]*Audio\b/i.test(torrent.name),
+            isDualAudio: hasDualAudioReleaseName(torrent.name),
             hybrid: torrent.hybrid,
             isNoGrp: /\bNOGROUP\b/i.test(torrent.name),
             isBannedReleaseGroup: isBannedReleaseGroup(torrent.releaseGroup),
@@ -348,11 +354,11 @@ const TRUMP_RULES: TorrentRule<TorrentContext>[] = [
     // An allowed upload can trump an existing release from a banned group
     (upload, existing) => !upload.isBannedReleaseGroup && existing.isBannedReleaseGroup,
     // Disc DV trumps a hybrid source in the same DV slot
-    (upload, existing) => !upload.hybrid && existing.hybrid && upload.hdrTier === 'DV',
+    (upload, existing) => !upload.hybrid && existing.hybrid && upload.hdrTier.startsWith('DV'),
     // DV/HDR over HDR, DV/HDR10+ over HDR10+
     (upload, existing) => HDR_TIER_TRUMPS[upload.hdrTier] === existing.hdrTier,
-    // Higher revision (REPACK/PROPER/RERIP) trumps lower
-    (upload, existing) => upload.revision > existing.revision,
+    // A corrected release trumps its original; numbered corrections only compare within the same correction kind
+    (upload, existing) => correctionTrumps(upload, existing),
     // WEB-DL trumps WEBRip from the same provider (same slot, higher source rank)
     (upload, existing) => upload.sourceRank > 0 && existing.sourceRank > 0 && upload.sourceRank > existing.sourceRank,
     // Upload carrying original audio trumps a dubbed-only release

@@ -610,6 +610,10 @@ export function languageListIncludes(languages: string[], expected: string): boo
     return languages.some((language) => languagesMatch(language, expected))
 }
 
+export function isDualAudio(metadata: Metadata): boolean {
+    return metadata.originalLanguage !== 'en' && hasEnglishAudio(metadata) && hasOriginalAudio(metadata)
+}
+
 export function hasEnglishAudio(metadata: Metadata): boolean {
     return languageListIncludes(getAudioLanguages(metadata), 'en')
 }

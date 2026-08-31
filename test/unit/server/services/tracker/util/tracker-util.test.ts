@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { ENCODE_SIZE_TIERS, getEncodeSizeTier, getVideoCodecFamily, hasAdditionalMainAudioLanguage } from '../../../../../../server/services/tracker/util/tracker-util'
+import {
+    ENCODE_SIZE_TIERS,
+    getEncodeSizeTier,
+    getVideoCodecFamily,
+    hasAdditionalMainAudioLanguage,
+    hasDualAudioReleaseName,
+} from '../../../../../../server/services/tracker/util/tracker-util'
 
 describe('hasAdditionalMainAudioLanguage', () => {
     const metadata = {
@@ -11,7 +17,22 @@ describe('hasAdditionalMainAudioLanguage', () => {
         [['en', 'de'], undefined, true],
         [['mul'], ['en'], false],
     ] as const)('checks main languages %j with resolved mixed languages %j', (language, mixedAudioLanguages, expected) => {
-        expect(hasAdditionalMainAudioLanguage({ ...metadata, language: [...language], mixedAudioLanguages: mixedAudioLanguages ? [...mixedAudioLanguages] : undefined })).toBe(expected)
+        expect(hasAdditionalMainAudioLanguage({ ...metadata, language: [...language], mixedAudioLanguages: mixedAudioLanguages ? [...mixedAudioLanguages] : undefined })).toBe(
+            expected
+        )
+    })
+})
+
+describe('hasDualAudioReleaseName', () => {
+    it.each([
+        ['Movie.Dual-Audio.1080p', true],
+        ['Movie Dual Audio 1080p', true],
+        ['Movie.Dual_Audio.1080p', true],
+        ['Movie.Dual.Audio.1080p', true],
+        ['Movie.DualAudio.1080p', true],
+        ['Movie.Dual.1080p', false],
+    ])('detects dual-audio tag in %s', (name, expected) => {
+        expect(hasDualAudioReleaseName(name)).toBe(expected)
     })
 })
 

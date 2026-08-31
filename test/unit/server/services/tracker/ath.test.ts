@@ -105,6 +105,56 @@ describe('athTrackerService — checkRules', () => {
         expect(violations).toEqual([])
     })
 
+    it.each([
+        [RESOLUTIONS['720p'], SOURCE_TYPES.WEB_DL, [], VIDEO_CODECS.H265, 'H.264'],
+        [RESOLUTIONS['720p'], SOURCE_TYPES.ENCODE, [], VIDEO_CODECS.X265, 'x264'],
+        [RESOLUTIONS['1080p'], SOURCE_TYPES.WEB_DL, [], VIDEO_CODECS.H265, 'H.264'],
+        [RESOLUTIONS['1080p'], SOURCE_TYPES.WEB_DL, [HDR_TYPES.HDR10], VIDEO_CODECS.H264, 'H.265'],
+        [RESOLUTIONS['1080p'], SOURCE_TYPES.ENCODE, [HDR_TYPES.HDR10], VIDEO_CODECS.X264, 'x265'],
+        [RESOLUTIONS['2160p'], SOURCE_TYPES.WEB_DL, [], VIDEO_CODECS.H264, 'H.265'],
+        [RESOLUTIONS['2160p'], SOURCE_TYPES.ENCODE, [], VIDEO_CODECS.X264, 'x265'],
+    ] as const)('flags an ineligible codec for %s %s', (resolution, sourceType, hdr, videoCodec, expectedCodec) => {
+        const violations = service.checkRules({ ...baseMetadata, resolution, sourceType, hdr: [...hdr], videoCodec })
+        expect(violations).toContainEqual(expect.objectContaining({ rule: 'invalid_video_codec', message: expect.stringContaining(expectedCodec) }))
+    })
+
+    it.each([
+        [RESOLUTIONS['720p'], SOURCE_TYPES.WEB_DL, [], VIDEO_CODECS.H264],
+        [RESOLUTIONS['720p'], SOURCE_TYPES.ENCODE, [], VIDEO_CODECS.X264],
+        [RESOLUTIONS['1080p'], SOURCE_TYPES.WEB_DL, [], VIDEO_CODECS.H264],
+        [RESOLUTIONS['1080p'], SOURCE_TYPES.WEB_DL, [HDR_TYPES.HDR10], VIDEO_CODECS.H265],
+        [RESOLUTIONS['1080p'], SOURCE_TYPES.ENCODE, [], VIDEO_CODECS.X264],
+        [RESOLUTIONS['1080p'], SOURCE_TYPES.ENCODE, [], VIDEO_CODECS.X265],
+        [RESOLUTIONS['2160p'], SOURCE_TYPES.ENCODE, [], VIDEO_CODECS.X265],
+        [RESOLUTIONS['2160p'], SOURCE_TYPES.WEB_DL, [], VIDEO_CODECS.H265],
+        [RESOLUTIONS['1440p'], SOURCE_TYPES.WEB_DL, [HDR_TYPES.HDR10], VIDEO_CODECS.H265],
+    ] as const)('accepts an eligible codec for %s %s', (resolution, sourceType, hdr, videoCodec) => {
+        expect(service.checkRules({ ...baseMetadata, resolution, sourceType, hdr: [...hdr], videoCodec }).some((violation) => violation.rule === 'invalid_video_codec')).toBe(false)
+    })
+
+    it.each([
+        [RESOLUTIONS['1080i'], SOURCE_TYPES.ENCODE],
+        [RESOLUTIONS['4320p'], SOURCE_TYPES.ENCODE],
+        [RESOLUTIONS['1080i'], SOURCE_TYPES.WEB_DL],
+    ] as const)('does not impose a codec restriction for %s %s', (resolution, sourceType) => {
+        expect(service.checkRules({ ...baseMetadata, resolution, sourceType, videoCodec: VIDEO_CODECS.AV1 }).some((violation) => violation.rule === 'invalid_video_codec')).toBe(
+            false
+        )
+    })
+
+    it('does not apply encode and WEB codec restrictions to remuxes', () => {
+        expect(service.checkRules({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX, videoCodec: VIDEO_CODECS.MPEG_2 })).toEqual([])
+    })
+
+    it.each(SD_RESOLUTIONS)('warns that HD retail availability must be checked for %s', (resolution) => {
+        expect(service.checkRules({ ...baseMetadata, resolution })).toContainEqual(expect.objectContaining({ rule: 'check_hd_retail_source_availability' }))
+    })
+
+    it('warns that 2160p source availability must be checked for 1440p', () => {
+        const violations = service.checkRules({ ...baseMetadata, resolution: RESOLUTIONS['1440p'], sourceType: SOURCE_TYPES.WEB_DL, videoCodec: VIDEO_CODECS.H264 })
+        expect(violations).toContainEqual(expect.objectContaining({ rule: 'check_2160p_source_availability' }))
+    })
+
     it('allows English-only audio for an English original', () => {
         expect(service.checkRules({ ...baseMetadata, language: ['en'], originalLanguage: 'en' })).toEqual([])
     })
@@ -748,6 +798,8 @@ describe('athTrackerService — findDuplicates', () => {
         ['PROPER1 upload vs non-proper existing', { repack: 0, proper: 1, rerip: 0 }, { repack: 0, proper: 0, rerip: 0 }],
         ['RERIP1 upload vs non-rerip existing', { repack: 0, proper: 0, rerip: 1 }, { repack: 0, proper: 0, rerip: 0 }],
         ['REPACK2 upload vs REPACK1 existing', { repack: 2, proper: 0, rerip: 0 }, { repack: 1, proper: 0, rerip: 0 }],
+        ['PROPER2 upload vs PROPER1 existing', { repack: 0, proper: 2, rerip: 0 }, { repack: 0, proper: 1, rerip: 0 }],
+        ['RERIP2 upload vs RERIP1 existing', { repack: 0, proper: 0, rerip: 2 }, { repack: 0, proper: 0, rerip: 1 }],
     ] as const)('marks as trumpable: %s', async (_, upload, existing) => {
         mockParsedDefault({ ...existing })
         expect((await service.findDuplicates({ ...baseMetadata, ...upload }))[0]).toMatchObject({ trumpable: true })
@@ -757,6 +809,7 @@ describe('athTrackerService — findDuplicates', () => {
         ['REPACK1 upload vs REPACK2 existing', { repack: 1, proper: 0, rerip: 0 }, { repack: 2, proper: 0, rerip: 0 }],
         ['non-repack upload vs REPACK1 existing', { repack: 0, proper: 0, rerip: 0 }, { repack: 1, proper: 0, rerip: 0 }],
         ['REPACK1 upload vs REPACK1 existing', { repack: 1, proper: 0, rerip: 0 }, { repack: 1, proper: 0, rerip: 0 }],
+        ['REPACK1 upload vs RERIP1 existing', { repack: 1, proper: 0, rerip: 0 }, { repack: 0, proper: 0, rerip: 1 }],
     ] as const)('does not mark as trumpable: %s', async (_, upload, existing) => {
         mockParsedDefault({ ...existing })
         expect((await service.findDuplicates({ ...baseMetadata, ...upload }))[0]).toMatchObject({ trumpable: false })
@@ -794,12 +847,22 @@ describe('athTrackerService — findDuplicates', () => {
         expect(result[0]).toMatchObject({ trumpable: true })
     })
 
-    it('marks an existing Dubbed release as trumpable when the upload carries the original audio', async () => {
+    it.each([
+        ['dubbed-only', 'Movie 2024 1080p BluRay Dubbed DD+ 5.1 x264-GROUP'],
+        ['original-only', 'Movie 2024 1080p BluRay DD+ 5.1 x264-GROUP'],
+    ])('marks an existing %s release as trumpable when the upload is dual audio', async (_, name) => {
         mockParsedDefault()
-        fetchMock.mockResolvedValue({ data: [makeAthCandidate({ name: 'Movie 2024 1080p BluRay Dubbed DD+ 5.1 x264-GROUP' })] })
+        fetchMock.mockResolvedValue({ data: [makeAthCandidate({ name })] })
         const result = await service.findDuplicates({ ...baseMetadata, language: ['ja', 'en'], originalLanguage: 'ja' })
         expect(result).toHaveLength(1)
         expect(result[0]).toMatchObject({ trumpable: true })
+    })
+
+    it('does not let an original-only upload trump a dubbed-only release', async () => {
+        mockParsedDefault()
+        fetchMock.mockResolvedValue({ data: [makeAthCandidate({ name: 'Movie 2024 1080p BluRay Dubbed DD+ 5.1 x264-GROUP' })] })
+        const result = await service.findDuplicates({ ...baseMetadata, language: ['ja'], originalLanguage: 'ja', hasEnglishSubs: true })
+        expect(result[0]).toMatchObject({ trumpable: false })
     })
 
     it('does not mark an existing Dubbed release as trumpable when the upload is also dubbed', async () => {
@@ -960,11 +1023,11 @@ describe('athTrackerService — findDuplicates', () => {
             expect(await service.findDuplicates(baseMetadata)).toHaveLength(1)
         })
 
-        it('does not dupe WEB from NF against WEB from AMZN (different providers)', async () => {
+        it('dupes WEB from NF against WEB from AMZN because providers share a slot', async () => {
             mockParsed({ videoCodec: 'H.264', service: 'NF' })
             fetchMock.mockResolvedValue({ data: [makeAthCandidate({ type_id: 4 })] })
             const result = await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.WEB_DL, service: 'AMZN', videoCodec: VIDEO_CODECS.H264 })
-            expect(result).toHaveLength(0)
+            expect(result).toHaveLength(1)
         })
 
         it('dupes WEB from AMZN against WEB from AMZN (same provider)', async () => {
@@ -981,11 +1044,11 @@ describe('athTrackerService — findDuplicates', () => {
             expect(result).toHaveLength(0)
         })
 
-        it('does not dupe remuxes with different ratios', async () => {
+        it('dupes remuxes with different ratios because ratio tags do not grant a slot', async () => {
             mockParsed({ videoCodec: 'AVC', ratio: 'IMAX' })
             fetchMock.mockResolvedValue({ data: [makeAthCandidate({ type_id: 2 })] })
             const result = await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX, videoCodec: VIDEO_CODECS.AVC, ratio: undefined })
-            expect(result).toHaveLength(0)
+            expect(result).toHaveLength(1)
         })
 
         it('does not dupe WEB releases with different cuts', async () => {
@@ -1023,6 +1086,20 @@ describe('athTrackerService — findDuplicates', () => {
             })
             expect(result).toHaveLength(1)
             expect(result[0]).toMatchObject({ trumpable: false })
+        })
+
+        it('marks hybrid DV/HDR as trumpable by equivalent disc DV/HDR', async () => {
+            mockParsed({ videoCodec: 'HEVC', hdr: [HDR_TYPES.DV, HDR_TYPES.HDR10], hybrid: true })
+            fetchMock.mockResolvedValue({ data: [makeAthCandidate({ resolution_id: 2, type_id: 2 })] })
+            const result = await service.findDuplicates({
+                ...baseMetadata,
+                resolution: RESOLUTIONS['2160p'],
+                sourceType: SOURCE_TYPES.REMUX,
+                videoCodec: VIDEO_CODECS.HEVC,
+                hdr: [HDR_TYPES.DV, HDR_TYPES.HDR10],
+                hybrid: false,
+            })
+            expect(result[0]).toMatchObject({ trumpable: true })
         })
     })
 
