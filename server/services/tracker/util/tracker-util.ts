@@ -48,14 +48,45 @@ export type TorrentContext = {
 
 export type TorrentRule<T extends TorrentContext = TorrentContext> = (upload: T, existing: T) => boolean
 
-// x264 and x265 encodes are separate slots
-export function getCodecFamily(codec: string | null | undefined): 'x264' | 'x265' | 'other' {
+export const ENCODE_SIZE_TIERS = {
+    COMPACT: 'Compact',
+    TRANSPARENT: 'Transparent',
+} as const
+
+export type EncodeSizeTier = (typeof ENCODE_SIZE_TIERS)[keyof typeof ENCODE_SIZE_TIERS]
+
+export function hasAdditionalMainAudioLanguage(metadata: Metadata): boolean {
+    const resolvedMixedLanguages = metadata.mixedAudioLanguages ?? []
+    const audioLanguages = [...metadata.language.filter((language) => language !== 'mul' || !resolvedMixedLanguages.length), ...resolvedMixedLanguages]
+    const allowedLanguages = [hasEnglishAudio(metadata) ? 'en' : undefined, hasOriginalAudio(metadata) ? metadata.originalLanguage : undefined].filter(
+        (language): language is string => language !== undefined
+    )
+
+    return audioLanguages.some((language) => !allowedLanguages.some((allowedLanguage) => languagesMatch(language, allowedLanguage)))
+}
+
+export function getVideoCodecFamily(codec: string | null | undefined): 'avc' | 'hevc' | 'av1' | 'vp9' | 'mpeg2' | 'other' {
     switch (codec?.toLowerCase()) {
+        case 'avc':
+        case 'h.264':
         case 'x264':
-            return 'x264'
+            return 'avc'
+        case 'hevc':
+        case 'h.265':
         case 'x265':
-            return 'x265'
+            return 'hevc'
+        case 'av1':
+            return 'av1'
+        case 'vp9':
+            return 'vp9'
+        case 'mpeg-2':
+            return 'mpeg2'
         default:
             return 'other'
     }
+}
+
+export function getEncodeSizeTier(resolution: Resolution, videoBitrate: number): EncodeSizeTier {
+    const compactLimit = resolution === RESOLUTIONS['2160p'] || resolution === RESOLUTIONS['4320p'] ? 18_000_000 : 12_000_000
+    return videoBitrate <= compactLimit ? ENCODE_SIZE_TIERS.COMPACT : ENCODE_SIZE_TIERS.TRANSPARENT
 }

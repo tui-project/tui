@@ -231,6 +231,7 @@ function makeTorrentEntry(
             resolution_id: 3,
             type_id: 3,
             hdr: null,
+            media_info: 'Video\nBit rate : 12.0 Mb/s',
             ...overrides,
         },
     }
@@ -337,6 +338,27 @@ describe('getTorrents', () => {
         expect(result!.season).toBe(2)
         expect(result!.episode).toBe(5)
         expect(result!.releaseGroup).toBe('GROUP')
+    })
+
+    it.each([
+        ['12.0 Mb/s', 12_000_000],
+        ['17.0 Mb/s', 17_000_000],
+        ['12000 kb/s', 12_000_000],
+        ['0.017 Gb/s', 17_000_000],
+        ['12000000 b/s', 12_000_000],
+    ] as const)('returns the raw MediaInfo video bitrate for %s', async (bitrate, expected) => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ data: [makeTorrentEntry({ media_info: `General\nMovie\n\nVideo\nBit rate : ${bitrate}\n\nAudio\nFormat : E-AC-3` })] }))
+        const [result] = await getTorrents(URL, API_KEY, { tmdbId: 1 })
+        expect(result!.videoBitrate).toBe(expected)
+    })
+
+    it('returns MediaInfo bitrate even when the release name contains a tier label', async () => {
+        vi.stubGlobal(
+            '$fetch',
+            vi.fn().mockResolvedValue({ data: [makeTorrentEntry({ name: 'Movie.2024.1080p.Compact.BluRay.x264-GROUP', media_info: 'Video\nBit rate : 17.0 Mb/s' })] })
+        )
+        const [result] = await getTorrents(URL, API_KEY, { tmdbId: 1 })
+        expect(result!.videoBitrate).toBe(17_000_000)
     })
 })
 

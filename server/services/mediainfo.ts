@@ -21,6 +21,7 @@ export interface ParsedMediainfoMetadata {
     resolution?: Resolution
     videoCodec?: VideoCodec
     videoStandard?: VideoStandard
+    videoBitrate: number
     frameRate?: number
     hi10p: boolean
     hdr: HDR[]
@@ -55,6 +56,7 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
     const format = toStringValue(video, 'Format')
     const formatVersion = toStringValue(video, 'Format_Version')
     const videoCodec = parseVideoCodec(format, formatVersion, sourceType)
+    const videoBitrate = parseNumberValue(video, 'BitRate')!
 
     const standard = toStringValue(video, 'Standard')
     const videoStandard = parseVideoStandard(standard)
@@ -94,6 +96,7 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
     const parsedMetadata = {
         resolution,
         videoCodec,
+        videoBitrate,
         videoStandard,
         frameRate,
         hi10p,
@@ -338,6 +341,9 @@ function parseAudioCodec(audioFormat: string, formatCommercialIfAny = ''): Audio
             return AUDIO_CODECS.DTS
         case audioFormat === 'FLAC':
             return AUDIO_CODECS.FLAC
+        case audioFormat === 'PCM':
+        case audioFormat === 'PCM DVD':
+            return AUDIO_CODECS.LPCM
         case audioFormat === 'MLP FBA':
             return AUDIO_CODECS.TRUEHD
         default:

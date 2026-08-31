@@ -24,6 +24,7 @@ const fetchedMetadata: Metadata = {
     resolution: '1080p',
     hdr: [],
     videoCodec: 'H.264',
+    videoBitrate: 12_000_000,
     audioCodec: 'DTS-HD MA',
     audioChannels: '5.1',
     tmdbId: 1,

@@ -42,6 +42,7 @@ const VALID_METADATA = {
     resolution: '1080p',
     hdr: [],
     videoCodec: 'AVC',
+    videoBitrate: 20_000_000,
     audioCodec: 'TrueHD',
     audioChannels: '7.1',
     tmdbId: 12345,
