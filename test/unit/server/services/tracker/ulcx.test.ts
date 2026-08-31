@@ -35,10 +35,11 @@ const baseMetadata: Metadata = {
     resolution: RESOLUTIONS['1080p'],
     hdr: [],
     videoCodec: VIDEO_CODECS.X264,
-    audioCodec: AUDIO_CODECS.DTS_HD_MA,
+    audioCodec: AUDIO_CODECS.DD_PLUS,
     audioChannels: AUDIO_CHANNELS['5.1'],
     tmdbId: 1,
     imdbId: 'tt1234567',
+    videoBitrate: 12_000_000,
 }
 
 const tvBaseMetadata: Metadata = {
@@ -56,7 +57,7 @@ describe('ulcxTrackerService — getTitle', () => {
     })
 
     it('builds a basic movie title', async () => {
-        expect(await service.getTitle(baseMetadata)).toBe('Movie 2024 1080p BluRay DTS-HD MA 5.1 x264-GROUP')
+        expect(await service.getTitle(baseMetadata)).toBe('Movie 2024 1080p BluRay DD+ 5.1 x264-GROUP')
     })
 
     it('includes TV season and episode when present', async () => {
@@ -652,20 +653,82 @@ describe('ulcxTrackerService — checkRules', () => {
 
     describe('TrueHD compatibility track rule', () => {
         it('flags TrueHD without a compatibility track', () => {
-            const violations = service.checkRules({ ...baseMetadata, audioCodec: AUDIO_CODECS.TRUEHD, hasTrueHDCompatibilityTrack: false })
+            const violations = service.checkRules({
+                ...baseMetadata,
+                sourceType: SOURCE_TYPES.REMUX,
+                videoCodec: VIDEO_CODECS.AVC,
+                audioCodec: AUDIO_CODECS.TRUEHD,
+                hasTrueHDCompatibilityTrack: false,
+            })
             expect(violations).toHaveLength(1)
             expect(violations[0].rule).toBe('truehd_missing_compatibility_track')
         })
 
         it('allows TrueHD when a compatibility track is present', () => {
-            const violations = service.checkRules({ ...baseMetadata, audioCodec: AUDIO_CODECS.TRUEHD, hasTrueHDCompatibilityTrack: true })
+            const violations = service.checkRules({
+                ...baseMetadata,
+                sourceType: SOURCE_TYPES.REMUX,
+                videoCodec: VIDEO_CODECS.AVC,
+                audioCodec: AUDIO_CODECS.TRUEHD,
+                hasTrueHDCompatibilityTrack: true,
+            })
             expect(violations).toEqual([])
         })
 
         it('does not flag non-TrueHD codecs for missing compatibility track', () => {
-            const violations = service.checkRules({ ...baseMetadata, audioCodec: AUDIO_CODECS.DTS_HD_MA, hasTrueHDCompatibilityTrack: undefined })
+            const violations = service.checkRules({
+                ...baseMetadata,
+                sourceType: SOURCE_TYPES.REMUX,
+                videoCodec: VIDEO_CODECS.AVC,
+                audioCodec: AUDIO_CODECS.DTS_HD_MA,
+                hasTrueHDCompatibilityTrack: undefined,
+            })
             expect(violations).toEqual([])
         })
+    })
+
+    describe('updated audio rules', () => {
+        it.each([
+            ['LPCM', { audioCodec: AUDIO_CODECS.LPCM }, 'lpcm_not_allowed'],
+            ['multichannel FLAC', { audioCodec: AUDIO_CODECS.FLAC, audioChannels: AUDIO_CHANNELS['5.1'] }, 'invalid_flac_channels'],
+            ['lossless multichannel on 1080p encode', { audioCodec: AUDIO_CODECS.DTS_HD_MA }, 'lossless_multichannel_encode'],
+            ['TrueHD compatibility track on another codec', { hasTrueHDCompatibilityTrack: true }, 'unexpected_compatibility_track'],
+        ] as const)('rejects %s', (_, overrides, rule) => {
+            expect(service.checkRules({ ...baseMetadata, ...overrides }).some((violation) => violation.rule === rule)).toBe(true)
+        })
+
+        it.each([
+            [AUDIO_CHANNELS['1.0'], AUDIO_CODECS.TRUEHD, 'invalid_mono_remux_audio'],
+            [AUDIO_CHANNELS['2.0'], AUDIO_CODECS.DTS_HD_MA, 'invalid_stereo_remux_audio'],
+        ] as const)('rejects invalid %s lossless Remux audio', (audioChannels, audioCodec, rule) => {
+            const violations = service.checkRules({
+                ...baseMetadata,
+                sourceType: SOURCE_TYPES.REMUX,
+                videoCodec: VIDEO_CODECS.AVC,
+                audioChannels,
+                audioCodec,
+                hasTrueHDCompatibilityTrack: audioCodec === AUDIO_CODECS.TRUEHD,
+            })
+            expect(violations.some((violation) => violation.rule === rule)).toBe(true)
+        })
+
+        it('allows FLAC stereo on a Remux', () => {
+            expect(
+                service.checkRules({
+                    ...baseMetadata,
+                    sourceType: SOURCE_TYPES.REMUX,
+                    videoCodec: VIDEO_CODECS.AVC,
+                    audioCodec: AUDIO_CODECS.FLAC,
+                    audioChannels: AUDIO_CHANNELS['2.0'],
+                })
+            ).toEqual([])
+        })
+
+        it('rejects additional foreign main audio languages', () => {
+            const violations = service.checkRules({ ...baseMetadata, language: ['en', 'de'], originalLanguage: 'en' })
+            expect(violations.some((violation) => violation.rule === 'additional_main_audio_language')).toBe(true)
+        })
+
     })
 })
 
@@ -681,13 +744,14 @@ describe('ulcxTrackerService — upload', () => {
     })
 })
 
-function makeUlcxCandidate(overrides: Partial<{ name: string; details_link: string; resolution_id: number; type_id: number }> = {}) {
+function makeUlcxCandidate(overrides: Partial<{ name: string; details_link: string; resolution_id: number; type_id: number; media_info: string | null }> = {}) {
     return {
         attributes: {
             name: 'Movie.2024.1080p.BluRay.x264-GROUP',
             details_link: 'https://upload.cx/torrents/1',
             resolution_id: 3,
             type_id: 3,
+            media_info: 'Video\nBit rate : 12.0 Mb/s',
             ...overrides,
         },
     }
@@ -773,14 +837,23 @@ describe('ulcxTrackerService — findDuplicates', () => {
 
     // ── Encode codec slot separation ───────────────────────────────────────────
 
-    it('does not dupe an x264 encode against an x265 encode (different slots)', async () => {
-        mockParsed({ videoCodec: 'x265' })
-        expect(await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.ENCODE, videoCodec: VIDEO_CODECS.X264 })).toHaveLength(0)
+    it.each([
+        [VIDEO_CODECS.X264, 'x265'],
+        [VIDEO_CODECS.X265, 'x264'],
+    ] as const)('does not dupe a %s encode against a %s encode', async (uploadCodec, existingCodec) => {
+        mockParsed({ videoCodec: existingCodec })
+        expect(await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.ENCODE, videoCodec: uploadCodec })).toHaveLength(0)
     })
 
-    it('does not dupe an x265 encode against an x264 encode (different slots)', async () => {
+    it('allows Compact and Transparent encodes to coexist', async () => {
         mockParsed({ videoCodec: 'x264' })
-        expect(await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.ENCODE, videoCodec: VIDEO_CODECS.X265 })).toHaveLength(0)
+        fetchMock.mockResolvedValue({ data: [makeUlcxCandidate({ media_info: 'Video\nBit rate : 17.0 Mb/s' })] })
+        expect(await service.findDuplicates({ ...baseMetadata, videoBitrate: 12_000_000 })).toHaveLength(0)
+    })
+
+    it('does not split encode slots by provider', async () => {
+        mockParsed({ videoCodec: 'x264', service: 'NF' })
+        expect(await service.findDuplicates({ ...baseMetadata, service: 'AMZN' })).toHaveLength(1)
     })
 
     it('dupes an x264 encode against another x264 encode', async () => {
@@ -842,6 +915,12 @@ describe('ulcxTrackerService — findDuplicates', () => {
         fetchMock.mockResolvedValue({ data: [makeUlcxCandidate({ type_id: 2 })] })
         const result = await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX, videoCodec: VIDEO_CODECS.AVC, hdr: [] })
         expect(result).toHaveLength(1)
+    })
+
+    it('does not split remux slots by provider', async () => {
+        mockParsed({ videoCodec: 'AVC', service: 'NF' })
+        fetchMock.mockResolvedValue({ data: [makeUlcxCandidate({ type_id: 2 })] })
+        expect(await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.REMUX, videoCodec: VIDEO_CODECS.AVC, service: 'AMZN' })).toHaveLength(1)
     })
 
     it("does not dupe remuxes with different cuts (Director's Cut vs no cut)", async () => {
@@ -916,6 +995,13 @@ describe('ulcxTrackerService — findDuplicates', () => {
             videoCodec: VIDEO_CODECS.H264,
         })
         expect(result).toHaveLength(1)
+    })
+
+    it('allows same-provider WEB-DLs with different codec families to coexist', async () => {
+        fetchMock.mockResolvedValue({ data: [makeUlcxCandidate({ name: 'Movie.2024.1080p.AMZN.WEB-DL.H.265-GROUP', type_id: 4 })] })
+        mockParsed({ videoCodec: VIDEO_CODECS.H265, service: 'AMZN' })
+        const result = await service.findDuplicates({ ...baseMetadata, sourceType: SOURCE_TYPES.WEB_DL, source: SOURCES.WEB, service: 'AMZN', videoCodec: VIDEO_CODECS.H264 })
+        expect(result).toHaveLength(0)
     })
 
     it('dupes WEB-DL against WEBRip from the same provider (shared slot, WEB-DL trumps)', async () => {
@@ -1045,6 +1131,12 @@ describe('ulcxTrackerService — findDuplicates', () => {
         const result = await service.findDuplicates({ ...baseMetadata, language: ['en'], originalLanguage: 'ja' })
         expect(result).toHaveLength(1)
         expect(result[0]).toMatchObject({ trumpable: false })
+    })
+
+    it('marks foreign-only audio as trumpable by dual audio', async () => {
+        fetchMock.mockResolvedValue({ data: [makeUlcxCandidate({ name: 'Movie 2024 1080p BluRay x264-GROUP' })] })
+        const result = await service.findDuplicates({ ...baseMetadata, language: ['ja', 'en'], originalLanguage: 'ja' })
+        expect(result[0]).toMatchObject({ trumpable: true })
     })
 
     it.each([

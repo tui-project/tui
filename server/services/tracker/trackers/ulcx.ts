@@ -2,11 +2,14 @@ import {
     type HdrTier,
     type TorrentContext as BaseTorrentContext,
     type TorrentRule,
+    type EncodeSizeTier,
     SLOT_TIERS,
     HDR_TIER_TRUMPS,
-    getHdrTier,
-    getCodecFamily,
     WEB_SOURCE_RANK,
+    getHdrTier,
+    getVideoCodecFamily,
+    getEncodeSizeTier,
+    hasAdditionalMainAudioLanguage,
 } from '../util/tracker-util'
 import type { RuleViolation, TrackerService, TrackerUploadOptions } from '../tracker'
 import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
@@ -199,6 +202,10 @@ function checkRules(metadata: Metadata): RuleViolation[] {
         })
     }
 
+    if (metadata.audioCodec !== AUDIO_CODECS.TRUEHD && metadata.hasTrueHDCompatibilityTrack) {
+        violations.push({ rule: 'unexpected_compatibility_track', message: 'Compatibility tracks are only allowed with TrueHD audio.' })
+    }
+
     if (isForeignContent(metadata)) {
         if (!hasEnglishAudio(metadata) && !metadata.hasEnglishSubs) {
             violations.push({
@@ -215,12 +222,51 @@ function checkRules(metadata: Metadata): RuleViolation[] {
         })
     }
 
+    if (hasAdditionalMainAudioLanguage(metadata)) {
+        violations.push({
+            rule: 'additional_main_audio_language',
+            message: 'Main audio tracks may only use the original language or English.',
+        })
+    }
+
+    if (metadata.audioCodec === AUDIO_CODECS.LPCM) {
+        violations.push({ rule: 'lpcm_not_allowed', message: 'LPCM audio is not allowed outside Full Disc uploads.' })
+    }
+
+    if (metadata.audioCodec === AUDIO_CODECS.FLAC && !isMonoOrStereo(metadata.audioChannels)) {
+        violations.push({ rule: 'invalid_flac_channels', message: 'FLAC is only allowed for mono or stereo audio.' })
+    }
+
+    if (
+        isRemux(metadata) &&
+        metadata.audioChannels === AUDIO_CHANNELS['1.0'] &&
+        isLosslessAudio(metadata.audioCodec) &&
+        metadata.audioCodec !== AUDIO_CODECS.FLAC &&
+        metadata.audioCodec !== AUDIO_CODECS.DTS_HD_MA
+    ) {
+        violations.push({ rule: 'invalid_mono_remux_audio', message: 'Lossless mono Remux audio must use FLAC or DTS-HD MA.' })
+    }
+
+    if (isRemux(metadata) && metadata.audioChannels === AUDIO_CHANNELS['2.0'] && isLosslessAudio(metadata.audioCodec) && metadata.audioCodec !== AUDIO_CODECS.FLAC) {
+        violations.push({ rule: 'invalid_stereo_remux_audio', message: 'Lossless stereo Remux audio must use FLAC.' })
+    }
+
+    if (
+        isEncode(metadata) &&
+        metadata.resolution !== RESOLUTIONS['2160p'] &&
+        metadata.resolution !== RESOLUTIONS['4320p'] &&
+        isMultichannel(metadata.audioChannels) &&
+        isLosslessAudio(metadata.audioCodec)
+    ) {
+        violations.push({ rule: 'lossless_multichannel_encode', message: 'Lossless multi-channel audio is not allowed on 1080p or lower encodes.' })
+    }
+
     logger.debug('Tracker rules check completed.', { metadataTitle: metadata.title, violationCount: violations.length, violations: violations.map((violation) => violation.rule) })
 
     return violations
 }
 
-type TorrentContext = BaseTorrentContext & { isNoGrp: boolean }
+type TorrentContext = BaseTorrentContext & { isNoGrp: boolean; isDualAudio: boolean }
 
 /**
  * Refer to:
@@ -245,11 +291,12 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata) {
 
     const uploadHdrTier = getHdrTier(metadata.hdr)
     const uploadContext: TorrentContext = {
-        slot: getSlot(metadata.sourceType, uploadHdrTier, metadata.videoCodec, metadata.service, metadata.cut, metadata.ratio),
+        slot: getSlot(metadata.sourceType, uploadHdrTier, metadata.videoCodec, metadata.service, metadata.cut, metadata.ratio, getMetadataEncodeSizeTier(metadata)),
         hdrTier: uploadHdrTier,
         sourceRank: WEB_SOURCE_RANK[metadata.sourceType] ?? 0,
         revision: Math.max(metadata.repack, metadata.proper, metadata.rerip),
         hasOriginalAudio: hasOriginalAudio(metadata),
+        isDualAudio: metadata.originalLanguage !== 'en' && hasEnglishAudio(metadata) && hasOriginalAudio(metadata),
         hybrid: metadata.hybrid,
         isNoGrp: !metadata.releaseGroup,
         isBannedReleaseGroup: isBannedReleaseGroup(metadata.releaseGroup),
@@ -258,11 +305,20 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata) {
     const existingContexts = candidates.map((torrent) => {
         const hdrTier = getHdrTier(torrent.hdr)
         const context: TorrentContext = {
-            slot: getSlot(torrent.sourceType, hdrTier, torrent.videoCodec, torrent.service, torrent.cut, torrent.ratio),
+            slot: getSlot(
+                torrent.sourceType,
+                hdrTier,
+                torrent.videoCodec,
+                torrent.service,
+                torrent.cut,
+                torrent.ratio,
+                getEncodeSizeTier(torrent.resolution, torrent.videoBitrate)
+            ),
             hdrTier,
             sourceRank: WEB_SOURCE_RANK[torrent.sourceType] ?? 0,
             revision: Math.max(torrent.repack, torrent.proper, torrent.rerip),
             hasOriginalAudio: torrent.hasOriginalAudio,
+            isDualAudio: /\bDual[ ._-]*Audio\b/i.test(torrent.name),
             hybrid: torrent.hybrid,
             isNoGrp: /\bNOGROUP\b/i.test(torrent.name),
             isBannedReleaseGroup: isBannedReleaseGroup(torrent.releaseGroup),
@@ -300,7 +356,7 @@ const TRUMP_RULES: TorrentRule<TorrentContext>[] = [
     // WEB-DL trumps WEBRip from the same provider (same slot, higher source rank)
     (upload, existing) => upload.sourceRank > 0 && existing.sourceRank > 0 && upload.sourceRank > existing.sourceRank,
     // Upload carrying original audio trumps a dubbed-only release
-    (upload, existing) => upload.hasOriginalAudio && !existing.hasOriginalAudio,
+    (upload, existing) => upload.isDualAudio && !existing.isDualAudio,
     // A named group trumps a NOGROUP release
     (upload, existing) => !upload.isNoGrp && existing.isNoGrp,
 ]
@@ -308,14 +364,14 @@ const TRUMP_RULES: TorrentRule<TorrentContext>[] = [
 /**
  * Computes the content slot a release occupies; two releases are duplicates when they share a slot.
  *
- * Slot format: {family}:{service}:{cut}:{ratio}:{hdrTier}[:{codec}]
+ * Slot format: {family}:{cut}:{ratio}:{hdrTier}[:{codec}][:{sizeTier}]
  *
- * - All families split by service, cut, and ratio — different editions/providers coexist
+ * - Remux and encode slots split by cut and ratio; provider is only a WEB axis
  * - WEB slots split by HDR tier: SDR, DV, HDR (incl. DV/HDR), HDR10+ (incl. DV/HDR10+)
  * - Encode slots additionally split by x264 vs x265
  * - Remux slots split by HDR tier; cut/ratio allow different editions to coexist
  */
-function getSlot(sourceType: SourceType, tier: HdrTier, videoCodec: VideoCodec, service?: Service, cut?: string, ratio?: string): string {
+function getSlot(sourceType: SourceType, tier: HdrTier, videoCodec: VideoCodec, service?: Service, cut?: string, ratio?: string, encodeSizeTier?: EncodeSizeTier): string {
     const slotTier = SLOT_TIERS[tier]
     const svc = service ?? ''
     const cutPart = cut ?? ''
@@ -323,12 +379,16 @@ function getSlot(sourceType: SourceType, tier: HdrTier, videoCodec: VideoCodec, 
 
     switch (sourceType) {
         case SOURCE_TYPES.REMUX:
-            return `remux:${svc}:${cutPart}:${ratioPart}:${slotTier}`
+            return `remux:${cutPart}:${ratioPart}:${slotTier}`
         case SOURCE_TYPES.ENCODE:
-            return `encode:${svc}:${cutPart}:${ratioPart}:${slotTier}:${getCodecFamily(videoCodec)}`
+            return `encode:${cutPart}:${ratioPart}:${slotTier}:${getVideoCodecFamily(videoCodec)}:${encodeSizeTier}`
         // WEB-DL, WEBRip, HDTV — provider-scoped slot; WEB-DL and WEBRip from the same provider
         // share a slot so that WEB-DL can trump WEBRip (they are not separate coexisting slots)
         default:
-            return `web:${svc}:${cutPart}:${ratioPart}:${slotTier}`
+            return `web:${svc}:${cutPart}:${ratioPart}:${slotTier}:${getVideoCodecFamily(videoCodec)}`
     }
+}
+
+function getMetadataEncodeSizeTier(metadata: Metadata): EncodeSizeTier | undefined {
+    return isEncode(metadata) ? getEncodeSizeTier(metadata.resolution, metadata.videoBitrate) : undefined
 }

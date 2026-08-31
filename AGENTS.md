@@ -125,6 +125,8 @@ Coverage expectations:
 
 Types exported from `shared/types/` are auto-imported by Nuxt 4 and available globally in both the app (`app/`) and server (`server/`) layers. Do not add explicit import statements for them — no `import type { TrackerRequest } from '../../shared/types/tracker-request'` or similar.
 
+This auto-import convention applies to app and server consumers. Modules inside `shared/types/` must explicitly import runtime values they use from other shared modules. Do not rely on generated Nuxt globals for cross-module runtime dependencies, because direct imports in unit tests execute before those globals are installed. Type-only cross-module imports may also be explicit when needed to keep the shared module independently valid.
+
 ## Frontend Composables
 
 Composables under `app/composables/` wrap `useFetch` with `immediate: false, watch: false` and return `{ pending, error, data, execute }`. Name them with a verb prefix matching the HTTP method: `useGet*` for GET, `usePost*` for POST, `usePatch*` for PATCH. Do not expose a manual `loading` ref — use `pending` from `useFetch`.

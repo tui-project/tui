@@ -660,13 +660,14 @@ describe('athTrackerService — upload extra fields', () => {
     })
 })
 
-function makeAthCandidate(overrides: Partial<{ name: string; details_link: string; resolution_id: number; type_id: number }> = {}) {
+function makeAthCandidate(overrides: Partial<{ name: string; details_link: string; resolution_id: number; type_id: number; media_info: string }> = {}) {
     return {
         attributes: {
             name: 'Movie.2024.1080p.BluRay.ENCODE.x264-GROUP',
             details_link: 'https://aither.cc/torrents/1',
             resolution_id: 3,
             type_id: 3,
+            media_info: 'Video\nBit rate : 12.0 Mb/s',
             ...overrides,
         },
     }
@@ -953,10 +954,10 @@ describe('athTrackerService — findDuplicates', () => {
             expect(await service.findDuplicates(baseMetadata)).toHaveLength(0)
         })
 
-        it('does not dupe an x264 encode against an existing non-x264/x265 encode', async () => {
+        it('dupes an x264 encode against an existing AVC encode', async () => {
             mockParsed({ videoCodec: 'AVC' })
             fetchMock.mockResolvedValue({ data: [makeAthCandidate()] })
-            expect(await service.findDuplicates(baseMetadata)).toHaveLength(0)
+            expect(await service.findDuplicates(baseMetadata)).toHaveLength(1)
         })
 
         it('does not dupe WEB from NF against WEB from AMZN (different providers)', async () => {

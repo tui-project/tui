@@ -51,6 +51,7 @@ function createMetadata(overrides: Partial<Metadata> = {}, filename = 'movie.mkv
             resolution: '2160p',
             hdr: ['HDR10+'],
             videoCodec: 'HEVC',
+            videoBitrate: 18_000_000,
             audioCodec: 'DD+',
             audioChannels: '5.1',
             audioMetadata: 'Atmos',

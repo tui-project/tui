@@ -55,6 +55,14 @@ describe('mediainfo service', () => {
     })
 
     describe('parseMetadataFromMediainfo', () => {
+        it('returns the raw video bitrate', async () => {
+            mockTracks(videoTrack({ BitRate: '17000000' }), audioTrack())
+            const { parseMetadataFromMediainfo } = await loadService()
+
+            const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'ENCODE')
+            expect(result.videoBitrate).toBe(17_000_000)
+        })
+
         it('falls back to the first audio track when none is marked Default', async () => {
             mockTracks(
                 videoTrack(),
@@ -257,6 +265,8 @@ describe('mediainfo service', () => {
                 { format: 'DTS', commercial: 'DTS-HD High Resolution Audio', expected: 'DTS-HD HRA' },
                 { format: 'DTS', commercial: '', expected: 'DTS' },
                 { format: 'FLAC', commercial: '', expected: 'FLAC' },
+                { format: 'PCM', commercial: '', expected: 'LPCM' },
+                { format: 'PCM DVD', commercial: '', expected: 'LPCM' },
                 { format: 'MLP FBA', commercial: '', expected: 'TrueHD' },
                 { format: 'MLP FBA', commercial: 'Auro3D', expected: 'TrueHD' },
                 { format: 'UNKNOWN', commercial: '', expected: undefined },

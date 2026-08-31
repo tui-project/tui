@@ -1,8 +1,9 @@
-import { type HdrTier, type TorrentContext, type TorrentRule, SLOT_TIERS, HDR_TIER_TRUMPS, getHdrTier, getCodecFamily, WEB_SOURCE_RANK } from '../util/tracker-util'
+import { type HdrTier, type TorrentContext, type TorrentRule, SLOT_TIERS, HDR_TIER_TRUMPS, getHdrTier, getVideoCodecFamily, WEB_SOURCE_RANK } from '../util/tracker-util'
 import type { DuplicateEntry, RuleViolation, TrackerService, TrackerUploadOptions } from '../tracker'
 import { buildDubString, buildSeasonEpisodeString, buildSourceString, buildTypeString, shouldIncludeTvYear } from '../util/title-builder-util'
 import { getTorrents, upload } from '../unit3d-tracker'
 import { createLogger } from '../../../utils/logger'
+import { hasAdditionalMainAudioLanguage } from '../util/tracker-util'
 
 const logger = createLogger('tracker:ath')
 
@@ -240,16 +241,6 @@ function isBannedReleaseGroup(releaseGroup: string | undefined, sourceType: Sour
     return forbiddenTypes === null || forbiddenTypes?.has(sourceType) === true
 }
 
-function hasAdditionalMainAudioLanguage(metadata: Metadata): boolean {
-    const resolvedMixedLanguages = metadata.mixedAudioLanguages ?? []
-    const audioLanguages = [...metadata.language.filter((language) => language !== 'mul' || !resolvedMixedLanguages.length), ...resolvedMixedLanguages]
-    const allowedLanguages = [hasEnglishAudio(metadata) ? 'en' : undefined, hasOriginalAudio(metadata) ? metadata.originalLanguage : undefined].filter(
-        (language): language is string => language !== undefined
-    )
-
-    return audioLanguages.some((language) => !allowedLanguages.some((allowedLanguage) => languagesMatch(language, allowedLanguage)))
-}
-
 function getExtraFields(metadata: Metadata): Record<string, string> {
     return {
         dv: metadata.hdr.includes(HDR_TYPES.DV) ? '1' : '0',
@@ -354,7 +345,7 @@ function getSlot(resolution: Resolution, sourceType: SourceType, tier: HdrTier, 
             return `remux:${resBand}:${svc}:${cutPart}:${ratioPart}:${hdrPart}`
         }
         case SOURCE_TYPES.ENCODE: {
-            const codec = collapsesHdr ? '' : getCodecFamily(videoCodec)
+            const codec = collapsesHdr ? '' : getVideoCodecFamily(videoCodec)
             return `encode:${resBand}:${svc}:${cutPart}:${ratioPart}:${slotTier}:${codec}`
         }
         default:

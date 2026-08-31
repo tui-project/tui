@@ -14,6 +14,7 @@ export type TorrentResult = {
     resolution: Resolution
     sourceType: SourceType
     videoCodec: VideoCodec
+    videoBitrate: number
     hdr: HDR[]
     repack: number
     proper: number
@@ -34,6 +35,7 @@ type Attributes = {
     type_id: number
     resolution_id: number
     details_link: string
+    media_info: string
 }
 
 const CATEGORY_IDS = BiMap<MediaType, number>([
@@ -173,6 +175,7 @@ function mapTorrentAttributes(attrs: Attributes): TorrentResult {
         resolution: RESOLUTION_IDS.getByValue(attrs.resolution_id)!,
         sourceType: TYPE_IDS.getByValue(attrs.type_id)!,
         videoCodec: parsed.videoCodec!,
+        videoBitrate: parseVideoBitrate(attrs.media_info),
         hdr: parsed.hdr,
         repack: parsed.repack,
         proper: parsed.proper,
@@ -186,6 +189,22 @@ function mapTorrentAttributes(attrs: Attributes): TorrentResult {
         ratio: parsed.ratio,
         hybrid: parsed.hybrid,
         releaseGroup: parsed.releaseGroup,
+    }
+}
+
+function parseVideoBitrate(mediaInfo: string): number {
+    const videoSection = /(?:^|\r?\n)Video(?:\s*#\d+)?\r?\n([\s\S]*?)(?=\r?\n(?:Audio|Text|Menu)(?:\s*#\d+)?\r?\n|$)/i.exec(mediaInfo)![1]!
+    const match = /^Bit rate\s*:\s*([\d .]+)\s*([kmg]?)b\/s\s*$/im.exec(videoSection)!
+    const value = Number.parseFloat(match[1]!.replaceAll(' ', ''))
+    switch (match[2]!.toLowerCase()) {
+        case 'g':
+            return value * 1_000_000_000
+        case 'm':
+            return value * 1_000_000
+        case 'k':
+            return value * 1_000
+        default:
+            return value
     }
 }
 
