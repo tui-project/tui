@@ -2,7 +2,7 @@
 
 A self-hosted web application for uploading media to private BitTorrent trackers. Select a file or folder, review auto-detected metadata, write a BBCode description, and submit — tui handles torrent creation, duplicate checking, rule validation, and uploading in the background.
 
-> **Current state:** Early development (v0.1.0). Core upload flow is functional. Tracker support is limited to UNIT3D-based trackers. Breaking changes between versions should be expected.
+> **Current state:** Early development (v0.2.0). The core upload flow is functional, with tracker-specific support for Aither(ATH) and Upload.cx(ULCX). Breaking changes between versions should be expected.
 
 ---
 
@@ -11,13 +11,13 @@ A self-hosted web application for uploading media to private BitTorrent trackers
 - [Features](#features)
 - [Screenshots](#screenshots)
 - [Supported Trackers](#supported-trackers)
+- [Tracker-specific Checks](#tracker-specific-checks)
 - [Supported Integrations](#supported-integrations)
 - [Getting Started](#getting-started)
     - [Docker (recommended)](#docker-recommended)
     - [Docker Compose](#docker-compose)
     - [Local Setup](#local-setup)
 - [Configuration](#configuration)
-- [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [Reporting Bugs & Feature Requests](#reporting-bugs--feature-requests)
 - [Attributions](#attributions)
@@ -27,18 +27,19 @@ A self-hosted web application for uploading media to private BitTorrent trackers
 
 ## Features
 
-- **5-step guided upload flow** — Select media → Review/edit metadata → Write description → Pick trackers → Submit
-- **Automatic metadata detection** — Parses filename, runs mediainfo, fetches TMDB/TVDB data to pre-fill resolution, codec, audio, HDR flags, and more
-- **BBCode description editor** — Write and preview descriptions with a live BBCode renderer; a configurable footer is appended automatically
-- **Screenshot capture** — Takes configurable number of screenshots via ffmpeg and uploads them to an image host; links are inserted into the description
+- **5-step guided upload flow** — Select media → Review/edit metadata → Pick trackers → Run pre-flight checks → Write the description and submit
+- **Automatic metadata detection** — Parses the filename and combines MediaInfo, ffprobe, TMDB, and TVDB data to pre-fill resolution, codec, audio, HDR flags, and more
+- **BBCode description editor** — Write and preview descriptions, use formatting shortcuts, and append a version footer automatically
+- **Screenshot capture** — On request, captures a configurable number of screenshots with ffmpeg, uploads them to ImgBB, and inserts their links into the description
 - **Parallel tracker uploads** — Submits to multiple selected trackers concurrently
 - **Pre-flight checks** — Duplicate detection and tracker rule validation before submission
 - **Tracker-aware title generation** — Formats the torrent title according to each tracker's naming convention
 - **Torrent caching** — Re-uploads of the same filepath reuse the already-created `.torrent` file
-- **Live upload dashboard** — Polls every 2 seconds; shows progress, per-tracker results, and allows retrying failed uploads
-- **Upload history** — Paginated history grouped by upload batch with filtering by group
+- **Live upload dashboard** — Uses a server-sent event stream to show torrent creation progress and per-tracker results, with retry support for failed or partially successful uploads
+- **Upload history** — Shows paginated upload attempts and lets you expand related attempts for the same source
+- **Live log viewer** — Streams recent structured logs and supports filtering by text, level, and scope
 - **Torrent client injection** — Pushes the download URL to a connected torrent client after a successful upload
-- **Session-based auth** — Simple login with a single admin account; all routes are protected
+- **Session-based auth** — Simple login with a single admin account; application routes require authentication after setup
 
 ---
 
@@ -77,12 +78,26 @@ All current trackers run on the [UNIT3D](https://github.com/HDInnovations/UNIT3D
 | Aither    | `ATH`  | UNIT3D   |
 | Upload.cx | `ULCX` | UNIT3D   |
 
+## Tracker-specific Checks
+
+During the Review step, tui runs pre-flight checks for each selected tracker before the upload is submitted:
+
+- Tracker-specific rules validate the release metadata and report blocking issues.
+- Duplicate detection looks for existing releases in the same quality or release slot.
+- Duplicate results distinguish blocking conflicts from releases that the new upload may be able to trump.
+- Title generation previews the tracker-specific torrent name that will be submitted.
+
+These checks cover the rules currently implemented by tui, but they are not exhaustive and tracker rules may change independently. Uploaders remain responsible for reviewing and following the current official rules:
+
+- [Aither upload rules](https://aither.cc/pages/1)
+- [Upload.cx upload rules](https://upload.cx/pages/12)
+
 ## Supported Integrations
 
 | Category            | Integration      | Notes                                |
 | ------------------- | ---------------- | ------------------------------------ |
 | **Metadata**        | TMDB             | Movie/show info, language lookup     |
-| **Metadata**        | TVDB             | TV show metadata                     |
+| **Metadata**        | TVDB             | TV special and episode metadata      |
 | **Image hosting**   | ImgBB            | Screenshot upload                    |
 | **Torrent clients** | QUI              | Cross-seed injection via the QUI API |
 | **Media analysis**  | ffmpeg / ffprobe | Screenshot capture, stream probing   |
@@ -180,7 +195,7 @@ pnpm build
 node .output/server/index.mjs
 ```
 
-The server listens on `0.0.0.0:3000` by default. Set `HOST` and `PORT` environment variables to override.
+The production server listens on port `3000` by default. Set `HOST` and `PORT` environment variables to override it; the supplied Docker image uses port `4000`.
 
 ---
 
@@ -188,16 +203,16 @@ The server listens on `0.0.0.0:3000` by default. Set `HOST` and `PORT` environme
 
 All settings are managed through the **Settings** page in the UI. Nothing requires editing config files by hand.
 
-| Setting                          | Description                                                     |
-| -------------------------------- | --------------------------------------------------------------- |
-| **Media paths**                  | Directories the file browser exposes for source media selection |
-| **TMDB API key**                 | Required for automatic metadata lookup and language lists       |
-| **Trackers**                     | URL, API key, and passkey for each supported tracker            |
-| **Image host**                   | ImgBB API key for screenshot uploads                            |
-| **Torrent client**               | URL and API key for optional post-upload injection              |
-| **ffmpeg / ffprobe / mediainfo** | Paths to binaries (leave empty to use `PATH`)                   |
-| **Screenshot counts**            | How many screenshots to capture for movies vs. episode packs    |
-| **Log level**                    | Runtime verbosity (trace → error)                               |
+| Setting                          | Description                                                                    |
+| -------------------------------- | ------------------------------------------------------------------------------ |
+| **Media paths**                  | Directories the file browser exposes for source media selection                |
+| **TMDB API key**                 | Required for automatic metadata lookup and language lists                      |
+| **Trackers**                     | URL, API key, and passkey for each supported tracker                           |
+| **Image host**                   | ImgBB API key for screenshot uploads                                           |
+| **Torrent client**               | URL and API key for optional post-upload injection                             |
+| **ffmpeg / ffprobe / mediainfo** | Binary names or custom paths (`ffmpeg`, `ffprobe`, and `mediainfo` use `PATH`) |
+| **Screenshot counts**            | How many screenshots to capture for movies vs. episode packs                   |
+| **Log level**                    | Runtime verbosity, reflected in both the log file and live viewer              |
 
 ### Required API keys
 
@@ -207,33 +222,6 @@ Before you can upload, you'll need to obtain and enter the following in Settings
 - **Tracker API key + pass key** — find these in your account settings on each tracker you want to upload to.
 - **ImgBB API key** — get one at [imgbb.com/api](https://imgbb.com/api). Required for screenshot uploads.
 - **QUI API key** — found in your QUI instance settings. Only needed if you want torrents automatically injected into your torrent client after upload.
-
----
-
-## Roadmap
-
-### v0.2 (next)
-
-- [ ] Tracker support for Hawke-uno (HUNO), ReelFliX (RFX), LST, and seedpool (SP)
-- [ ] Improved BBCode editor with toolbar shortcuts
-- [ ] Search/filter on the history page
-- [ ] Create a new upload from an existing one (pre-filled with previous data) from the history page
-- [ ] Retry failed uploads from the history page
-
-### Future
-
-- [ ] Integration with torrent clients to identify possible uploads to configured trackers and provide easy upload steps
-- [ ] NFO file upload support
-- [ ] Uploading support for full discs
-- [ ] More tracker support
-- [ ] Grab upload description from configured trackers
-- [ ] Re-use existing screenshots
-- [ ] Anime support
-- [ ] Additional image hosting providers (Imgur, Ptpimg, …)
-- [ ] Additional torrent client integrations (qBittorrent, Deluge, …)
-- [ ] Webhook notifications (Discord, etc.) on upload completion
-
-> Have a feature idea? [Open a feature request](#reporting-bugs--feature-requests).
 
 ---
 
@@ -249,36 +237,22 @@ pnpm dev            # start dev server at http://localhost:3000
 pnpm typecheck      # TypeScript check (required before finishing any change)
 pnpm lint           # ESLint
 pnpm lint:fix       # ESLint with auto-fix
-pnpm test           # unit + Nuxt component tests
+pnpm test           # unit + Nuxt component + browser/API e2e tests
 pnpm test:unit      # unit tests only (fastest feedback loop)
-pnpm test:coverage  # full coverage report
+pnpm test:nuxt      # Nuxt component/page tests
+pnpm test:e2e       # browser and API e2e tests
+pnpm test:coverage  # unit and Nuxt coverage report
 ```
 
 ### Guidelines
 
 - Follow the [Conventional Commits](https://www.conventionalcommits.org/) format: `type: short summary` (under 72 chars) followed by 1–2 sentences of context.
 - All touched code paths must have 100% test coverage (branches, error paths, null guards included). Run `pnpm test:coverage` and verify before opening a PR.
-- API routes must use Zod for request validation. Go through repositories, not collections directly.
-- Composables follow the verb-prefix naming convention (`useGet*`, `usePost*`, `usePatch*`).
-- See [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for detailed conventions on routes, repositories, logging, and tests.
-
-### Branching strategy
-
-| Branch type    | Target    | When to use                                             |
-| -------------- | --------- | ------------------------------------------------------- |
-| `fix/<name>`   | `main`    | Bug fixes — merged directly so they ship immediately    |
-| `feat/<name>`  | `release` | New features — batched on `release` until ready to ship |
-| `chore/<name>` | `main`    | Dependencies, tooling, config                           |
-| `docs/<name>`  | `main`    | Documentation only                                      |
-| `ci/<name>`    | `main`    | CI/CD changes                                           |
-
-After every fix lands on `main`, rebase the `release` branch onto `main` to keep it current.
-
-When the features on `release` are ready to ship, open a PR from `release` → `main`. Merging triggers the release workflow which publishes a new Docker image.
+- See [the contributing guide](./docs/CONTRIBUTING.md) for conventions on routes, repositories, logging, tests, and code style.
 
 ### Opening a pull request
 
-1. Fork the repository and create a `fix/*` or `feat/*` branch following the strategy above.
+1. Fork the repository and create a focused branch for your change.
 2. Make your changes with tests.
 3. Run `pnpm typecheck && pnpm test:coverage` — both must pass cleanly.
 4. Open a PR with a clear description of what changed and why. CI runs automatically and must pass before merging.
