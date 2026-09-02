@@ -70,8 +70,8 @@ importers:
         specifier: 1.2.89
         version: 1.2.89
       '@iconify-json/qlementine-icons':
-        specifier: 1.2.15
-        version: 1.2.15
+        specifier: 1.2.16
+        version: 1.2.16
       '@nuxt/test-utils':
         specifier: 4.1.0
         version: 4.1.0(@testing-library/vue@8.1.0(@vue/compiler-dom@3.5.41)(@vue/compiler-sfc@3.5.41)(@vue/server-renderer@3.5.41)(vue@3.5.41(typescript@6.0.3)))(@vue/test-utils@2.4.11(@vue/compiler-dom@3.5.41)(@vue/server-renderer@3.5.41)(vue@3.5.41(typescript@6.0.3)))(esbuild@0.28.2)(happy-dom@20.11.6)(magicast@0.5.4)(playwright-core@1.62.1)(rolldown@1.2.3)(rollup@4.62.4)(typescript@6.0.3)(vite@8.2.1(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(yaml@2.9.0))(vitest@4.1.10)
@@ -805,8 +805,8 @@ packages:
   '@iconify-json/material-symbols@1.2.89':
     resolution: {integrity: sha512-wYJjKAOptNhc8Bq65PPJVEz/4Ozm+b3ZWEB3H65yGw37dr9AvXibW0GkEdVD7qrCtbD6aC6fY7SLmQCuUGtEAQ==}
 
-  '@iconify-json/qlementine-icons@1.2.15':
-    resolution: {integrity: sha512-orgfRG7pNBC3D11WdVz1pBnBQIiD3AE+OtzzpYd4J2jTlOmHuQcH4GDAIFuETw6UhighakRSySfMJGsvt5uEkQ==}
+  '@iconify-json/qlementine-icons@1.2.16':
+    resolution: {integrity: sha512-fL6KWDEHl6NDP/KyZK8ThnEBXivG2Yi00DKlGyLVyoPsv83/3XODmWTy19tgYHqR0W5NijD5hYMKGJPx9cT8FQ==}
 
   '@iconify/collections@1.0.727':
     resolution: {integrity: sha512-n+ipAqz5A6TWExnndwdT6qVX7KfXiw5GNDSxO2otXs6rxFWdHqizHTW1WvmWmT6m2BqQ8lhzUyWSJvm4M3nMAg==}
@@ -7059,7 +7059,7 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
-  '@iconify-json/qlementine-icons@1.2.15':
+  '@iconify-json/qlementine-icons@1.2.16':
     dependencies:
       '@iconify/types': 2.0.0
 
