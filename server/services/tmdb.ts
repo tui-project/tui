@@ -77,15 +77,16 @@ export async function findByTitle(title: string, mediaType: MediaType, year?: nu
 
     const apiKey = await getApiKey()
     const path = `${TMDB_BASE_URL}/search/${mediaType}`
+    const yearParam = year !== undefined ? { [mediaType === 'movie' ? 'primary_release_year' : 'first_air_date_year']: year } : {}
 
-    logger.trace('Find by title request prepared.', { mediaType, endpoint: path, trimmedTitle })
+    logger.trace('Find by title request prepared.', { mediaType, endpoint: path, query: trimmedTitle, year: yearParam })
 
     try {
         const response = await $fetch<{ results: TMDbItem[] }>(path, {
             query: {
                 api_key: apiKey,
                 query: trimmedTitle,
-                ...(year !== undefined && { [mediaType === 'movie' ? 'primary_release_year' : 'first_air_date_year']: year }),
+                ...yearParam,
             },
         })
 
@@ -97,7 +98,7 @@ export async function findByTitle(title: string, mediaType: MediaType, year?: nu
             .toSorted((left, right) => getTitleMatchScore(right, normalizedTitle, year) - getTitleMatchScore(left, normalizedTitle, year))[0]
 
         if (!match) {
-            logger.warn('Find by title response returned no matching result for media type.', { mediaType })
+            logger.warn('Find by title response returned no matching result.', { title, mediaType, year })
             return null
         } else {
             return match
