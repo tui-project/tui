@@ -159,7 +159,7 @@ function selectOriginalTitle(
 
     const rankedTitles = alternativeTitles
         .map((title) => ({ title, selectionPriority: getSelectionPriority(title, originCountry) }))
-        .filter(({ title, selectionPriority }) => isLatinTitle(title.title) && selectionPriority > 0)
+        .filter(({ title, selectionPriority }) => title.type.toLowerCase() !== 'festival title' && isLatinTitle(title.title) && selectionPriority > 0)
         .toSorted(
             (left, right) =>
                 right.selectionPriority - left.selectionPriority ||

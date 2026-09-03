@@ -797,6 +797,27 @@ describe('GET /api/metadata route handler', () => {
         expect(result.metadata.originalTitle).toBe('Expired')
     })
 
+    it('ignores an origin-country festival title', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 764835 })
+        getDetails.mockResolvedValue({
+            title: 'The Desperate Hour',
+            original_title: 'The Desperate Hour',
+            original_language: 'en',
+            year: 2022,
+            origin_country: 'CA',
+            external_ids: { imdb_id: 'tt13133936' },
+            alternative_titles: [
+                { iso_3166_1: 'CA', title: 'Lakewood', type: 'festival title' },
+                { iso_3166_1: 'NL', title: 'Lakewood', type: '' },
+            ],
+        })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.metadata.originalTitle).toBe('The Desperate Hour')
+    })
+
     it('prefers the US alternative matching the TMDB title', async () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 1128650 })
