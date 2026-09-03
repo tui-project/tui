@@ -6,6 +6,7 @@ Thank you for considering a contribution. This document covers the conventions u
 
 - [Development Setup](#development-setup)
 - [Commit Messages](#commit-messages)
+- [Release Notes](#release-notes)
 - [Server Route Conventions](#server-route-conventions)
 - [Repository Conventions](#repository-conventions)
 - [Shared Types](#shared-types)
@@ -53,6 +54,18 @@ feat: add language cache refresh on TMDB fetch
 Stores fetched languages in NeDB and refreshes automatically after 30 days.
 Falling back to cached data when the TMDB request fails avoids breaking metadata lookups.
 ```
+
+---
+
+## Release Notes
+
+Pull requests should have the release-note label that best represents their
+primary change: `enhancement`, `bug`, `documentation`, `dependencies`, or
+`github_actions`. Unlabelled pull requests are included in the **Maintenance**
+section of generated release notes.
+
+Maintainers should follow the [release guide](./RELEASING.md) when preparing a
+new version.
 
 ---
 
