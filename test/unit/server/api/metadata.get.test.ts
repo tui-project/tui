@@ -246,6 +246,25 @@ describe('GET /api/metadata route handler', () => {
         expect(getDetails).toHaveBeenCalledWith('13', 'movie')
     })
 
+    it('retries title lookup without the year when the initial search is empty', async () => {
+        getQuery.mockReturnValue({ path: '/media/The.Movie.2020.mkv' })
+        parseMetadataFromName.mockReturnValue({
+            title: 'The Movie',
+            year: 2020,
+            sourceType: 'WEB-DL',
+            source: 'Web',
+            repack: 0,
+            proper: 0,
+            hybrid: false,
+        })
+        findByTitle.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 13 })
+
+        const handler = await loadHandler()
+        await expect(handler({} as never)).resolves.toMatchObject({ metadata: { tmdbId: 13 } })
+        expect(findByTitle).toHaveBeenNthCalledWith(1, 'The Movie', 'movie', 2020)
+        expect(findByTitle).toHaveBeenNthCalledWith(2, 'The Movie', 'movie')
+    })
+
     it('uses tv media type when season exists and queries tmdb with tv', async () => {
         getQuery.mockReturnValue({ path: '/media/The.Show.S01E01.mkv' })
         parseMetadataFromName.mockReturnValue({
