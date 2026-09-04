@@ -9,7 +9,9 @@ traceability.
 1. Choose the next version using semantic versioning.
 2. Apply one release-note label to every pull request included in the release:
    `enhancement`, `bug`, `documentation`, `dependencies`, or `github_actions`.
-   Pull requests without one of these labels appear under **Maintenance**.
+   The release-note label workflow derives the label from the pull request's
+   Conventional Commit prefix. Confirm it before merging. Pull requests
+   without one of these labels appear under **Maintenance**.
 3. Update the version in `package.json` and any version references in the
    documentation.
 4. Run `pnpm test`, `pnpm test:coverage`, and `pnpm typecheck`.
