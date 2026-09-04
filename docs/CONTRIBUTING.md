@@ -62,7 +62,10 @@ Falling back to cached data when the TMDB request fails avoids breaking metadata
 Pull requests should have the release-note label that best represents their
 primary change: `enhancement`, `bug`, `documentation`, `dependencies`, or
 `github_actions`. Unlabelled pull requests are included in the **Maintenance**
-section of generated release notes.
+section of generated release notes. A workflow assigns these labels from the
+Conventional Commit prefix in the pull request title. Confirm the assigned
+label before merging, especially when a pull request contains multiple types
+of change.
 
 Maintainers should follow the [release guide](./RELEASING.md) when preparing a
 new version.
