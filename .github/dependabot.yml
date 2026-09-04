@@ -10,24 +10,24 @@ updates:
       schedule:
           interval: 'weekly'
       groups:
-        npm:
-          patterns:
-            - "*"
+          npm:
+              patterns:
+                  - '*'
 
     - package-ecosystem: 'docker'
       directory: '/'
       schedule:
           interval: 'weekly'
       groups:
-        docker:
-          patterns:
-            - "*"
+          docker:
+              patterns:
+                  - '*'
 
     - package-ecosystem: github-actions
       directory: /
       schedule:
-        interval: weekly
+          interval: weekly
       groups:
-        github:
-          patterns:
-            - "*"
+          github:
+              patterns:
+                  - '*'

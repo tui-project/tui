@@ -797,6 +797,24 @@ describe('GET /api/metadata route handler', () => {
         expect(result.metadata.originalTitle).toBe('Expired')
     })
 
+    it('ignores a US sort title that only moves the leading article', async () => {
+        getQuery.mockReturnValue({ path: '/media/show.mkv' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 67557 })
+        getDetails.mockResolvedValue({
+            title: 'The Grand Tour',
+            original_title: 'The Grand Tour',
+            original_language: 'en',
+            year: 2016,
+            origin_country: 'GB',
+            external_ids: { imdb_id: 'tt5712554', tvdb_id: 314087 },
+            alternative_titles: [{ iso_3166_1: 'US', title: 'Grand Tour, The', type: '' }],
+        })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.metadata.originalTitle).toBe('The Grand Tour')
+    })
+
     it('ignores an origin-country festival title', async () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 764835 })
