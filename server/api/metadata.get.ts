@@ -159,7 +159,14 @@ function selectOriginalTitle(
 
     const rankedTitles = alternativeTitles
         .map((title) => ({ title, selectionPriority: getSelectionPriority(title, originCountry) }))
-        .filter(({ title, selectionPriority }) => title.type.toLowerCase() !== 'festival title' && isLatinTitle(title.title) && selectionPriority > 0)
+        .filter(
+            ({ title, selectionPriority }) =>
+                title.type.toLowerCase() !== 'festival title' &&
+                isLatinTitle(title.title) &&
+                selectionPriority > 0 &&
+                !isArticleReorderedVersion(title.title, originalTitle) &&
+                !isArticleReorderedVersion(title.title, preferredTitle)
+        )
         .toSorted(
             (left, right) =>
                 right.selectionPriority - left.selectionPriority ||
@@ -192,6 +199,13 @@ function isRomanizationType(type: string): boolean {
 
 function hasLatinDiacritics(title: string): boolean {
     return /[^\p{ASCII}]/u.test(title)
+}
+
+function isArticleReorderedVersion(title: string, reference: string | undefined): boolean {
+    if (!reference) return false
+
+    const match = title.match(/^(.+),\s+(A|An|The)$/i)
+    return match !== null && `${match[2]} ${match[1]}`.localeCompare(reference, undefined, { sensitivity: 'base' }) === 0
 }
 
 function isSpecialEpisode(metadata: PartialMetadata): boolean {
