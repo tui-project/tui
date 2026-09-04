@@ -259,7 +259,7 @@ function parseRatio(name: string): Ratio {
 
 function parseTitles(name: string, seasonEpisodeIndex: number): { title: string; originalTitle?: string } {
     const fileMetadataIndex = findFileMetadataIndex(name)
-    const cutIndex = seasonEpisodeIndex >= 0 ? seasonEpisodeIndex : fileMetadataIndex >= 0 ? fileMetadataIndex : name.length
+    const cutIndex = Math.min(...[seasonEpisodeIndex, fileMetadataIndex].filter((index) => index >= 0), name.length)
     const rawTitle = name.slice(0, cutIndex)
     const akaMatch = /[.\s_-]+a(?:\.[\s_-]*)?k(?:\.[\s_-]*)?a[.\s_-]+/i.exec(rawTitle)
 
@@ -282,7 +282,7 @@ function normalizeTitle(rawTitle: string): string {
 
 function findFileMetadataIndex(name: string) {
     const metadataStartPatterns = [
-        /\b(?:19|20)\d{2}\b/,
+        /(?:\(|\b)(?:19|20)\d{2}\b/,
         /\b(?:480|576|720|1080|2160|4320)[pi]\b/i,
         /\((?=(?:480|576|720|1080|2160|4320)[pi]\b)/i,
         /\bREMUX\b/i,

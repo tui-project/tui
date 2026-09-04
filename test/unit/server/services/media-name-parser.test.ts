@@ -26,6 +26,28 @@ describe('media name parser', () => {
             },
         },
         {
+            name: 'excludes a series year before a season-only marker from the title',
+            input: 'The.Grand.Tour.2016.S07.2160p.AMZN.WEB-DL.DDP5.1.HDR.H.265-RAWR',
+            expected: {
+                season: 7,
+                episode: undefined,
+                sourceType: 'WEB-DL',
+                source: 'Web',
+                service: 'AMZN',
+                cut: undefined,
+                ratio: undefined,
+                repack: 0,
+                proper: 0,
+                rerip: 0,
+                hybrid: false,
+                hdr: ['HDR'],
+                videoCodec: 'H.265',
+                resolution: '2160p',
+                releaseGroup: 'RAWR',
+                title: 'The Grand Tour',
+            },
+        },
+        {
             name: 'parses movie metadata with cut and remux/source markers',
             input: "Movie.Title.2001.Director's.Cut.REMUX.BluRay-AMZN",
             expected: {
