@@ -2,7 +2,7 @@
 
 A self-hosted web application for uploading media to private BitTorrent trackers. Select a file or folder, review auto-detected metadata, write a BBCode description, and submit — tui handles torrent creation, duplicate checking, rule validation, and uploading in the background.
 
-> **Current state:** Early development (v0.2.0). The core upload flow is functional, with tracker-specific support for Aither(ATH) and Upload.cx(ULCX). Breaking changes between versions should be expected.
+> **Current state:** Early development (v0.2.1). The core upload flow is functional, with tracker-specific support for Aither(ATH) and Upload.cx(ULCX). Breaking changes between versions should be expected.
 
 ---
 

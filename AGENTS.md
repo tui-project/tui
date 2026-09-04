@@ -18,7 +18,7 @@ Server-side persistence currently uses NeDB via `@seald-io/nedb`. The database i
 - Run lint: `pnpm lint`
 - Start dev server: `pnpm dev`
 
-Before finishing any change, always run both:
+Before finishing any code or dependency change, always run both:
 
 ```bash
 pnpm test        # all test projects must pass
@@ -26,6 +26,8 @@ pnpm typecheck   # must produce no errors
 ```
 
 Prefer running the focused test first after a small change, then the full test suite, then typecheck.
+
+For a version-only release update that changes only package version metadata and matching documentation references, tests, coverage, and typecheck may be skipped. Before finishing, verify that the diff contains no runtime or dependency changes and that all project-owned references to the previous current version have been updated consistently.
 
 ## Server Route Conventions
 
@@ -117,8 +119,8 @@ When a unit test imports a Nitro route handler directly, stub Nitro auto-imports
 
 Coverage expectations:
 
-- For every change — new code or modified existing code — add or update tests so all touched files have 100% line, statement, and branch coverage, including error paths and null guards.
-- Run `pnpm test:coverage` after every change and verify coverage before reporting the task as complete.
+- For every code change — new code or modified existing code — add or update tests so all touched files have 100% line, statement, and branch coverage, including error paths and null guards.
+- Run `pnpm test:coverage` after every code or dependency change and verify coverage before reporting the task as complete.
 - If a file is intentionally excluded from coverage (for example model/type-only files), document the reason in configuration comments.
 
 ## Shared Types
