@@ -5,4 +5,6 @@ services:
             - '4000:4000'
         volumes:
             - ./config:/app/config
+            # Replace the host path with your media directory; add /media in Settings.
+            - /path/to/media:/media
         restart: unless-stopped

@@ -2,7 +2,7 @@
 
 A self-hosted web application for uploading media to private BitTorrent trackers. Select a file or folder, review auto-detected metadata, write a BBCode description, and submit — tui handles torrent creation, duplicate checking, rule validation, and uploading in the background.
 
-> **Current state:** Early development (v0.2.1). The core upload flow is functional, with tracker-specific support for Aither(ATH) and Upload.cx(ULCX). Breaking changes between versions should be expected.
+> **Current state:** Early development (v0.2.1). The core upload flow is functional, with tracker-specific support for Aither (ATH) and Upload.cx (ULCX). Breaking changes between versions should be expected.
 
 ---
 
@@ -17,7 +17,9 @@ A self-hosted web application for uploading media to private BitTorrent trackers
     - [Docker (recommended)](#docker-recommended)
     - [Docker Compose](#docker-compose)
     - [Local Setup](#local-setup)
+- [First Upload](#first-upload)
 - [Configuration](#configuration)
+- [Maintenance and Troubleshooting](#maintenance-and-troubleshooting)
 - [Contributing](#contributing)
 - [Reporting Bugs & Feature Requests](#reporting-bugs--feature-requests)
 - [Attributions](#attributions)
@@ -45,27 +47,9 @@ A self-hosted web application for uploading media to private BitTorrent trackers
 
 ## Screenshots
 
-### Setup
+[![tui upload review showing tracker checks](docs/screenshots/upload-review.png)](docs/screenshots/upload-review.png)
 
-<a href="docs/screenshots/setup.png"><img src="docs/screenshots/setup.png" width="49%" /></a>
-
-### Dashboard
-
-<a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" width="49%" /></a>
-
-### Upload Flow
-
-<a href="docs/screenshots/upload-select-media.png"><img src="docs/screenshots/upload-select-media.png" width="49%" /></a> <a href="docs/screenshots/upload-edit-metadata.png"><img src="docs/screenshots/upload-edit-metadata.png" width="49%" /></a>
-<a href="docs/screenshots/upload-edit-description.png"><img src="docs/screenshots/upload-edit-description.png" width="49%" /></a> <a href="docs/screenshots/upload-description-preview.png"><img src="docs/screenshots/upload-description-preview.png" width="49%" /></a>
-<a href="docs/screenshots/upload-select-trackers.png"><img src="docs/screenshots/upload-select-trackers.png" width="49%" /></a> <a href="docs/screenshots/upload-review.png"><img src="docs/screenshots/upload-review.png" width="49%" /></a>
-
-### History
-
-<a href="docs/screenshots/history.png"><img src="docs/screenshots/history.png" width="49%" /></a>
-
-### Settings
-
-<a href="docs/screenshots/settings.png"><img src="docs/screenshots/settings.png" width="49%" /></a>
+[View the full screenshot gallery](docs/SCREENSHOTS.md).
 
 ---
 
@@ -109,27 +93,27 @@ These checks cover the rules currently implemented by tui, but they are not exha
 
 ### Prerequisites
 
-- Docker (recommended path) **or** Node.js 22+ and pnpm 11
+- Docker (recommended path) **or** Node.js 26 and pnpm 11.25.0 (the versions used by CI and the Docker build)
 
 ### Docker (recommended)
 
-Pull and run the latest image:
+Replace `/path/to/media` with an existing media directory on your host, then run the latest image. The image includes ffmpeg, ffprobe, and mediainfo.
 
 ```bash
 docker run -d \
   --name tui \
   -p 4000:4000 \
-  -v $(pwd)/config:/app/config \
+  -v "$(pwd)/config:/app/config" \
   -v /path/to/media:/media \
   --restart unless-stopped \
   ghcr.io/tui-project/tui:latest
 ```
 
-Open `http://localhost:4000` and complete the first-run setup wizard to create your admin account.
+Open `http://localhost:4000`, create your admin account, then follow [First upload](#first-upload).
 
 ### Docker Compose
 
-Create a `docker-compose.yml`:
+Create a `docker-compose.yml`, replacing `/path/to/media` with an existing host directory:
 
 ```yaml
 services:
@@ -145,7 +129,7 @@ services:
         restart: unless-stopped
 ```
 
-Then start it:
+The Compose file checked into this repository builds from source; the example above uses the published image. Then start it:
 
 ```bash
 docker compose up -d
@@ -195,67 +179,63 @@ pnpm build
 node .output/server/index.mjs
 ```
 
+Continue with [First upload](#first-upload) after creating your account.
+
 The production server listens on port `3000` by default. Set `HOST` and `PORT` environment variables to override it; the supplied Docker image uses port `4000`.
 
 ---
 
+## First upload
+
+1. Sign in after creating your admin account and open **Settings**.
+2. Add a **Media path**. For the Docker examples above, enter `/media`, not the host path `/path/to/media`. tui browses files on its server; it does not transfer source media from your browser's computer.
+3. Enter your **TMDB API Key**. Enable at least one tracker and enter its **API Key** and **Pass Key**.
+4. Optionally enable **ImgBB** for generated screenshots, or **QUI** for torrent-client injection, and enter their credentials.
+5. Save your settings, then open **Upload**. Select media, review metadata, select trackers, review pre-flight checks, and write the description before submitting.
+6. Follow progress on the dashboard and review each tracker's result. Confirm that the torrent is present and seeding in your client after upload.
+
 ## Configuration
 
-All settings are managed through the **Settings** page in the UI. Nothing requires editing config files by hand.
+Application settings are managed through the **Settings** page in the UI. Nothing requires editing config files by hand.
 
 | Setting                          | Description                                                                    |
 | -------------------------------- | ------------------------------------------------------------------------------ |
 | **Media paths**                  | Directories the file browser exposes for source media selection                |
 | **TMDB API key**                 | Required for automatic metadata lookup and language lists                      |
-| **Trackers**                     | URL, API key, and passkey for each supported tracker                           |
+| **Trackers**                     | Enable supported trackers and enter their API keys and passkeys                |
 | **Image host**                   | ImgBB API key for screenshot uploads                                           |
 | **Torrent client**               | URL and API key for optional post-upload injection                             |
 | **ffmpeg / ffprobe / mediainfo** | Binary names or custom paths (`ffmpeg`, `ffprobe`, and `mediainfo` use `PATH`) |
 | **Screenshot counts**            | How many screenshots to capture for movies vs. episode packs                   |
 | **Log level**                    | Runtime verbosity, reflected in both the log file and live viewer              |
 
-### Required API keys
+### Integration credentials
 
-Before you can upload, you'll need to obtain and enter the following in Settings:
+| Integration             | Required for                                   | Credentials                                               |
+| ----------------------- | ---------------------------------------------- | --------------------------------------------------------- |
+| TMDB                    | Metadata lookup and language lists             | [TMDB API key](https://www.themoviedb.org/settings/api)   |
+| Tracker                 | Uploading to each enabled tracker              | API key and passkey from your tracker account settings    |
+| ImgBB                   | Optional screenshot generation and hosting     | [ImgBB API key](https://imgbb.com/api)                    |
+| Qui                     | Optional torrent-client injection after upload | URL reachable from Tui and API key from your Qui instance |
+| TVDB via Sonarr Skyhook | TV episode and special metadata lookup         | No separate TVDB API key needed                           |
 
-- **TMDB API key** — get one at [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api). Required for metadata lookups and language lists.
-- **Tracker API key + pass key** — find these in your account settings on each tracker you want to upload to.
-- **ImgBB API key** — get one at [imgbb.com/api](https://imgbb.com/api). Required for screenshot uploads.
-- **QUI API key** — found in your QUI instance settings. Only needed if you want torrents automatically injected into your torrent client after upload.
+### Qui injection limitations
+
+Injection currently targets QUI instance ID `1`; the instance cannot be selected in Tui. Qui may reject torrent injection depending on its cross-seed configuration and whether the torrent meets its cross-seed conditions. A successful tracker upload does not guarantee successful injection into your torrent client. Check Qui's result and logs when injection fails, and confirm the torrent is seeding in the intended client.
+
+From a Docker container, `localhost` refers to that container. Use a Qui address reachable from the Tui container.
+
+---
+
+## Maintenance and troubleshooting
+
+See the [operations guide](docs/OPERATIONS.md) for upgrades, backups, restores, and common problems.
 
 ---
 
 ## Contributing
 
-Contributions are welcome. Please read this section before opening a pull request.
-
-### Development workflow
-
-```bash
-pnpm install        # install dependencies
-pnpm dev            # start dev server at http://localhost:3000
-pnpm typecheck      # TypeScript check (required before finishing any change)
-pnpm lint           # ESLint
-pnpm lint:fix       # ESLint with auto-fix
-pnpm test           # unit + Nuxt component + browser/API e2e tests
-pnpm test:unit      # unit tests only (fastest feedback loop)
-pnpm test:nuxt      # Nuxt component/page tests
-pnpm test:e2e       # browser and API e2e tests
-pnpm test:coverage  # unit and Nuxt coverage report
-```
-
-### Guidelines
-
-- Follow the [Conventional Commits](https://www.conventionalcommits.org/) format: `type: short summary` (under 72 chars) followed by 1–2 sentences of context.
-- All touched code paths must have 100% test coverage (branches, error paths, null guards included). Run `pnpm test:coverage` and verify before opening a PR.
-- See [the contributing guide](./docs/CONTRIBUTING.md) for conventions on routes, repositories, logging, tests, and code style.
-
-### Opening a pull request
-
-1. Fork the repository and create a focused branch for your change.
-2. Make your changes with tests.
-3. Run `pnpm typecheck && pnpm test:coverage` — both must pass cleanly.
-4. Open a PR with a clear description of what changed and why. CI runs automatically and must pass before merging.
+See the [contributing guide](docs/CONTRIBUTING.md) for development setup, test commands, coding conventions, and the pull request workflow. Code and dependency changes require `pnpm test`, `pnpm typecheck`, and `pnpm test:coverage` to pass.
 
 ---
 
@@ -268,7 +248,10 @@ Use [GitHub Issues](https://github.com/tui-project/tui/issues) for both.
 - tui version (visible on the About page)
 - Steps to reproduce
 - What you expected vs. what happened
-- Relevant log output from `config/logs/server.log`
+- Installation method (Docker image tag or local Node/pnpm versions), operating system, and affected tracker/integration
+- Relevant log output from `config/logs/server.log`, with API keys, passkeys, session IDs, private download/announce URLs, and personal paths redacted
+
+Do not attach your `config` directory or database files; settings contain credentials. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 **Feature requests** — describe the use case, not just the desired UI change. Explain what problem you're trying to solve.
 

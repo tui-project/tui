@@ -9,7 +9,7 @@ describe('about page', () => {
 
         expect(screen.getByRole('heading', { name: 'About', level: 1 })).toBeDefined()
         expect(screen.getByText(/^v\d+\.\d+\.\d+/)).toBeDefined()
-        expect(screen.getByRole('link', { name: /View on GitHub/ }).getAttribute('href')).toBe('https://github.com/tui-project/tui-v2')
+        expect(screen.getByRole('link', { name: /View on GitHub/ }).getAttribute('href')).toBe('https://github.com/tui-project/tui')
 
         for (const heading of ['Supported Trackers', 'Image Hosting', 'Torrent Clients', 'Metadata Sources', 'Media Tools', 'Stack']) {
             expect(screen.getByRole('heading', { name: heading, level: 2 })).toBeDefined()

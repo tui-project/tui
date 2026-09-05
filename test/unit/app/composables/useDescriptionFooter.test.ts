@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mockRuntimeConfig = {
     public: {
         version: '1.2.3',
-        projectUrl: 'https://github.com/tui-project/tui-v2',
+        projectUrl: 'https://github.com/tui-project/tui',
     },
 }
 
@@ -14,21 +14,13 @@ describe('useDescriptionFooter composable', () => {
         vi.stubGlobal('useRuntimeConfig', () => mockRuntimeConfig)
     })
 
-    it('appends the footer to a non-empty description', async () => {
+    it.each([
+        ['My description', 'My description\n\n'],
+        ['', ''],
+    ])('appends the footer to description %j', async (description, prefix) => {
         const { useDescriptionFooter } = await import('../../../../app/composables/useDescriptionFooter')
         const { withFooter } = useDescriptionFooter()
 
-        const result = withFooter('My description')
-
-        expect(result).toBe('My description\n\n[right][url=https://github.com/tui-project/tui-v2]Uploaded using Tui v 1.2.3[/url][/right]')
-    })
-
-    it('returns only the footer when description is empty', async () => {
-        const { useDescriptionFooter } = await import('../../../../app/composables/useDescriptionFooter')
-        const { withFooter } = useDescriptionFooter()
-
-        const result = withFooter('')
-
-        expect(result).toBe('[right][url=https://github.com/tui-project/tui-v2]Uploaded using Tui v 1.2.3[/url][/right]')
+        expect(withFooter(description)).toBe(`${prefix}[right][url=https://github.com/tui-project/tui]Uploaded using Tui v 1.2.3[/url][/right]`)
     })
 })

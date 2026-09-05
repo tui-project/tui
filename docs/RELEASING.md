@@ -14,7 +14,7 @@ traceability.
    without one of these labels appear under **Maintenance**.
 3. Update the version in `package.json` and any version references in the
    documentation.
-4. Run `pnpm test`, `pnpm test:coverage`, and `pnpm typecheck`.
+4. Run `pnpm test`, `pnpm test:coverage`, and `pnpm typecheck` for code or dependency changes. For a version-only update, these may be skipped after verifying that the diff contains only version metadata and matching documentation references, with no runtime or dependency changes.
 5. Merge the version change into `main`. After CI succeeds, the tag and release
    workflows create the version tag, Docker image, and draft GitHub Release.
 6. Edit the draft using the structure below, verify its tag and full changelog
@@ -80,3 +80,11 @@ changelog unless it materially changes installation, configuration, or usage.
 Do not publish a release with only the generated pull request list. Add the
 summary, highlights, breaking-change status, and any required upgrade steps
 before publishing it.
+
+## Before the first public release
+
+- Verify the README's repository and image names match the release destination.
+- Ensure the GHCR package is public and test pulling the documented image without registry credentials.
+- Verify the version tag in the operations guide names an available image.
+- Enable GitHub private vulnerability reporting under the repository's security settings, then check that the reporting link in [SECURITY.md](../SECURITY.md) is available.
+- Review screenshots for credentials, private URLs, and personal details before publishing them.
