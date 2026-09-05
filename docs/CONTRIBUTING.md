@@ -5,6 +5,7 @@ Thank you for considering a contribution. This document covers the conventions u
 ## Table of Contents
 
 - [Development Setup](#development-setup)
+- [Opening a Pull Request](#opening-a-pull-request)
 - [Commit Messages](#commit-messages)
 - [Release Notes](#release-notes)
 - [Server Route Conventions](#server-route-conventions)
@@ -20,27 +21,43 @@ Thank you for considering a contribution. This document covers the conventions u
 
 ## Development Setup
 
+Use Node.js 26 and pnpm 11.25.0 to match CI. Follow [Local Setup](../README.md#local-setup) for cloning and system dependencies.
+
 ```bash
 pnpm install        # install dependencies
 pnpm dev            # start dev server at http://localhost:3000
 pnpm typecheck      # TypeScript check
 pnpm lint           # ESLint
 pnpm lint:fix       # ESLint with auto-fix
-pnpm test           # unit + Nuxt component tests
+pnpm test           # unit + Nuxt component + browser/API e2e tests
 pnpm test:unit      # unit tests only (fastest feedback loop)
-pnpm test:coverage  # full coverage report
+pnpm test:nuxt      # Nuxt component/page tests
+pnpm test:e2e       # browser and API e2e tests
+pnpm test:coverage  # unit and Nuxt coverage (excludes e2e)
 ```
 
-Before finishing any change, both of these must pass cleanly:
+Before finishing a code or dependency change, all of these must pass cleanly:
 
 ```bash
 pnpm test
 pnpm typecheck
+pnpm test:coverage
 ```
+
+The e2e script installs Chromium automatically. On Linux, install browser system dependencies with `pnpm exec playwright install-deps chromium`, as CI does.
 
 Prefer running the focused test for the file you changed first, then the full suite, then typecheck.
 
 ---
+
+## Opening a pull request
+
+1. Fork the repository and create a focused branch for your change.
+2. Make your changes and add or update tests for changed behavior.
+3. Run `pnpm test`, `pnpm typecheck`, and `pnpm test:coverage` for code or dependency changes. Run `pnpm lint` to check style.
+4. Open a PR describing the problem, resulting behavior, and validation. Use a Conventional Commit title so the release-note workflow can assign a label. CI must pass before merging.
+
+For version-only changes, tests and typecheck may be skipped when the diff changes only package version metadata and matching documentation references. Verify that no runtime or dependency changes are included and all current-version references agree.
 
 ## Commit Messages
 
@@ -104,7 +121,7 @@ export default defineEventHandler(async (event) => {
 
 ## Shared Types
 
-Types exported from `shared/types/` are auto-imported by Nuxt 4 and available globally in both `app/` and `server/` layers. Do not add explicit import statements for them.
+Types exported from `shared/types/` are auto-imported by Nuxt 4 and available globally in both `app/` and `server/` layers. Do not add explicit import statements for them in app or server consumers. Inside `shared/types/`, explicitly import runtime values from other shared modules; type-only cross-module imports are also allowed so modules remain independently valid in unit tests.
 
 ---
 
@@ -162,7 +179,7 @@ Test files mirror the source tree:
 ### Unit tests
 
 - Cover non-route modules (repositories, utilities, services) under `test/unit/`.
-- Do not import Nitro route handlers directly in unit tests.
+- Focused route-handler tests may live under `test/unit/server/api/`. When importing a handler directly, stub Nitro auto-imports such as `defineEventHandler` and mock external dependencies. API behavior tests belong under `test/e2e/server/api/`.
 - When testing modules that initialize the database:
     1. Call `vi.resetModules()` before importing the module under test.
     2. Set `process.env.DATABASE_DIR` to a temp directory before import.
@@ -172,17 +189,23 @@ Test files mirror the source tree:
 
 - Use `renderSuspended` from `@nuxt/test-utils/runtime`.
 - Use queries from `@testing-library/vue` (`screen.getByRole`, `getByText`, `getByPlaceholderText`, etc.).
-- Use `@testing-library/user-event` for interactions. Always pass `{ delay: null }` to `userEvent.setup()`.
+- Use `@testing-library/user-event` for interactions. Pass `{ delay: null }` to `userEvent.setup()`, except in `StepSelectMedia.test.ts`, which relies on the default delay for dropdown cleanup.
 - Prefer selector-based assertions over broad text checks or index-based access (`findAll(...)[0]`).
 - Prefer `renderSuspended` + selector-driven interactions over Vue Test Utils component-instance access (`findComponent`, `vm.$emit`).
+
+### Browser e2e tests
+
+Use `@nuxt/test-utils/e2e` with Vitest, not the `@playwright/test` runner. Use Playwright page APIs and targeted role, placeholder, or locator assertions rather than broad body-text checks.
 
 ### Parameterised tests
 
 When multiple test cases share the same logic and differ only in input/output values, use `it.each(...)` instead of repeating the test body. This applies to all test types — unit, nuxt, and e2e.
 
+Review touched and closely related tests for duplicate coverage. Use focused helpers for shared setup and assertions while keeping distinct behaviors separate.
+
 ### Coverage
 
-Every changed or added file must have 100% line, statement, and branch coverage — including error paths and null guards. Run `pnpm test:coverage` and verify before opening a PR.
+Every changed or added code file must have 100% line, statement, and branch coverage — including error paths and null guards. Run `pnpm test:coverage` and verify before opening a PR.
 
 ---
 
