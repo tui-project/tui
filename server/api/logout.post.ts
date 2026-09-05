@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
 
     if (sessionId) {
         await removeSessionById(sessionId)
-        logger.info('Logout succeeded and session removed.', { sessionId })
+        logger.info('Logout succeeded and session removed.')
     }
 
     deleteCookie(event, 'session_id', {

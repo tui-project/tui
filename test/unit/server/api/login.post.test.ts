@@ -115,6 +115,7 @@ describe('POST /api/login route handler', () => {
         const response = await handler({} as never)
 
         expect(findUserByUsername).toHaveBeenCalledWith('admin')
+        expect(logger.info).toHaveBeenCalledWith('Login succeeded and session created.', { userId: 'user-1', expiresAt: expect.any(String) })
         expect(createSession).toHaveBeenCalledWith(
             expect.objectContaining({
                 id: expect.any(String),

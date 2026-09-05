@@ -3,6 +3,19 @@ import { join } from 'node:path'
 import { createConsola, LogLevels, type ConsolaInstance, type LogObject } from 'consola'
 import { publishLog } from '../events/log'
 
+const sensitiveFields = new Set([
+    'password',
+    'passwordhash',
+    'sessionid',
+    'authorization',
+    'proxyauthorization',
+    'cookie',
+    'setcookie',
+    'passkey',
+    'torrentdownloadurl',
+    'announceurl',
+])
+
 const logDir = process.env.LOG_DIR ?? join(process.cwd(), 'config', 'logs')
 const logFile = process.env.LOG_FILE ?? join(logDir, 'server.log')
 const logMaxBytes = Number(process.env.LOG_MAX_BYTES ?? 5 * 1024 * 1024)
@@ -22,9 +35,15 @@ const scopedLoggers: ConsolaInstance[] = []
 const recentLogs: LogEntry[] = []
 let nextLogId = 1
 
-baseLogger.addReporter({
-    log: captureLog,
-})
+const reporters = [...baseLogger.options.reporters, { log: captureLog }]
+baseLogger.setReporters([
+    {
+        log(logObj, context) {
+            const sanitizedLog = { ...logObj, args: logObj.args.map((arg) => redactLogValue(arg)) }
+            for (const reporter of reporters) reporter.log(sanitizedLog, context)
+        },
+    },
+])
 
 function captureLog(logObj: LogObject) {
     const entry = createLogEntry(logObj)
@@ -143,4 +162,58 @@ export function setLogLevel(level: number) {
 
 export function getRecentLogs() {
     return [...recentLogs]
+}
+
+// Keep secrets in structured fields, never interpolated into log messages.
+function redactLogValue(value: unknown): unknown {
+    return redactValue(value, new WeakSet<object>())
+}
+
+function redactValue(value: unknown, ancestors: WeakSet<object>): unknown {
+    if (typeof value === 'string') return isSensitiveUrl(value) ? '[REDACTED]' : value
+    if (value === null || typeof value !== 'object') return value
+    if (ancestors.has(value)) return '[Circular]'
+
+    if (value instanceof Error) {
+        // HTTP errors can include credential-bearing request URLs and request objects.
+        // Project only diagnostic text; do not copy request/response/header properties.
+        const error = new Error(redactErrorUrls(value.message))
+        error.name = value.name
+        error.stack = value.stack === undefined ? undefined : redactErrorUrls(value.stack)
+        return error
+    }
+
+    if (value instanceof Date) return value.toJSON()
+
+    ancestors.add(value)
+    const redacted = Array.isArray(value)
+        ? value.map((item) => redactValue(item, ancestors))
+        : Object.fromEntries(Object.entries(value).map(([key, item]) => [key, isSensitiveField(key) ? '[REDACTED]' : redactValue(item, ancestors)]))
+    ancestors.delete(value)
+    return redacted
+}
+
+function redactErrorUrls(text: string) {
+    return text.replace(/https?:\/\/[^\s"'<>]+/gi, '[REDACTED URL]')
+}
+
+function isSensitiveField(key: string) {
+    const normalized = normalizeField(key)
+    return sensitiveFields.has(normalized) || normalized.endsWith('apikey') || normalized.endsWith('token') || normalized.endsWith('secret')
+}
+
+function normalizeField(key: string) {
+    return key.replace(/[-_]/g, '').toLowerCase()
+}
+
+function isSensitiveUrl(value: string) {
+    try {
+        const url = new URL(value)
+        const pathSegments = url.pathname.toLowerCase().split('/')
+        const hasSensitivePath = pathSegments.includes('announce') || pathSegments.includes('download')
+        const hasSensitiveCredentials = Boolean(url.username || url.password) || [...url.searchParams.keys()].some(isSensitiveField)
+        return hasSensitivePath || hasSensitiveCredentials
+    } catch {
+        return false
+    }
 }

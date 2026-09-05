@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
 
     const session = await findActiveSessionById(sessionId)
     if (!session) {
-        logger.warn('Invalid or expired session. Rejecting request.', { path, sessionId })
+        logger.warn('Invalid or expired session. Rejecting request.', { path })
         return rejectUnauthorizedRequest(event, path)
     }
 })

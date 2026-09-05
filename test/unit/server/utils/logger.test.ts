@@ -31,6 +31,121 @@ describe('server logger', () => {
         process.env.LOG_FILE_DISABLED = 'true'
     })
 
+    it.each(['info', 'warn', 'debug', 'trace'] as const)('redacts secrets before every output for %s logs', async (level) => {
+        const stdout = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+        const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+        const { createLogger, getRecentLogs } = await importLogger()
+        const { subscribeToLogs } = await import('../../../../server/events/log')
+        const received: LogEntry[] = []
+        subscribeToLogs((entry) => received.push(entry))
+        const input = {
+            sessionId: 'session-secret',
+            nested: [{ apiKey: 'api-secret', passKey: 'pass-secret' }],
+            response: { data: 'https://tracker.test/torrent/download/response-secret' },
+            torrentDownloadUrl: 'https://tracker.test/download/url-secret',
+            announceUrl: 'https://tracker.test/announce/announce-secret',
+            trackerCode: 'ATH',
+        }
+
+        createLogger('security')[level]('Tracker operation', input)
+
+        const expected = {
+            sessionId: '[REDACTED]',
+            nested: [{ apiKey: '[REDACTED]', passKey: '[REDACTED]' }],
+            response: { data: '[REDACTED]' },
+            torrentDownloadUrl: '[REDACTED]',
+            announceUrl: '[REDACTED]',
+            trackerCode: 'ATH',
+        }
+        const fileLogs = await readLogLines()
+        for (const entries of [fileLogs, getRecentLogs(), received]) {
+            expect(entries).toHaveLength(1)
+            expect(entries[0]).toMatchObject({ msg: 'Tracker operation', context: expected })
+        }
+        const consoleOutput = [...stdout.mock.calls, ...stderr.mock.calls].map(([chunk]) => String(chunk)).join('')
+        expect(consoleOutput).toContain('[REDACTED]')
+        expect(consoleOutput).toContain('ATH')
+        expect(consoleOutput).not.toContain('-secret')
+        expect(input.sessionId).toBe('session-secret')
+        input.trackerCode = 'changed'
+        expect(getRecentLogs()[0]?.context).toEqual(expected)
+    })
+
+    it('redacts URLs in error messages before console, file, buffer, and stream output', async () => {
+        const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+        const { createLogger, getRecentLogs } = await importLogger()
+        const { subscribeToLogs } = await import('../../../../server/events/log')
+        const received: LogEntry[] = []
+        subscribeToLogs((entry) => received.push(entry))
+        createLogger('security').error(new Error('Failed to download https://tracker.test/download/passkey-secret'))
+
+        for (const entries of [await readLogLines(), getRecentLogs(), received]) {
+            expect(entries[0]?.msg).toContain('[REDACTED URL]')
+            expect(entries[0]?.msg).not.toContain('passkey-secret')
+        }
+        const consoleOutput = stderr.mock.calls.map(([chunk]) => String(chunk)).join('')
+        expect(consoleOutput).toContain('[REDACTED URL]')
+        expect(consoleOutput).not.toContain('passkey-secret')
+    })
+
+    it.each([
+        'password',
+        'passwordHash',
+        'session_id',
+        'Authorization',
+        'Proxy-Authorization',
+        'cookie',
+        'Set-Cookie',
+        'tmdbApiKey',
+        'X-API-Key',
+        'access_token',
+        'refreshToken',
+        'clientSecret',
+    ])('redacts the sensitive field %s at every nesting level', async (key) => {
+        const { createLogger, getRecentLogs } = await importLogger()
+        const input = { [key]: 'secret-value', nested: [{ [key]: 'secret-value', trackerCode: 'ATH' }] }
+
+        createLogger('security').info('Sensitive context', input)
+
+        expect(getRecentLogs()[0]?.context).toEqual({ [key]: '[REDACTED]', nested: [{ [key]: '[REDACTED]', trackerCode: 'ATH' }] })
+        expect(input[key]).toBe('secret-value')
+        expect(input.nested[0]?.[key]).toBe('secret-value')
+    })
+
+    it.each([
+        'https://tracker.test/torrent/download/passkey',
+        'https://tracker.test/announce/passkey',
+        'https://tracker.test/file?passKey=secret',
+        'https://tracker.test/file?api_token=secret',
+        'https://user:secret@tracker.test/file',
+    ])('redacts credential-bearing URLs under generic fields: %s', async (url) => {
+        const { createLogger, getRecentLogs } = await importLogger()
+        createLogger('security').info('Tracker response', { response: { data: url } })
+        expect(getRecentLogs()[0]?.context).toEqual({ response: { data: '[REDACTED]' } })
+    })
+
+    it.each(['https://tracker.test', 'https://tracker.test/torrents/123', 'ordinary message'])('preserves non-sensitive strings: %s', async (value) => {
+        const { createLogger, getRecentLogs } = await importLogger()
+        createLogger('security').info('Tracker response', { data: value })
+        expect(getRecentLogs()[0]?.context).toEqual({ data: value })
+    })
+
+    it('preserves dates and repeated references while breaking cycles', async () => {
+        const { createLogger, getRecentLogs } = await importLogger()
+        const shared = { apiKey: 'secret' }
+        const input: Record<string, unknown> = { first: shared, second: shared, date: new Date('2030-01-01T00:00:00Z') }
+        input.self = input
+
+        createLogger('security').info('Cyclic context', input)
+
+        expect(getRecentLogs()[0]?.context).toEqual({
+            first: { apiKey: '[REDACTED]' },
+            second: { apiKey: '[REDACTED]' },
+            date: '2030-01-01T00:00:00.000Z',
+            self: '[Circular]',
+        })
+    })
+
     it('buffers recent logs and publishes new entries to subscribers', async () => {
         const { createLogger, getRecentLogs } = await importLogger('5', { LOG_BUFFER_SIZE: '2' })
         const { subscribeToLogs } = await import('../../../../server/events/log')

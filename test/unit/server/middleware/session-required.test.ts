@@ -97,6 +97,7 @@ describe('session required middleware', () => {
         await expect(handler(event)).resolves.toEqual({ event, to: '/login' })
         expect(deleteExpiredSessions).toHaveBeenCalledTimes(1)
         expect(findActiveSessionById).toHaveBeenCalledWith('session-1')
+        expect(logger.warn).toHaveBeenCalledWith('Invalid or expired session. Rejecting request.', { path: '/' })
         expect(sendError).not.toHaveBeenCalled()
     })
 

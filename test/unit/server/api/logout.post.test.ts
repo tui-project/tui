@@ -44,6 +44,7 @@ describe('POST /api/logout route handler', () => {
         const response = await handler(event)
 
         expect(removeSessionById).toHaveBeenCalledWith('session-1')
+        expect(logger.info).toHaveBeenCalledWith('Logout succeeded and session removed.')
         expect(deleteCookie).toHaveBeenCalledWith(event, 'session_id', { path: '/' })
         expect(response).toBeUndefined()
         expect(setResponseStatus).toHaveBeenCalledWith(event, 204)
