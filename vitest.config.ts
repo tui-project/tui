@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitest/config'
 import { defineVitestProject } from '@nuxt/test-utils/config'
 
+// Apply before test imports and inherit this setting in Nuxt test server processes.
+process.env.LOG_FILE_DISABLED = 'true'
+
 export default defineConfig({
     test: {
         coverage: {
