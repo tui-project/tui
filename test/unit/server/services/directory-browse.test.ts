@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs'
 import { readdir as nodeReaddir, realpath as nodeRealpath, rm, stat as nodeStat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -80,7 +80,7 @@ describe('directory browse service', () => {
         })
 
         const { listChildren } = await loadRepository()
-        await expect(listChildren(rootDir)).resolves.toEqual([{ path: join(resolvedRoot, 'cached.mkv'), folder: false }])
+        await expect(listChildren(resolvedRoot)).resolves.toEqual([{ path: join(resolvedRoot, 'cached.mkv'), folder: false }])
 
         // 1 readdir for signature check only (cache hit, no reload, no save)
         expect(readdirCalls).toBe(1)
@@ -88,12 +88,22 @@ describe('directory browse service', () => {
     })
 
     it('loads and persists data when cache is missing', async () => {
+        const resolvedRoot = await nodeRealpath(rootDir)
         const { listChildren } = await loadRepository()
 
-        await listChildren(rootDir)
-        // 1 for signature + 1 for loadChildren
-        expect(readdirCalls).toBe(2)
+        await listChildren(resolvedRoot)
+        expect(readdirCalls).toBe(1)
         expect(saveDirectoryCache).toHaveBeenCalledTimes(1)
+    })
+
+    it('identifies a symlinked directory with one targeted stat call', async () => {
+        const resolvedRoot = await nodeRealpath(rootDir)
+        const linkedShows = join(rootDir, 'linked-shows')
+        symlinkSync(join(rootDir, 'shows'), linkedShows)
+        const { listChildren } = await loadRepository()
+
+        await expect(listChildren(resolvedRoot)).resolves.toContainEqual({ path: join(resolvedRoot, 'linked-shows'), folder: true })
+        expect(readdirCalls).toBe(1)
     })
 
     it('returns fresh data immediately and updates cache asynchronously when signature changes', async () => {
@@ -106,14 +116,13 @@ describe('directory browse service', () => {
 
         const { listChildren } = await loadRepository()
 
-        await expect(listChildren(rootDir)).resolves.toEqual(
+        await expect(listChildren(resolvedRoot)).resolves.toEqual(
             expect.arrayContaining([
                 expect.objectContaining({ path: join(resolvedRoot, 'movie.mkv'), folder: false }),
                 expect.objectContaining({ path: join(resolvedRoot, 'shows'), folder: true }),
             ])
         )
-        // 1 for signature + 1 for loadChildren (signature changed)
-        expect(readdirCalls).toBe(2)
+        expect(readdirCalls).toBe(1)
 
         await vi.waitFor(() => {
             expect(saveDirectoryCache).toHaveBeenCalledTimes(1)
@@ -131,7 +140,7 @@ describe('directory browse service', () => {
 
         const { listChildren } = await loadRepository()
 
-        await listChildren(rootDir)
+        await listChildren(resolvedRoot)
 
         await vi.waitFor(() => {
             expect(loggerWarn).toHaveBeenCalledWith('Failed to update directory cache.', expect.any(Error))
@@ -140,10 +149,11 @@ describe('directory browse service', () => {
 
     it('logs when async cache creation fails after a cache miss', async () => {
         saveDirectoryCache.mockRejectedValue(new Error('save-failed'))
+        const resolvedRoot = await nodeRealpath(rootDir)
 
         const { listChildren } = await loadRepository()
 
-        await listChildren(rootDir)
+        await listChildren(resolvedRoot)
 
         await vi.waitFor(() => {
             expect(loggerWarn).toHaveBeenCalledWith('Failed to update directory cache.', expect.any(Error))

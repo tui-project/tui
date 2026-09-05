@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { getSettings } from '../repositories/settings-repository'
 import { listChildren } from '../services/directory-browse'
 import { createLogger } from '../utils/logger'
-import { isWithinAnyRoot, sortPathItems } from '../utils/file-system'
+import { resolvePathWithinAnyRoot, sortPathItems } from '../utils/file-system'
 import { isBlank } from '../utils/string'
 import { parseValidatedQuery } from '../utils/request-validator'
 
@@ -50,7 +50,8 @@ async function browseEligiblePaths(parent: string | null) {
 
         logger.trace('Browsing directory children for parent path.', { parent })
 
-        if (!isWithinAnyRoot(parent, roots)) {
+        const canonicalParent = await resolvePathWithinAnyRoot(parent, roots)
+        if (!canonicalParent) {
             logger.warn('Rejected directory browse because parent path is outside configured roots.', { parent })
 
             throw createError({
@@ -59,7 +60,7 @@ async function browseEligiblePaths(parent: string | null) {
             })
         }
 
-        return await listChildren(parent)
+        return await listChildren(canonicalParent)
     } catch (error: unknown) {
         logger.warn('Unable to load paths', error)
 

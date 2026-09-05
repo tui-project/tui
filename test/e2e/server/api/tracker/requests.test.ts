@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, writeFileSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -7,12 +7,20 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 const databaseDir = mkdtempSync(join(tmpdir(), 'tui-e2e-db-tracker-requests-'))
 const logDir = mkdtempSync(join(tmpdir(), 'tui-e2e-log-tracker-requests-'))
+const mediaDir = mkdtempSync(join(tmpdir(), 'tui-e2e-media-tracker-requests-'))
+const mediaFiles = {
+    first: join(mediaDir, 'first.mkv'),
+    second: join(mediaDir, 'second.mkv'),
+    grouped: join(mediaDir, 'grouped.mkv'),
+    retry: join(mediaDir, 'retry.mkv'),
+}
+Object.values(mediaFiles).forEach((path) => writeFileSync(path, 'media'))
 
 process.env.DATABASE_DIR = databaseDir
 process.env.LOG_DIR = logDir
 
 afterAll(async () => {
-    await Promise.all([rm(databaseDir, { recursive: true, force: true }), rm(logDir, { recursive: true, force: true })])
+    await Promise.all([rm(databaseDir, { recursive: true, force: true }), rm(logDir, { recursive: true, force: true }), rm(mediaDir, { recursive: true, force: true })])
 })
 
 async function getSessionCookie(): Promise<string> {
@@ -66,6 +74,13 @@ describe('tracker upload requests', async () => {
             method: 'POST',
             body: { username: 'admin', password: 'Admin@123' },
         })
+        const cookie = await getSessionCookie()
+        const settings = await $fetch<Record<string, unknown>>('/api/settings', { headers: { cookie } })
+        await $fetch('/api/settings', {
+            method: 'POST',
+            headers: { cookie },
+            body: { ...settings, mediaPaths: [mediaDir], tmdbApiKey: 'test-key' },
+        })
     })
 
     it('GET returns an empty list when no requests exist', async () => {
@@ -89,7 +104,7 @@ describe('tracker upload requests', async () => {
             method: 'POST',
             headers: { cookie },
             body: {
-                filepath: '/some/movie.mkv',
+                filepath: mediaFiles.first,
                 metadata: VALID_METADATA,
                 description: '[b]A test upload[/b]',
                 trackers: [VALID_TRACKER_ITEM],
@@ -110,7 +125,7 @@ describe('tracker upload requests', async () => {
             method: 'POST',
             headers: { cookie },
             body: {
-                filepath: '/another/movie.mkv',
+                filepath: mediaFiles.second,
                 metadata: VALID_METADATA,
                 description: 'Another upload',
                 trackers: [VALID_TRACKER_ITEM],
@@ -144,7 +159,7 @@ describe('tracker upload requests', async () => {
             method: 'POST',
             headers: { cookie },
             body: {
-                filepath: '/grouped/movie.mkv',
+                filepath: mediaFiles.grouped,
                 metadata: VALID_METADATA,
                 description: 'Grouped upload',
                 trackers: [VALID_TRACKER_ITEM],
@@ -213,7 +228,7 @@ describe('tracker upload requests', async () => {
             method: 'POST',
             headers: { cookie },
             body: {
-                filepath: '/movie.mkv',
+                filepath: mediaFiles.retry,
                 metadata: VALID_METADATA,
                 description: '',
                 trackers: [VALID_TRACKER_ITEM],

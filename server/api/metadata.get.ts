@@ -6,7 +6,7 @@ import { createLogger } from '../utils/logger'
 import { parseMetadataFromName, type ParsedNameMetadata } from '../services/media-name-parser'
 import { parseMetadataFromMediainfo, type ParsedMediainfoMetadata } from '../services/mediainfo'
 import { findByExternalID, findByTitle, findLocale, getDetails, ID_TYPES, type TMDbAlternativeTitle } from '../services/tmdb'
-import { isWithinAnyRoot, resolveMediaFilePath } from '../utils/file-system'
+import { resolveMediaFilePath, resolvePathWithinAnyRoot } from '../utils/file-system'
 import { parseValidatedQuery } from '../utils/request-validator'
 import { findTvdbSpecial, findTvdbSpecialRange } from '../services/tvdb'
 
@@ -25,7 +25,8 @@ export default defineEventHandler(async (event) => {
     })
 
     const settings = await getSettings()
-    if (!isWithinAnyRoot(path, settings.mediaPaths)) {
+    const canonicalPath = await resolvePathWithinAnyRoot(path, settings.mediaPaths)
+    if (!canonicalPath) {
         logger.warn('Rejected metadata request because path is outside configured roots.', { path: path })
 
         throw createError({
@@ -36,7 +37,7 @@ export default defineEventHandler(async (event) => {
 
     const filename = basename(path)
     const metadataFromFilename = parseMetadataFromName(filename)
-    const mediaFilePath = await resolveMediaFilePath(path)
+    const mediaFilePath = await resolveMediaFilePath(canonicalPath)
     const metadataFromMediainfo = await parseMetadataFromMediainfo(mediaFilePath, metadataFromFilename.sourceType)
     const { metadata, logoUrl } = await buildMetadata(metadataFromFilename, metadataFromMediainfo)
 

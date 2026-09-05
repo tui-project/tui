@@ -194,5 +194,5 @@ Do not inline duplicate or trump logic inside the loop — all conditions belong
 - Keep persisted filenames stable unless a migration is intended. For example, `userCollection` still writes to `users.db`.
 - Use ASCII text unless the surrounding file already uses non-ASCII.
 - Do not add defensive checks for conditions that cannot realistically occur given the inputs the code receives. Only validate at genuine system boundaries (user input, external APIs). Unreachable branches hurt coverage and signal false uncertainty about invariants.
-- Define helper/dependent functions after the function that uses them, in order of first usage. The public or top-level entry point comes first; its helpers follow.
+- Define private helper/dependent functions after the function that uses them and order them by first usage. The public or top-level entry point comes first; its private functions follow in the order they are called.
 - Prefer `switch` over multiple `if`/`else if` chains when branching on a single value.

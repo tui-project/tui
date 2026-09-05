@@ -9,7 +9,7 @@ const logger = {
 const readBody = vi.fn()
 const createError = vi.fn((payload: unknown) => payload)
 const getSettings = vi.fn()
-const isWithinAnyRoot = vi.fn()
+const resolvePathWithinAnyRoot = vi.fn()
 const createScreenshots = vi.fn()
 
 beforeEach(() => {
@@ -27,7 +27,7 @@ beforeEach(() => {
         episodePackScreenshotCount: 3,
         imgbbApiKey: 'imgbb-key',
     })
-    isWithinAnyRoot.mockReturnValue(true)
+    resolvePathWithinAnyRoot.mockImplementation(async (path) => path)
     createScreenshots.mockResolvedValue({
         screenshots: [{ order: 1, url: 'https://full', thumbnailUrl: 'https://display' }],
     })
@@ -45,7 +45,7 @@ async function loadHandler() {
         createScreenshots,
     }))
     vi.doMock('../../../../server/utils/file-system', () => ({
-        isWithinAnyRoot,
+        resolvePathWithinAnyRoot,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
         createLogger: () => logger,
@@ -68,7 +68,7 @@ describe('POST /api/screenshots route handler', () => {
 
     it('rejects paths outside configured roots', async () => {
         readBody.mockResolvedValue({ path: '/outside/file.mkv', hdr: false, tv: false })
-        isWithinAnyRoot.mockReturnValue(false)
+        resolvePathWithinAnyRoot.mockResolvedValue(null)
         const handler = await loadHandler()
 
         await expect(handler({} as never)).rejects.toEqual({
@@ -79,11 +79,12 @@ describe('POST /api/screenshots route handler', () => {
 
     it('returns uploaded screenshots for valid requests', async () => {
         readBody.mockResolvedValue({ path: '/media/file.mkv', hdr: true, tv: true })
+        resolvePathWithinAnyRoot.mockResolvedValue('/canonical/media/file.mkv')
         const handler = await loadHandler()
 
         await expect(handler({} as never)).resolves.toEqual({
             screenshots: [{ order: 1, url: 'https://full', thumbnailUrl: 'https://display' }],
         })
-        expect(createScreenshots).toHaveBeenCalledWith('/media/file.mkv', true, true)
+        expect(createScreenshots).toHaveBeenCalledWith('/canonical/media/file.mkv', true, true)
     })
 })

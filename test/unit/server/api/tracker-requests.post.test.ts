@@ -21,6 +21,7 @@ const createTrackerTorrent = vi.fn()
 const getSettings = vi.fn()
 const createTrackerService = vi.fn()
 const resolveMediaFilePath = vi.fn()
+const resolvePathWithinAnyRoot = vi.fn()
 const analyzeMediaFileAsText = vi.fn()
 const injectTorrent = vi.fn()
 
@@ -30,9 +31,10 @@ beforeEach(() => {
     vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
     vi.stubGlobal('setResponseStatus', setResponseStatus)
     waitUntilPromise = undefined
-    getSettings.mockResolvedValue({ trackers: [], torrentClients: [] })
+    getSettings.mockResolvedValue({ mediaPaths: ['/media'], trackers: [], torrentClients: [] })
     createTrackerService.mockResolvedValue({ upload: vi.fn().mockResolvedValue('https://tracker.example.com/torrent/download/1') })
     resolveMediaFilePath.mockResolvedValue('/media/Movie.2024.1080p.mkv')
+    resolvePathWithinAnyRoot.mockImplementation(async (path) => path)
     analyzeMediaFileAsText.mockResolvedValue('mediainfo output')
 })
 
@@ -67,6 +69,7 @@ async function loadHandler() {
     }))
     vi.doMock('../../../../server/utils/file-system', () => ({
         resolveMediaFilePath,
+        resolvePathWithinAnyRoot,
     }))
     vi.doMock('../../../../server/services/mediainfo', () => ({
         analyzeMediaFileAsText,
@@ -144,6 +147,16 @@ describe('POST /api/tracker/requests route handler', () => {
             message: 'invalid_request',
         })
         expect(logger.warn).toHaveBeenCalled()
+    })
+
+    it('rejects upload paths outside configured media roots before saving work', async () => {
+        readBody.mockResolvedValue(buildRequest({ filepath: '/outside/movie.mkv' }))
+        resolvePathWithinAnyRoot.mockResolvedValue(null)
+        const handler = await loadHandler()
+
+        await expect(handler(mockEvent())).rejects.toEqual({ statusCode: 400, message: 'invalid_path' })
+        expect(saveTrackerRequest).not.toHaveBeenCalled()
+        expect(logger.warn).toHaveBeenCalledWith('Rejected tracker upload request because filepath is outside configured roots.', { filepath: '/outside/movie.mkv' })
     })
 
     it('accepts valid upload requests', async () => {
