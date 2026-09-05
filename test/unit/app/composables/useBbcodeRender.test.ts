@@ -4,6 +4,7 @@ import { ref } from 'vue'
 describe('useBbcodeRender composable', () => {
     beforeEach(() => {
         vi.resetModules()
+        vi.doUnmock('@bbob/html')
         vi.unstubAllGlobals()
         vi.stubGlobal('ref', ref)
     })
@@ -128,5 +129,25 @@ describe('useBbcodeRender composable', () => {
         expect(toHtml('[/b]')).toBe('broken')
 
         expect(error.value).toContain('parsing error: tag: b')
+    })
+
+    it.each([
+        ['<img src="https://image.test/a.jpg" onerror="alert(1)">', '<img src="https://image.test/a.jpg">'],
+        ['<script>alert(1)</script><b>Title</b>', '<b>Title</b>'],
+        ['<a href="javascript:alert(1)">Link</a>', '<a>Link</a>'],
+        ['<a href="jav&#x61;script:alert(1)">Link</a>', '<a>Link</a>'],
+        ['<a href="data:text/html,test">Link</a>', '<a>Link</a>'],
+        ['<iframe src="https://example.test"></iframe><form><input name="password"></form>', ''],
+        ['<svg onload="alert(1)"></svg><math><mi>x</mi></math>', ''],
+        ['<span id="preview" data-action="run" onclick="alert(1)">Text</span>', '<span>Text</span>'],
+        ['[comparison=<img src=x onerror=alert(1)>]Body[/comparison]', '<div><span class="font-bold"><img src="x"></span>: Show</div>'],
+        [
+            '[spoiler=<img src=x onerror=alert(1)>]Body[/spoiler]',
+            '<details><summary class="cursor-pointer font-medium text-default"><img src="x"></summary><div>Body</div></details>',
+        ],
+    ])('sanitizes generated preview HTML: %s', async (input, expected) => {
+        const { useBbcodeRender } = await import('../../../../app/composables/useBbcodeRender')
+
+        expect(useBbcodeRender().toHtml(input)).toBe(expected)
     })
 })

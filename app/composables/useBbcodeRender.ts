@@ -2,6 +2,7 @@ import { TagNode, getUniqAttr, isTagNode } from '@bbob/plugin-helper'
 import presetHTML5 from '@bbob/preset-html5'
 import type { BBobCoreTagNodeTree, NodeContent, ParseError, PresetTagsDefinition, TagNodeTree } from '@bbob/types'
 import bbobHTML from '@bbob/html'
+import DOMPurify from 'isomorphic-dompurify'
 
 export function useBbcodeRender() {
     const parseError = ref<string | undefined>(undefined)
@@ -18,7 +19,41 @@ export function useBbcodeRender() {
             parseError.value = `parsing error: tag: ${error.tagName}, line number: ${error.lineNumber}, colum number: ${error.columnNumber}.`
         }
 
-        return processed
+        return DOMPurify.sanitize(processed, {
+            ALLOWED_TAGS: [
+                'div',
+                'span',
+                'p',
+                'br',
+                'hr',
+                'b',
+                'strong',
+                'i',
+                'em',
+                'u',
+                's',
+                'del',
+                'h1',
+                'h2',
+                'h3',
+                'h4',
+                'h5',
+                'h6',
+                'a',
+                'img',
+                'details',
+                'summary',
+                'blockquote',
+                'pre',
+                'code',
+                'ul',
+                'ol',
+                'li',
+            ],
+            ALLOWED_ATTR: ['class', 'style', 'href', 'src', 'alt', 'title', 'width', 'height', 'referrerpolicy', 'type'],
+            ALLOW_DATA_ATTR: false,
+            ALLOW_ARIA_ATTR: false,
+        })
     }
 
     return {
