@@ -1,9 +1,10 @@
-import { readdir, stat } from 'node:fs/promises'
+import { readdir, realpath, stat } from 'node:fs/promises'
 import { createError } from 'h3'
-import { sep } from 'node:path'
+import { isAbsolute, join, relative } from 'node:path'
 import { createLogger } from './logger'
 
 const logger = createLogger('file-system')
+const canonicalRootsCache = new Map<string, Promise<string[]>>()
 
 export interface MediaPathItem {
     path: string
@@ -21,8 +22,37 @@ export function sortPathItems(items: MediaPathItem[]) {
     })
 }
 
-export function isWithinAnyRoot(pathToCheck: string, allowedRoots: string[]) {
-    return allowedRoots.some((rootPath) => pathToCheck === rootPath || pathToCheck.startsWith(`${rootPath}${sep}`))
+export async function resolvePathWithinAnyRoot(pathToCheck: string, allowedRoots: string[]) {
+    try {
+        const [canonicalPath, canonicalRoots] = await Promise.all([realpath(pathToCheck), getCanonicalRoots(allowedRoots)])
+        return canonicalRoots.some((root) => isWithinRoot(canonicalPath, root)) ? canonicalPath : null
+    } catch {
+        return null
+    }
+}
+
+function getCanonicalRoots(allowedRoots: string[]) {
+    const key = JSON.stringify(allowedRoots)
+    const cachedRoots = canonicalRootsCache.get(key)
+    if (cachedRoots) {
+        return cachedRoots
+    }
+
+    const roots = Promise.all(allowedRoots.map((root) => realpath(root))).catch((error: unknown) => {
+        canonicalRootsCache.delete(key)
+        throw error
+    })
+    canonicalRootsCache.set(key, roots)
+    return roots
+}
+
+function isWithinRoot(pathToCheck: string, root: string) {
+    const relativePath = relative(root, pathToCheck)
+    return relativePath === '' || (!relativePath.startsWith('..') && !isAbsolute(relativePath))
+}
+
+export function clearCanonicalRootsCache() {
+    canonicalRootsCache.clear()
 }
 
 export async function resolveMediaFilePath(inputPath: string): Promise<string> {
@@ -47,18 +77,11 @@ export async function resolveMediaFilePaths(inputPath: string): Promise<string[]
     }
 
     if (pathStats.isDirectory()) {
-        const names = await readdir(inputPath)
-        const sortedNames = names.toSorted((left, right) => left.localeCompare(right))
-        const mediaFilePaths: string[] = []
-
-        for (const name of sortedNames) {
-            const candidatePath = `${inputPath}${sep}${name}`
-            const candidateStats = await stat(candidatePath)
-
-            if (candidateStats.isFile()) {
-                mediaFilePaths.push(candidatePath)
-            }
-        }
+        const entries = await readdir(inputPath, { withFileTypes: true })
+        const mediaFilePaths = entries
+            .filter((entry) => entry.isFile())
+            .map((entry) => join(inputPath, entry.name))
+            .toSorted((left, right) => left.localeCompare(right))
 
         if (mediaFilePaths.length > 0) {
             logger.trace('Resolved media file paths from directory.', { inputPath, fileCount: mediaFilePaths.length })

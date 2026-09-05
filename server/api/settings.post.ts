@@ -2,6 +2,7 @@ import { stat } from 'node:fs/promises'
 import { createError } from 'h3'
 import { z } from 'zod'
 import { getSettings, saveSettings } from '../repositories/settings-repository'
+import { clearCanonicalRootsCache } from '../utils/file-system'
 import { createLogger, setLogLevel } from '../utils/logger'
 import { parseValidatedBody } from '../utils/request-validator'
 import { toSettingsResponse } from './settings-response'
@@ -131,6 +132,8 @@ export default defineEventHandler(async (event) => {
 
     await saveSettings(request)
     setLogLevel(request.logLevel)
+    clearCanonicalRootsCache()
+
     logger.info('Settings updated.')
 
     const savedSettings = await getSettings()

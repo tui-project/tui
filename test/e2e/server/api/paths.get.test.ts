@@ -1,19 +1,27 @@
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, symlinkSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { $fetch, fetch, setup } from '@nuxt/test-utils/e2e'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 const databaseDir = mkdtempSync(join(tmpdir(), 'tui-e2e-db-paths-api-'))
 const logDir = mkdtempSync(join(tmpdir(), 'tui-e2e-log-paths-api-'))
 const mediaDir = mkdtempSync(join(tmpdir(), 'tui-e2e-media-paths-api-'))
+const outsideDir = mkdtempSync(join(tmpdir(), 'tui-e2e-outside-paths-api-'))
+const outsideLink = join(mediaDir, 'outside-link')
+symlinkSync(outsideDir, outsideLink)
 
 process.env.DATABASE_DIR = databaseDir
 process.env.LOG_DIR = logDir
 
 afterAll(async () => {
-    await Promise.all([rm(databaseDir, { recursive: true, force: true }), rm(logDir, { recursive: true, force: true }), rm(mediaDir, { recursive: true, force: true })])
+    await Promise.all([
+        rm(databaseDir, { recursive: true, force: true }),
+        rm(logDir, { recursive: true, force: true }),
+        rm(mediaDir, { recursive: true, force: true }),
+        rm(outsideDir, { recursive: true, force: true }),
+    ])
 })
 
 async function getSessionCookie(): Promise<string> {
@@ -83,6 +91,18 @@ describe('GET /api/paths', async () => {
                 headers: { cookie },
             })
         ).rejects.toMatchObject({ statusCode: 400, data: { message: 'invalid_parent_path' } })
+    })
+
+    it.each([
+        ['parent traversal', join(mediaDir, '..', basename(outsideDir))],
+        ['symlink escape', outsideLink],
+    ])('rejects a %s that resolves outside the configured roots', async (_case, parent) => {
+        const cookie = await getSessionCookie()
+
+        await expect(() => $fetch('/api/paths', { query: { parent }, headers: { cookie } })).rejects.toMatchObject({
+            statusCode: 400,
+            data: { message: 'invalid_parent_path' },
+        })
     })
 
     it('returns 401 without a valid session', async () => {

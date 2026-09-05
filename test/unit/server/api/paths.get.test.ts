@@ -12,6 +12,7 @@ const createError = vi.fn<(payload: { statusCode: number; message: string }) => 
 const stat = vi.fn<(target: string) => Promise<{ isDirectory: () => boolean }>>()
 const getSettings = vi.fn<() => Promise<{ id: string; mediaPaths: string[] }>>()
 const listChildren = vi.fn<() => Promise<Array<{ path: string; folder: boolean }>>>()
+const resolvePathWithinAnyRoot = vi.fn()
 
 beforeEach(() => {
     vi.resetModules()
@@ -19,6 +20,7 @@ beforeEach(() => {
     vi.stubGlobal('defineEventHandler', (handler: unknown) => handler)
     createError.mockImplementation((payload) => payload)
     getSettings.mockResolvedValue({ id: 'app-settings', mediaPaths: ['/media'] })
+    resolvePathWithinAnyRoot.mockImplementation(async (path) => path)
 })
 
 async function loadHandler() {
@@ -34,6 +36,10 @@ async function loadHandler() {
         listChildren,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({ createLogger: () => logger }))
+    vi.doMock('../../../../server/utils/file-system', async () => {
+        const actual = await vi.importActual<typeof import('../../../../server/utils/file-system')>('../../../../server/utils/file-system')
+        return { ...actual, resolvePathWithinAnyRoot }
+    })
 
     const { default: handler } = await import('../../../../server/api/paths.get')
     return handler
@@ -85,6 +91,7 @@ describe('GET /api/paths route handler', () => {
 
     it('returns invalid_parent_path when parent is outside configured roots', async () => {
         getQuery.mockReturnValue({ parent: '/etc' })
+        resolvePathWithinAnyRoot.mockResolvedValue(null)
         const handler = await loadHandler()
 
         await expect(handler({} as never)).rejects.toEqual({

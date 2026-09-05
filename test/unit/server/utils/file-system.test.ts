@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const readdir = vi.fn()
+const realpath = vi.fn()
 const stat = vi.fn()
 const createError = vi.fn((payload: unknown) => payload)
 const logger = {
@@ -11,12 +12,14 @@ const logger = {
 
 vi.mock('node:fs/promises', () => ({
     readdir,
+    realpath,
     stat,
 }))
 
 beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
+    realpath.mockImplementation(async (path) => path)
 })
 
 async function loadModule() {
@@ -32,6 +35,14 @@ async function loadModule() {
 
 function createStats(options: { file?: boolean; directory?: boolean } = {}) {
     return {
+        isFile: () => Boolean(options.file),
+        isDirectory: () => Boolean(options.directory),
+    }
+}
+
+function createDirent(name: string, options: { file?: boolean; directory?: boolean } = {}) {
+    return {
+        name,
         isFile: () => Boolean(options.file),
         isDirectory: () => Boolean(options.directory),
     }
@@ -56,13 +67,44 @@ describe('file-system utils', () => {
         ])
     })
 
-    it('checks whether a path is inside any configured root', async () => {
-        const { isWithinAnyRoot } = await loadModule()
+    it.each([
+        ['/media', '/media'],
+        ['/media/movie/file.mkv', '/media/movie/file.mkv'],
+    ])('returns the canonical path when %s is inside a configured root', async (input, canonical) => {
+        const { resolvePathWithinAnyRoot } = await loadModule()
+        await expect(resolvePathWithinAnyRoot(input, ['/downloads', '/media'])).resolves.toBe(canonical)
+    })
 
-        expect(isWithinAnyRoot('/media', ['/downloads', '/media'])).toBe(true)
-        expect(isWithinAnyRoot('/media/movie/file.mkv', ['/downloads', '/media'])).toBe(true)
-        expect(isWithinAnyRoot('/media-library/file.mkv', ['/media'])).toBe(false)
-        expect(isWithinAnyRoot('/downloads/file.mkv', ['/media'])).toBe(false)
+    it.each([
+        ['/media/../etc/passwd', '/etc/passwd'],
+        ['/media/link/passwd', '/etc/passwd'],
+        ['/media-library/file.mkv', '/media-library/file.mkv'],
+    ])('rejects %s when its canonical path escapes configured roots', async (input, canonical) => {
+        realpath.mockImplementation(async (path: string) => (path === input ? canonical : path))
+        const { resolvePathWithinAnyRoot } = await loadModule()
+        await expect(resolvePathWithinAnyRoot(input, ['/media'])).resolves.toBeNull()
+    })
+
+    it('rejects missing paths and caches canonical roots until explicitly cleared', async () => {
+        const { clearCanonicalRootsCache, resolvePathWithinAnyRoot } = await loadModule()
+        await resolvePathWithinAnyRoot('/media/one.mkv', ['/media'])
+        await resolvePathWithinAnyRoot('/media/two.mkv', ['/media'])
+        expect(realpath.mock.calls.filter(([path]) => path === '/media')).toHaveLength(1)
+
+        clearCanonicalRootsCache()
+        await resolvePathWithinAnyRoot('/media/three.mkv', ['/media'])
+        expect(realpath.mock.calls.filter(([path]) => path === '/media')).toHaveLength(2)
+
+        realpath.mockRejectedValueOnce(new Error('missing'))
+        await expect(resolvePathWithinAnyRoot('/missing', ['/media'])).resolves.toBeNull()
+    })
+
+    it('retries canonical root resolution after a transient failure', async () => {
+        realpath.mockResolvedValueOnce('/media/movie.mkv').mockRejectedValueOnce(new Error('NAS unavailable'))
+        const { resolvePathWithinAnyRoot } = await loadModule()
+
+        await expect(resolvePathWithinAnyRoot('/media/movie.mkv', ['/media'])).resolves.toBeNull()
+        await expect(resolvePathWithinAnyRoot('/media/movie.mkv', ['/media'])).resolves.toBe('/media/movie.mkv')
     })
 
     it('returns the input when resolveMediaFilePaths receives a file', async () => {
@@ -89,7 +131,7 @@ describe('file-system utils', () => {
 
             return createStats({ directory: true })
         })
-        readdir.mockResolvedValue(['episode-02.mkv', 'extras', 'episode-01.mkv'])
+        readdir.mockResolvedValue([createDirent('episode-02.mkv', { file: true }), createDirent('extras', { directory: true }), createDirent('episode-01.mkv', { file: true })])
         const { resolveMediaFilePaths } = await loadModule()
 
         await expect(resolveMediaFilePaths('/media/show')).resolves.toEqual(['/media/show/episode-01.mkv', '/media/show/episode-02.mkv'])
@@ -107,7 +149,7 @@ describe('file-system utils', () => {
 
             return createStats({ directory: true })
         })
-        readdir.mockResolvedValue(['subdir'])
+        readdir.mockResolvedValue([createDirent('subdir', { directory: true })])
         const { resolveMediaFilePaths } = await loadModule()
 
         await expect(resolveMediaFilePaths('/media/empty')).rejects.toEqual({
@@ -143,7 +185,7 @@ describe('file-system utils', () => {
 
             return createStats({ directory: true })
         })
-        readdir.mockResolvedValue(['episode-01.mkv'])
+        readdir.mockResolvedValue([createDirent('episode-01.mkv', { file: true })])
         const { resolveMediaFilePath } = await loadModule()
 
         await expect(resolveMediaFilePath('/media/show')).resolves.toBe('/media/show/episode-01.mkv')

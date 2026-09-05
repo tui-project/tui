@@ -14,6 +14,7 @@ const createError = vi.fn((payload: unknown) => payload)
 const getSettings = vi.fn()
 const saveSettings = vi.fn()
 const stat = vi.fn()
+const clearCanonicalRootsCache = vi.fn()
 
 beforeEach(() => {
     vi.resetModules()
@@ -38,6 +39,7 @@ async function loadHandler() {
         createLogger: () => logger,
         setLogLevel,
     }))
+    vi.doMock('../../../../server/utils/file-system', () => ({ clearCanonicalRootsCache }))
 
     const { default: handler } = await import('../../../../server/api/settings.post')
     return handler
@@ -216,6 +218,7 @@ describe('POST /api/settings route handler', () => {
             episodePackScreenshotCount: 3,
             logLevel: 3,
         })
+        expect(clearCanonicalRootsCache).toHaveBeenCalledOnce()
     })
 })
 

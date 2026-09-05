@@ -2,7 +2,7 @@ import { createError } from 'h3'
 import { z } from 'zod'
 import { getSettings } from '../repositories/settings-repository'
 import { createScreenshots } from '../services/screenshot'
-import { isWithinAnyRoot } from '../utils/file-system'
+import { resolvePathWithinAnyRoot } from '../utils/file-system'
 import { createLogger } from '../utils/logger'
 import { parseValidatedBody } from '../utils/request-validator'
 
@@ -22,7 +22,8 @@ export default defineEventHandler(async (event) => {
     logger.trace('Screenshot request received.', { path, hdr, tv })
 
     const settings = await getSettings()
-    if (!isWithinAnyRoot(path, settings.mediaPaths)) {
+    const canonicalPath = await resolvePathWithinAnyRoot(path, settings.mediaPaths)
+    if (!canonicalPath) {
         logger.warn('Rejected screenshot request because path is outside configured roots.', { path })
 
         throw createError({
@@ -31,5 +32,5 @@ export default defineEventHandler(async (event) => {
         })
     }
 
-    return createScreenshots(path, hdr, tv)
+    return createScreenshots(canonicalPath, hdr, tv)
 })

@@ -17,7 +17,7 @@ const findLocale = vi.fn()
 const findTvdbSpecial = vi.fn()
 const findTvdbSpecialRange = vi.fn()
 const parseMetadataFromName = vi.fn()
-const isWithinAnyRoot = vi.fn()
+const resolvePathWithinAnyRoot = vi.fn()
 const resolveMediaFilePath = vi.fn<(path: string) => Promise<string>>()
 
 beforeEach(() => {
@@ -44,7 +44,7 @@ beforeEach(() => {
         hybrid: false,
         releaseGroup: undefined,
     })
-    isWithinAnyRoot.mockReturnValue(true)
+    resolvePathWithinAnyRoot.mockImplementation(async (path) => path)
     resolveMediaFilePath.mockImplementation(async (path) => path)
 })
 
@@ -63,7 +63,7 @@ async function loadHandler() {
         parseMetadataFromName,
     }))
     vi.doMock('../../../../server/utils/file-system', () => ({
-        isWithinAnyRoot,
+        resolvePathWithinAnyRoot,
         resolveMediaFilePath,
     }))
     vi.doMock('../../../../server/services/tmdb', () => ({
@@ -94,7 +94,7 @@ describe('GET /api/metadata route handler', () => {
 
     it('rejects request when resolved path is outside configured roots', async () => {
         getQuery.mockReturnValue({ path: '/outside/movie.mkv' })
-        isWithinAnyRoot.mockReturnValue(false)
+        resolvePathWithinAnyRoot.mockResolvedValue(null)
         const handler = await loadHandler()
         await expect(handler({} as never)).rejects.toMatchObject({ statusCode: 400, message: 'invalid_path' })
     })
