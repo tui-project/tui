@@ -751,6 +751,28 @@ describe('GET /api/metadata route handler', () => {
         expect(result.metadata.originalTitle).toBe('Reisei to jônetsu no aida')
     })
 
+    it('preserves the preferred title when an alternative differs only by diacritics', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 27062 })
+        getDetails.mockResolvedValue({
+            title: 'Lan Yu',
+            original_title: undefined,
+            original_language: 'zh',
+            year: 2001,
+            origin_country: 'HK',
+            external_ids: { imdb_id: 'tt0292066' },
+            alternative_titles: [
+                { iso_3166_1: 'KR', title: '란위', type: '' },
+                { iso_3166_1: 'HK', title: 'Lán Yǔ', type: 'Pinyin' },
+                { iso_3166_1: 'HK', title: '藍宇', type: 'traditional Chinese' },
+            ],
+        })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.metadata.originalTitle).toBe('Lan Yu')
+    })
+
     it('selects a TMDB romanized title', async () => {
         getQuery.mockReturnValue({ path: '/media/movie.mkv' })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [] })
