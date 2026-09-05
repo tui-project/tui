@@ -58,6 +58,7 @@ function buildSettings(overrides: Partial<AppSettings> = {}): AppSettings {
         movieScreenshotCount: 6,
         episodePackScreenshotCount: 3,
         logLevel: 3,
+        secureSessionCookie: false,
         ...overrides,
     }
 }
@@ -486,6 +487,18 @@ describe('settings page', () => {
 
         expect(saveSettingsMock).toHaveBeenCalled()
         expect(capturedSaveBody?.logLevel).toBe(4)
+    })
+
+    it('submits secure session cookie preference', async () => {
+        loadedDataRef.value = buildSettings({ mediaPaths: ['/media/a'] })
+        const user = userEvent.setup({ delay: null })
+
+        await renderSuspended(SettingsPage)
+        await user.click(screen.getByRole('checkbox', { name: 'Require HTTPS for session cookie' }))
+        await user.click(screen.getByRole('button', { name: /save/i }))
+
+        expect(saveSettingsMock).toHaveBeenCalled()
+        expect(capturedSaveBody?.secureSessionCookie).toBe(true)
     })
 
     it('submits torrent client url and api key when credentials are filled after selecting the client', async () => {

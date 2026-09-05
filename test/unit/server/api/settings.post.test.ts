@@ -172,6 +172,7 @@ describe('POST /api/settings route handler', () => {
             movieScreenshotCount: 6,
             episodePackScreenshotCount: 1,
             logLevel: 3,
+            secureSessionCookie: true,
         })
         const handler = await loadHandler()
 
@@ -187,6 +188,7 @@ describe('POST /api/settings route handler', () => {
             movieScreenshotCount: 6,
             episodePackScreenshotCount: 1,
             logLevel: 3,
+            secureSessionCookie: true,
         })
         expect(saveSettings).toHaveBeenCalledWith({
             mediaPaths: ['/a', '/b'],
@@ -217,6 +219,7 @@ describe('POST /api/settings route handler', () => {
             movieScreenshotCount: 6,
             episodePackScreenshotCount: 3,
             logLevel: 3,
+            secureSessionCookie: false,
         })
         expect(clearCanonicalRootsCache).toHaveBeenCalledOnce()
     })
@@ -235,6 +238,7 @@ function baseRequest(
         movieScreenshotCount: unknown
         episodePackScreenshotCount: unknown
         logLevel: unknown
+        secureSessionCookie: unknown
     }> = {}
 ) {
     return {
@@ -249,6 +253,7 @@ function baseRequest(
         movieScreenshotCount: 6,
         episodePackScreenshotCount: 3,
         logLevel: 3,
+        secureSessionCookie: false,
         ...overrides,
     }
 }

@@ -12,6 +12,7 @@ const createError = vi.fn((payload: unknown) => payload)
 const setCookie = vi.fn()
 const findUserByUsername = vi.fn<() => Promise<{ id: string; username: string; passwordHash: string } | null>>()
 const createSession = vi.fn<() => Promise<{ id: string; userId: string; expiresAt: string }>>()
+const getSettings = vi.fn()
 
 beforeEach(() => {
     vi.resetModules()
@@ -30,6 +31,9 @@ async function loadHandler() {
     }))
     vi.doMock('../../../../server/repositories/session-repository', () => ({
         createSession,
+    }))
+    vi.doMock('../../../../server/repositories/settings-repository', () => ({
+        getSettings,
     }))
     vi.doMock('../../../../server/utils/logger', () => ({
         createLogger: () => logger,
@@ -110,6 +114,7 @@ describe('POST /api/login route handler', () => {
             userId: 'user-1',
             expiresAt: '2030-01-01T01:00:00.000Z',
         })
+        getSettings.mockResolvedValue({ secureSessionCookie: false })
 
         const handler = await loadHandler()
         const response = await handler({} as never)
@@ -135,9 +140,27 @@ describe('POST /api/login route handler', () => {
             expect.objectContaining({
                 httpOnly: true,
                 sameSite: 'lax',
+                secure: false,
                 path: '/',
                 expires: expect.any(Date),
             })
         )
+    })
+
+    it('restricts the session cookie to HTTPS when configured', async () => {
+        readBody.mockResolvedValue({ username: 'admin', password: 'Admin@123' })
+        findUserByUsername.mockResolvedValue({
+            id: 'user-1',
+            username: 'admin',
+            passwordHash:
+                '00112233445566778899aabbccddeeff:4a68d98b0cfe03a11f7d8af6f2aa0ae88e03e68fcd8ddf943a79d8dec33bbaa5bb8b01647a0a9417bd9d8dc1a318f1454eecc7cc642e363e8929fae3b7a8d9e4',
+        })
+        createSession.mockResolvedValue({ id: 'session-1', userId: 'user-1', expiresAt: '2030-01-01T01:00:00.000Z' })
+        getSettings.mockResolvedValue({ secureSessionCookie: true })
+
+        const handler = await loadHandler()
+        await handler({} as never)
+
+        expect(setCookie).toHaveBeenCalledWith({}, 'session_id', 'session-1', expect.objectContaining({ secure: true }))
     })
 })

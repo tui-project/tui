@@ -35,6 +35,7 @@ export type AppSettings = {
     movieScreenshotCount: number
     episodePackScreenshotCount: number
     logLevel: number
+    secureSessionCookie: boolean
 }
 
 export function useGetSettings() {

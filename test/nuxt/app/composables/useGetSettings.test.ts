@@ -51,6 +51,7 @@ describe('useGetSettings', () => {
             movieScreenshotCount: 0,
             episodePackScreenshotCount: 0,
             logLevel: 0,
+            secureSessionCookie: false,
         }
 
         dataRef.value = response

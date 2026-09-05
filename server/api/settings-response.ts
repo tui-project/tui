@@ -18,5 +18,6 @@ export function toSettingsResponse(settings: Settings): SettingsDto {
         movieScreenshotCount: settings.movieScreenshotCount,
         episodePackScreenshotCount: settings.episodePackScreenshotCount,
         logLevel: settings.logLevel,
+        secureSessionCookie: settings.secureSessionCookie,
     }
 }

@@ -53,6 +53,7 @@ describe('GET and POST /api/settings', async () => {
             movieScreenshotCount: 6,
             episodePackScreenshotCount: 1,
             logLevel: 3,
+            secureSessionCookie: false,
         })
         expect(Array.isArray((settings as { imageHostProviders: unknown[] }).imageHostProviders)).toBe(true)
         expect(Array.isArray((settings as { trackers: unknown[] }).trackers)).toBe(true)
@@ -82,6 +83,7 @@ describe('GET and POST /api/settings', async () => {
                 movieScreenshotCount: 4,
                 episodePackScreenshotCount: 2,
                 logLevel: 2,
+                secureSessionCookie: true,
             },
         })
 
@@ -91,6 +93,7 @@ describe('GET and POST /api/settings', async () => {
             movieScreenshotCount: 4,
             episodePackScreenshotCount: 2,
             logLevel: 2,
+            secureSessionCookie: true,
         })
     })
 

@@ -3,6 +3,7 @@ import { promisify } from 'node:util'
 import { createError, setCookie } from 'h3'
 import { z } from 'zod'
 import { createSession } from '../repositories/session-repository'
+import { getSettings } from '../repositories/settings-repository'
 import { findUserByUsername } from '../repositories/user-repository'
 import { parseValidatedBody } from '../utils/request-validator'
 import { createLogger } from '../utils/logger'
@@ -41,9 +42,11 @@ export default defineEventHandler(async (event) => {
         expiresAt,
     })
 
+    const settings = await getSettings()
     setCookie(event, 'session_id', session.id, {
         httpOnly: true,
         sameSite: 'lax',
+        secure: settings.secureSessionCookie,
         path: '/',
         expires: new Date(session.expiresAt),
     })

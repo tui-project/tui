@@ -11,6 +11,7 @@ export interface Settings {
     movieScreenshotCount: number
     episodePackScreenshotCount: number
     logLevel: number
+    secureSessionCookie: boolean
 }
 
 export interface ImageHostProviderSettings {
