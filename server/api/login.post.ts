@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
         expires: new Date(session.expiresAt),
     })
 
-    logger.info('Login succeeded and session created.', { userId: user.id, sessionId: session.id, expiresAt })
+    logger.info('Login succeeded and session created.', { userId: user.id, expiresAt })
 
     return {
         sessionId: session.id,
