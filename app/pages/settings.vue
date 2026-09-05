@@ -21,6 +21,7 @@ const formState = reactive<AppSettings>({
     movieScreenshotCount: 6,
     episodePackScreenshotCount: 3,
     logLevel: 3,
+    secureSessionCookie: false,
 })
 
 const schema = z
@@ -52,6 +53,7 @@ const schema = z
         movieScreenshotCount: z.number('Movie Screenshot Count is required.').int().min(1, 'Movie screenshot count must be at least 1.'),
         episodePackScreenshotCount: z.number('Episode Pack Screenshot Count is required.').int().min(1, 'Episode pack screenshot count must be at least 1.'),
         logLevel: z.number().int().min(0).max(5),
+        secureSessionCookie: z.boolean(),
     })
     .superRefine((value, ctx) => {
         const selectedImageHosts = value.imageHostProviders.filter((provider) => provider.selected)
@@ -173,6 +175,7 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
         movieScreenshotCount: settings.movieScreenshotCount,
         episodePackScreenshotCount: settings.episodePackScreenshotCount,
         logLevel: settings.logLevel,
+        secureSessionCookie: settings.secureSessionCookie,
     }
 }
 </script>
@@ -283,6 +286,14 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
                 <UFormField label="Log Level" name="logLevel" required>
                     <USelect v-model="formState.logLevel" :items="LOG_LEVEL_OPTIONS" value-key="value" label-key="label" size="xl" class="w-48" />
                 </UFormField>
+            </UCard>
+
+            <UCard title="Security" description="Configure browser session security" variant="subtle" class="mt-4">
+                <UCheckbox
+                    v-model="formState.secureSessionCookie"
+                    label="Require HTTPS for session cookie"
+                    description="Enable only when TUI is served over HTTPS. This applies from the next login, and browsers will then refuse to send the session cookie over HTTP."
+                />
             </UCard>
 
             <UCard title="Screenshots" description="Configure screenshot generation and upload settings" variant="subtle" class="mt-4">

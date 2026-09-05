@@ -99,6 +99,7 @@ const settingsRequestSchema = z
         movieScreenshotCount: z.number().int().positive(),
         episodePackScreenshotCount: z.number().int().positive(),
         logLevel: z.number().int().min(0).max(5),
+        secureSessionCookie: z.boolean(),
     })
     .superRefine((value, context) => {
         const selectedClients = value.torrentClients.filter((c) => c.selected)

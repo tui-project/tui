@@ -27,6 +27,7 @@ function buildSettings(overrides: Partial<AppSettings> = {}): AppSettings {
         movieScreenshotCount: 6,
         episodePackScreenshotCount: 3,
         logLevel: 3,
+        secureSessionCookie: false,
         ...overrides,
     }
 }

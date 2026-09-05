@@ -50,6 +50,7 @@ export const DEFAULT_SETTINGS: Settings = {
     movieScreenshotCount: 6,
     episodePackScreenshotCount: 1,
     logLevel: 3,
+    secureSessionCookie: false,
 }
 
 export async function getSettings() {
@@ -96,6 +97,7 @@ export async function saveSettings(settingsInput: Omit<Settings, 'id'>) {
         movieScreenshotCount: settingsInput.movieScreenshotCount,
         episodePackScreenshotCount: settingsInput.episodePackScreenshotCount,
         logLevel: settingsInput.logLevel,
+        secureSessionCookie: settingsInput.secureSessionCookie,
     }
 
     await settingsCollection.updateAsync({ id: DEFAULT_SETTINGS.id }, settings, { upsert: true })

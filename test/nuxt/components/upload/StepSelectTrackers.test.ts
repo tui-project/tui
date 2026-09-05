@@ -19,6 +19,7 @@ function buildTrackerSettings(trackers: Partial<TrackerSettings>[]): AppSettings
         movieScreenshotCount: 6,
         episodePackScreenshotCount: 3,
         logLevel: 3,
+        secureSessionCookie: false,
     }
 }
 

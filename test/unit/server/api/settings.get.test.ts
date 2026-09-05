@@ -41,6 +41,7 @@ describe('GET /api/settings route handler', () => {
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
             episodePackScreenshotCount: 1,
+            secureSessionCookie: true,
         })
         const handler = await loadHandler()
 
@@ -54,6 +55,7 @@ describe('GET /api/settings route handler', () => {
             ffprobePath: 'ffprobe',
             movieScreenshotCount: 6,
             episodePackScreenshotCount: 1,
+            secureSessionCookie: true,
         })
     })
 })

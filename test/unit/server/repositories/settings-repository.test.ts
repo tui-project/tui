@@ -85,6 +85,8 @@ describe('settings repository', () => {
             ffprobePath: '/custom/ffprobe',
             movieScreenshotCount: 9,
             episodePackScreenshotCount: 2,
+            logLevel: 3,
+            secureSessionCookie: true,
         })
 
         expect(storedSettings).toEqual({
@@ -98,6 +100,8 @@ describe('settings repository', () => {
             ffprobePath: '/custom/ffprobe',
             movieScreenshotCount: 9,
             episodePackScreenshotCount: 2,
+            logLevel: 3,
+            secureSessionCookie: true,
         })
     })
 })
