@@ -1,5 +1,5 @@
 import { mkdtempSync } from 'node:fs'
-import { rm } from 'node:fs/promises'
+import { readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { $fetch, fetch, setup } from '@nuxt/test-utils/e2e'
@@ -54,6 +54,7 @@ describe('GET /api/logs/stream', async () => {
             msg: 'Missing session. Rejecting request.',
             context: { path: probePath },
         })
+        expect(await readdir(logDir)).toEqual([])
     })
 })
 

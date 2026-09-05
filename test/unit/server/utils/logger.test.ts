@@ -2,7 +2,7 @@ import { readFile, readdir } from 'node:fs/promises'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getLogDir } from '../../setupFile'
 
 async function importLogger(level = '5', extraEnv: Record<string, string> = {}) {
@@ -27,6 +27,10 @@ async function readLogLines() {
 }
 
 describe('server logger', () => {
+    afterEach(() => {
+        process.env.LOG_FILE_DISABLED = 'true'
+    })
+
     it('buffers recent logs and publishes new entries to subscribers', async () => {
         const { createLogger, getRecentLogs } = await importLogger('5', { LOG_BUFFER_SIZE: '2' })
         const { subscribeToLogs } = await import('../../../../server/events/log')

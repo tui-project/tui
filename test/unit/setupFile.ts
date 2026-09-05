@@ -31,7 +31,6 @@ beforeEach(async () => {
     process.env.DATABASE_DIR = dataDir
     process.env.LOG_DIR = logDir
     process.env.LOG_LEVEL = '5'
-    process.env.LOG_FILE_DISABLED = 'true'
 })
 
 afterEach(async () => {
@@ -49,7 +48,6 @@ afterEach(async () => {
     delete process.env.DATABASE_DIR
     delete process.env.LOG_DIR
     delete process.env.LOG_FILE
-    delete process.env.LOG_FILE_DISABLED
     delete process.env.LOG_LEVEL
     delete process.env.LOG_BUFFER_SIZE
 
