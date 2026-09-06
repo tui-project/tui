@@ -14,6 +14,11 @@ export interface TrackerUploadOptions {
     modQueueOptIn: boolean
 }
 
+export interface TrackerUploadResult {
+    torrentDownloadUrl: string
+    torrentUrl?: string
+}
+
 export interface RuleViolation {
     rule: string
     message: string
@@ -27,7 +32,7 @@ export interface DuplicateEntry {
 
 export interface TrackerService {
     getTitle(metadata: Metadata): Promise<string>
-    upload(torrentPath: string, metadata: Metadata, description: string, mediainfoText: string, title: string, options: TrackerUploadOptions): Promise<string>
+    upload(torrentPath: string, metadata: Metadata, description: string, mediainfoText: string, title: string, options: TrackerUploadOptions): Promise<TrackerUploadResult>
     checkRules(metadata: Metadata): RuleViolation[]
     findDuplicates(metadata: Metadata): Promise<DuplicateEntry[]>
 }

@@ -64,7 +64,7 @@ beforeEach(() => {
         .mockResolvedValueOnce({ trackerTorrentPath: '/config/tmp/torrents/TRK2/Movie.torrent' })
     analyzeMediaFileAsText.mockResolvedValue('mediainfo text')
     resolveMediaFilePath.mockResolvedValue('/media/Movie.mkv')
-    trackerServiceUpload.mockResolvedValue('https://tracker1.example/torrents/1')
+    trackerServiceUpload.mockResolvedValue({ torrentDownloadUrl: 'https://tracker1.example/download/1', torrentUrl: 'https://tracker1.example/torrents/1' })
     createTrackerService.mockResolvedValue({ upload: trackerServiceUpload })
     injectTorrent.mockResolvedValue(true)
     rm.mockResolvedValue(undefined)
@@ -177,13 +177,14 @@ describe('tracker upload service', () => {
             })
         })
 
-        it('marks each tracker item as success after upload', async () => {
+        it.each([undefined, 'https://tracker1.example/torrents/1'])('stores success and the tracker-provided view URL: %s', async (torrentUrl) => {
+            trackerServiceUpload.mockResolvedValue({ torrentDownloadUrl: 'https://tracker1.example/download/1', torrentUrl })
             const { upload } = await loadService()
 
             await upload('req-1', '/media/Movie.mkv', defaultTrackers, defaultMetadata, 'desc')
 
-            expect(updateTrackerItem).toHaveBeenCalledWith('req-1', 'TRK1', { uploadStatus: 'success' })
-            expect(updateTrackerItem).toHaveBeenCalledWith('req-1', 'TRK2', { uploadStatus: 'success' })
+            expect(updateTrackerItem).toHaveBeenCalledWith('req-1', 'TRK1', { uploadStatus: 'success', torrentUrl })
+            expect(updateTrackerItem).toHaveBeenCalledWith('req-1', 'TRK2', { uploadStatus: 'success', torrentUrl })
         })
 
         it('injects torrent into client when one is selected', async () => {
@@ -196,6 +197,7 @@ describe('tracker upload service', () => {
             await upload('req-1', '/media/Movie.mkv', defaultTrackers, defaultMetadata, 'desc')
 
             expect(injectTorrent).toHaveBeenCalledTimes(2)
+            expect(injectTorrent).toHaveBeenCalledWith('https://tracker1.example/download/1', { code: 'qb', selected: true })
             expect(updateTrackerItem).toHaveBeenCalledWith('req-1', 'TRK1', { torrentClientInjected: true })
         })
 
@@ -246,7 +248,9 @@ describe('tracker upload service', () => {
 
     describe('partial and full failure', () => {
         it('sets partial_success when only some trackers fail', async () => {
-            trackerServiceUpload.mockResolvedValueOnce('https://tracker1.example/torrents/1').mockRejectedValueOnce(new Error('TRK2 failed'))
+            trackerServiceUpload
+                .mockResolvedValueOnce({ torrentDownloadUrl: 'https://tracker1.example/download/1', torrentUrl: 'https://tracker1.example/torrents/1' })
+                .mockRejectedValueOnce(new Error('TRK2 failed'))
             const { upload } = await loadService()
 
             await upload('req-1', '/media/Movie.mkv', defaultTrackers, defaultMetadata, 'desc')

@@ -111,7 +111,17 @@ function formatDate(value?: Date) {
                                                 variant="soft"
                                                 size="sm"
                                             >
-                                                {{ tracker.code }}
+                                                <a
+                                                    v-if="tracker.torrentUrl"
+                                                    :href="tracker.torrentUrl"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    class="hover:underline"
+                                                    @click.stop
+                                                >
+                                                    {{ tracker.code }}
+                                                </a>
+                                                <template v-else>{{ tracker.code }}</template>
                                             </UBadge>
                                         </div>
                                     </td>
@@ -160,7 +170,17 @@ function formatDate(value?: Date) {
                                                                     variant="soft"
                                                                     size="sm"
                                                                 >
-                                                                    {{ tracker.code }}
+                                                                    <a
+                                                                        v-if="tracker.torrentUrl"
+                                                                        :href="tracker.torrentUrl"
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        class="hover:underline"
+                                                                        @click.stop
+                                                                    >
+                                                                        {{ tracker.code }}
+                                                                    </a>
+                                                                    <template v-else>{{ tracker.code }}</template>
                                                                 </UBadge>
                                                             </div>
                                                         </td>

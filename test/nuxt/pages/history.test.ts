@@ -48,6 +48,34 @@ describe('history page', () => {
         groupExecute.mockResolvedValue(undefined)
     })
 
+    it.each([undefined, 'https://tracker.example/torrents/123'])('links trackers in rows and expanded uploads: %s', async (torrentUrl) => {
+        listData.value = { items: [buildItem({ groupCount: 2, trackers: [buildTracker({ torrentUrl })] })], total: 1 }
+        groupData.value = { items: [buildItem(), buildItem({ id: 'r0', trackers: [buildTracker({ code: 'ATH', torrentUrl })] })], total: 2 }
+        await renderSuspended(HistoryPage)
+        if (torrentUrl) {
+            const link = screen.getByRole('link', { name: 'ULCX' })
+            expect(link.getAttribute('href')).toBe(torrentUrl)
+            expect(link.getAttribute('target')).toBe('_blank')
+            expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+            await fireEvent.click(link)
+            expect(groupExecute).not.toHaveBeenCalled()
+        } else {
+            expect(screen.queryByRole('link', { name: 'ULCX' })).toBeNull()
+        }
+        await fireEvent.click(screen.getByText('Movie.2024.mkv'))
+        if (torrentUrl) {
+            const link = screen.getByRole('link', { name: 'ATH' })
+            expect(link.getAttribute('href')).toBe(torrentUrl)
+            expect(link.getAttribute('target')).toBe('_blank')
+            expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+            await fireEvent.click(link)
+            expect(screen.getByText('Current')).toBeTruthy()
+        } else {
+            expect(screen.getByText('ATH')).toBeTruthy()
+            expect(screen.queryByRole('link', { name: 'ATH' })).toBeNull()
+        }
+    })
+
     it('renders rows with a linked-uploads badge', async () => {
         listData.value = {
             items: [buildItem({ id: 'r1', groupCount: 2 }), buildItem({ id: 'r2', groupId: 'g2', filepath: '/media/Show.S01.mkv', status: 'fail' })],

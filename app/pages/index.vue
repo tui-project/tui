@@ -82,7 +82,10 @@ async function handleRetry(request: TrackerRequestResponse) {
                         <div class="flex flex-wrap gap-1">
                             <template v-for="tracker in request.trackers" :key="tracker.code">
                                 <UBadge :color="getTrackerUploadStatusColor(tracker.uploadStatus)" variant="soft" size="lg">
-                                    {{ tracker.code }}
+                                    <a v-if="tracker.torrentUrl" :href="tracker.torrentUrl" target="_blank" rel="noopener noreferrer" class="hover:underline">
+                                        {{ tracker.code }}
+                                    </a>
+                                    <template v-else>{{ tracker.code }}</template>
                                 </UBadge>
                                 <UBadge
                                     v-if="getInjectionBadgeProps(tracker.torrentClientInjected)"

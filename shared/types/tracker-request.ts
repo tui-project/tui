@@ -24,6 +24,7 @@ export interface TrackerItem {
     modQueueOptIn: boolean
     uploadStatus?: UploadStatus
     uploadError?: string
+    torrentUrl?: string
     torrentClientInjected?: boolean
 }
 

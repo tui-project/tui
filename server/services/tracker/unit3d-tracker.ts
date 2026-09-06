@@ -3,7 +3,7 @@ import { basename } from 'node:path'
 import { createLogger } from '../../utils/logger'
 import { BiMap } from '../../utils/bi-map'
 import { parseMetadataFromName } from '../media-name-parser'
-import { TrackerError, type DuplicateEntry, type TrackerUploadOptions } from './tracker'
+import { TrackerError, type DuplicateEntry, type TrackerUploadOptions, type TrackerUploadResult } from './tracker'
 
 const logger = createLogger('tracker:unit3d')
 
@@ -75,7 +75,7 @@ export async function upload(
     title: string,
     options: TrackerUploadOptions,
     extraFields: Record<string, string> = {}
-): Promise<string> {
+): Promise<TrackerUploadResult> {
     /*
      * refer to: https://hdinnovations.github.io/UNIT3D/torrent_api.html
      */
@@ -115,13 +115,20 @@ export async function upload(
         logger.debug('UNIT3D upload response received.', { trackerUrl: url, title, response })
         logger.info('Torrent uploaded successfully to UNIT3D tracker.', { trackerUrl: url, title })
 
-        return response.data
+        return { torrentDownloadUrl: response.data, torrentUrl: getTorrentUrl(response.data) }
     } catch (error: unknown) {
         const err = error as { statusCode?: number; data?: unknown }
         const reason = parseUnit3dErrorMessage(err.data)
         logger.warn('UNIT3D torrent upload failed.', { trackerUrl: url, statusCode: err.statusCode, reason })
         throw new TrackerError(reason, err.statusCode, err.data)
     }
+}
+
+function getTorrentUrl(downloadUrl: string): string | undefined {
+    // UNIT3D download URLs may contain a passkey; persist only the details URL.
+    const match = downloadUrl.match(/^https?:\/\/[^/?#]+\/torrents?\/download\/(\d+)(?:[/?#]|$)/)
+    if (!match) return undefined
+    return `${new URL(downloadUrl).origin}/torrents/${match[1]}`
 }
 
 function parseUnit3dErrorMessage(data: unknown): string {
