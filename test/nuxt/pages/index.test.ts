@@ -51,6 +51,28 @@ describe('index page', () => {
         vi.useRealTimers()
     })
 
+    it.each([undefined, 'https://tracker.example/torrents/123'])('links the tracker when a view URL is available: %s', async (torrentUrl) => {
+        useFetchData.value = [
+            {
+                ...BASE_REQUEST,
+                id: 'upload-1',
+                filepath: '/media/Movie.mkv',
+                status: 'success',
+                trackers: [{ code: 'ULCX', title: 'T', titleModified: false, anonymous: false, modQueueOptIn: false, torrentUrl }],
+            },
+        ]
+        await renderSuspended(IndexPage)
+        if (torrentUrl) {
+            const link = screen.getByRole('link', { name: 'ULCX' })
+            expect(link.getAttribute('href')).toBe(torrentUrl)
+            expect(link.getAttribute('target')).toBe('_blank')
+            expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+        } else {
+            expect(screen.getByText('ULCX')).toBeTruthy()
+            expect(screen.queryByRole('link', { name: 'ULCX' })).toBeNull()
+        }
+    })
+
     it('renders recent upload requests and only shows progress for torrent_creation status', async () => {
         useFetchData.value = [
             {

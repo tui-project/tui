@@ -177,8 +177,10 @@ function selectOriginalTitle(
                 left.title.title.localeCompare(right.title.title)
         )
     const transliteration = rankedTitles.find(({ title }) => isRomanizationType(title.type))?.title.title
-    const equivalentPreferredTitle = preferredTitle && rankedTitles.some(({ title }) => normaliseSearchString(title.title) === normaliseSearchString(preferredTitle)) ? preferredTitle : undefined
-    const selected = transliteration ?? (originalTitle && originalTitle !== preferredTitle ? originalTitle : (equivalentPreferredTitle ?? rankedTitles[0]?.title.title ?? originalTitle))
+    const equivalentPreferredTitle =
+        preferredTitle && rankedTitles.some(({ title }) => normaliseSearchString(title.title) === normaliseSearchString(preferredTitle)) ? preferredTitle : undefined
+    const selected =
+        transliteration ?? (originalTitle && originalTitle !== preferredTitle ? originalTitle : (equivalentPreferredTitle ?? rankedTitles[0]?.title.title ?? originalTitle))
 
     logger.debug('Selected original title from TMDB details.', { originCountry, alternativeTitles, originalTitle, selected })
 

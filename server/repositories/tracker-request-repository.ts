@@ -74,7 +74,7 @@ export async function updateTrackerRequestTorrentCreationProgress(id: string, to
 export async function updateTrackerItem(
     id: string,
     code: string,
-    update: Partial<Pick<TrackerRequest['trackers'][number], 'uploadStatus' | 'uploadError' | 'torrentClientInjected'>>
+    update: Partial<Pick<TrackerRequest['trackers'][number], 'uploadStatus' | 'uploadError' | 'torrentClientInjected' | 'torrentUrl'>>
 ) {
     logger.trace('Updating tracker request item.', { requestId: id, trackerCode: code })
 

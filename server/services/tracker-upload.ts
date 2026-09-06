@@ -137,11 +137,11 @@ async function uploadToTrackers(
 
         try {
             const trackerService = await createTrackerService(tracker.code)
-            const torrentDownloadUrl = await trackerService.upload(torrentPath, metadata, description, mediainfoText, tracker.title, {
+            const { torrentDownloadUrl, torrentUrl } = await trackerService.upload(torrentPath, metadata, description, mediainfoText, tracker.title, {
                 anonymous: tracker.anonymous,
                 modQueueOptIn: tracker.modQueueOptIn,
             })
-            await updateTrackerItem(uploadRequestId, tracker.code, { uploadStatus: 'success' })
+            await updateTrackerItem(uploadRequestId, tracker.code, { uploadStatus: 'success', torrentUrl })
 
             logger.debug('Successfully uploaded to tracker.', { trackerTitle: tracker.title, trackerCode: tracker.code, torrentDownloadUrl })
 
@@ -166,7 +166,7 @@ async function uploadToTrackers(
     return failedTrackerCodes
 }
 
-async function updateTrackerItem(id: string, code: string, update: Partial<Pick<TrackerItem, 'uploadStatus' | 'uploadError' | 'torrentClientInjected'>>) {
+async function updateTrackerItem(id: string, code: string, update: Partial<Pick<TrackerItem, 'uploadStatus' | 'uploadError' | 'torrentClientInjected' | 'torrentUrl'>>) {
     const request = await updateStoredTrackerItem(id, code, update)
     if (request) publishTrackerRequest(request)
 }

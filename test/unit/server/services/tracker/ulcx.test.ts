@@ -738,7 +738,7 @@ describe('ulcxTrackerService — upload', () => {
 
         const result = await service.upload('/fake.torrent', baseMetadata, 'desc', 'mediainfo', 'Movie 2024', { anonymous: false, modQueueOptIn: false })
 
-        expect(result).toBe('https://upload.cx/torrent/download/1')
+        expect(result).toEqual({ torrentDownloadUrl: 'https://upload.cx/torrent/download/1', torrentUrl: 'https://upload.cx/torrents/1' })
         expect(fetchMock).toHaveBeenCalledWith('https://upload.cx/api/torrents/upload', expect.objectContaining({ method: 'POST' }))
     })
 })

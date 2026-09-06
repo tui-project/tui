@@ -24,6 +24,7 @@ const resolveMediaFilePath = vi.fn()
 const resolvePathWithinAnyRoot = vi.fn()
 const analyzeMediaFileAsText = vi.fn()
 const injectTorrent = vi.fn()
+const uploadResult = { torrentDownloadUrl: 'https://tracker.example.com/torrent/download/1', torrentUrl: 'https://tracker.example.com/torrents/1' }
 
 beforeEach(() => {
     vi.resetModules()
@@ -32,7 +33,7 @@ beforeEach(() => {
     vi.stubGlobal('setResponseStatus', setResponseStatus)
     waitUntilPromise = undefined
     getSettings.mockResolvedValue({ mediaPaths: ['/media'], trackers: [], torrentClients: [] })
-    createTrackerService.mockResolvedValue({ upload: vi.fn().mockResolvedValue('https://tracker.example.com/torrent/download/1') })
+    createTrackerService.mockResolvedValue({ upload: vi.fn().mockResolvedValue(uploadResult) })
     resolveMediaFilePath.mockResolvedValue('/media/Movie.2024.1080p.mkv')
     resolvePathWithinAnyRoot.mockImplementation(async (path) => path)
     analyzeMediaFileAsText.mockResolvedValue('mediainfo output')
@@ -325,7 +326,7 @@ describe('POST /api/tracker/requests route handler', () => {
     })
 
     it('passes tracker override title and anonymous flag to service.upload', async () => {
-        const uploadMock = vi.fn().mockResolvedValue('https://tracker.example.com/torrent/download/1')
+        const uploadMock = vi.fn().mockResolvedValue(uploadResult)
         createTrackerService.mockResolvedValue({ upload: uploadMock })
         readBody.mockResolvedValue(buildRequest({ trackers: [{ code: 'ULCX', title: 'Custom Title', titleModified: true, anonymous: true, modQueueOptIn: true }] }))
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
@@ -352,7 +353,7 @@ describe('POST /api/tracker/requests route handler', () => {
     })
 
     it('passes tracker title and anonymous flag from tracker item to service.upload', async () => {
-        const uploadMock = vi.fn().mockResolvedValue('https://tracker.example.com/torrent/download/1')
+        const uploadMock = vi.fn().mockResolvedValue(uploadResult)
         createTrackerService.mockResolvedValue({ upload: uploadMock })
         readBody.mockResolvedValue(buildRequest())
         findGenericTorrentCacheByFilepath.mockResolvedValue(null)
@@ -394,7 +395,7 @@ describe('POST /api/tracker/requests route handler', () => {
     })
 
     it('marks the request as partial_success when some trackers fail', async () => {
-        const uploadMock = vi.fn().mockResolvedValueOnce('https://tracker.example.com/torrent/download/1').mockRejectedValueOnce(new Error('upload failed'))
+        const uploadMock = vi.fn().mockResolvedValueOnce(uploadResult).mockRejectedValueOnce(new Error('upload failed'))
         createTrackerService.mockResolvedValue({ upload: uploadMock })
         readBody.mockResolvedValue(
             buildRequest({

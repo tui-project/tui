@@ -50,15 +50,30 @@ beforeEach(() => {
 })
 
 describe('upload', () => {
-    it('reads the torrent file and returns the download URL', async () => {
-        await expect(upload(URL, API_KEY, '/path/to/movie.torrent', baseMetadata, 'description', 'mediainfo text', 'Movie Title', baseOptions)).resolves.toBe(MOCK_DOWNLOAD_URL)
+    it.each([
+        ['https://tracker.example.com/torrents/download/123/secret?api_token=secret', 'https://tracker.example.com/torrents/123'],
+        ['https://tracker.example.com/torrent/download/456', 'https://tracker.example.com/torrents/456'],
+        ['https://tracker.example.com/unexpected', undefined],
+    ])('derives a view URL without download credentials from %s', async (torrentDownloadUrl, torrentUrl) => {
+        vi.mocked($fetch).mockResolvedValue({ data: torrentDownloadUrl })
+        await expect(upload(URL, API_KEY, '/path/to/movie.torrent', baseMetadata, 'desc', 'mi', 'Movie Title', baseOptions)).resolves.toEqual({
+            torrentDownloadUrl,
+            torrentUrl,
+        })
+    })
+
+    it('reads the torrent file and returns download and view URLs', async () => {
+        await expect(upload(URL, API_KEY, '/path/to/movie.torrent', baseMetadata, 'description', 'mediainfo text', 'Movie Title', baseOptions)).resolves.toEqual({
+            torrentDownloadUrl: MOCK_DOWNLOAD_URL,
+            torrentUrl: 'https://tracker.example.com/torrents/123',
+        })
         expect(readFileMock).toHaveBeenCalledWith('/path/to/movie.torrent')
     })
 
     it('includes optional tvdbId, season, and episode in form data when present', async () => {
         await expect(
             upload(URL, API_KEY, '/path/to/movie.torrent', { ...baseMetadata, tvdbId: 99, season: 2, episode: 5 }, 'desc', 'mi', 'Movie Title', { ...baseOptions, anonymous: true })
-        ).resolves.toBe(MOCK_DOWNLOAD_URL)
+        ).resolves.toEqual({ torrentDownloadUrl: MOCK_DOWNLOAD_URL, torrentUrl: 'https://tracker.example.com/torrents/123' })
     })
 
     it('sends episode_number=0 for season packs (season set, episode undefined)', async () => {

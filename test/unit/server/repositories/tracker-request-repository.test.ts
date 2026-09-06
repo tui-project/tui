@@ -139,7 +139,7 @@ describe('tracker upload request repository', () => {
         expect(found?.failedTrackerCodes).toBeUndefined()
     })
 
-    it('updates uploadStatus and torrentClientInjected on a specific tracker item', async () => {
+    it('persists upload status, injection status, and torrent URL on a specific tracker item', async () => {
         const { saveTrackerRequest, getTrackerRequest, updateTrackerItem } = await import('../../../../server/repositories/tracker-request-repository')
 
         await saveTrackerRequest(
@@ -153,10 +153,14 @@ describe('tracker upload request repository', () => {
             })
         )
 
-        await updateTrackerItem('upload-tracker-item-1', 'ULCX', { uploadStatus: 'success', torrentClientInjected: true })
+        await updateTrackerItem('upload-tracker-item-1', 'ULCX', { uploadStatus: 'success', torrentClientInjected: true, torrentUrl: 'https://tracker.example/torrents/123' })
         const updated = await getTrackerRequest('upload-tracker-item-1')
 
-        expect(updated?.trackers.find((t) => t.code === 'ULCX')).toMatchObject({ uploadStatus: 'success', torrentClientInjected: true })
+        expect(updated?.trackers.find((t) => t.code === 'ULCX')).toMatchObject({
+            uploadStatus: 'success',
+            torrentClientInjected: true,
+            torrentUrl: 'https://tracker.example/torrents/123',
+        })
         expect(updated?.trackers.find((t) => t.code === 'ATH')).not.toHaveProperty('uploadStatus')
     })
 
