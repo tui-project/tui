@@ -64,7 +64,6 @@ onMounted(async () => {
     } else {
         currentStep.value = 0
     }
-
 })
 
 watch(

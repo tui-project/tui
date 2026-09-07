@@ -2,8 +2,9 @@ import { mkdtempSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { $fetch, createPage, fetch, setup } from '@nuxt/test-utils/e2e'
+import { $fetch, createPage, fetch } from '@nuxt/test-utils/e2e'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { setup } from '../setup'
 
 const databaseDir = mkdtempSync(join(tmpdir(), 'tui-e2e-db-logs-page-'))
 const logDir = mkdtempSync(join(tmpdir(), 'tui-e2e-log-logs-page-'))
