@@ -4,6 +4,7 @@ import type { StepperItem } from '@nuxt/ui'
 const { withFooter, withoutFooter } = useDescriptionFooter()
 const route = useRoute()
 const { pending: requestPending, error: requestError, data: requestData, execute: fetchRequest } = useGetTrackerRequest()
+const cloneRequestId = typeof route.query.source === 'string' ? route.query.source : ''
 
 const stepItems: StepperItem[] = [
     {
@@ -34,7 +35,7 @@ const stepItems: StepperItem[] = [
 ]
 
 const stepper = useTemplateRef('stepper')
-const currentStep = ref(0)
+const currentStep = ref(cloneRequestId ? 2 : 0)
 const selectedPath = ref<Path>()
 const selectedTrackers = ref<string[]>([])
 const reviewedMetadata = ref<{ filename: string; metadata: Metadata }>()
@@ -47,21 +48,23 @@ const { pending: uploadPending, error: uploadError, execute: executeUpload } = u
 const toast = useToast()
 
 onMounted(async () => {
-    if (typeof route.query.source !== 'string' || !route.query.source) return
+    if (!cloneRequestId) return
 
-    await fetchRequest(route.query.source)
+    await fetchRequest(cloneRequestId)
 
-    if (!requestData.value || requestError.value) return
-
-    selectedPath.value = {
-        value: requestData.value.filepath,
-        label: requestData.value.filepath,
-        folder: requestData.value.folder,
-        icon: requestData.value.folder ? 'i-lucide-folder' : 'i-lucide-file',
+    if (requestData.value) {
+        selectedPath.value = {
+            value: requestData.value.filepath,
+            label: requestData.value.filepath,
+            folder: requestData.value.folder,
+            icon: requestData.value.folder ? 'i-lucide-folder' : 'i-lucide-file',
+        }
+        reviewedMetadata.value = { filename: requestData.value.filename, metadata: requestData.value.metadata }
+        description.value = withoutFooter(requestData.value.description)
+    } else {
+        currentStep.value = 0
     }
-    reviewedMetadata.value = { filename: requestData.value.filename, metadata: requestData.value.metadata }
-    description.value = withoutFooter(requestData.value.description)
-    currentStep.value = 2
+
 })
 
 watch(
