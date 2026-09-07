@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import type { StepperItem } from '@nuxt/ui'
 
-const { withFooter, withoutFooter } = useDescriptionFooter()
-const route = useRoute()
-const { pending: requestPending, error: requestError, data: requestData, execute: fetchRequest } = useGetTrackerRequest()
-const cloneRequestId = typeof route.query.source === 'string' ? route.query.source : ''
-
 const stepItems: StepperItem[] = [
     {
         title: 'Select Media',
@@ -35,36 +30,45 @@ const stepItems: StepperItem[] = [
 ]
 
 const stepper = useTemplateRef('stepper')
-const currentStep = ref(cloneRequestId ? 2 : 0)
+const { withFooter, withoutFooter } = useDescriptionFooter()
+const route = useRoute()
+const toast = useToast()
+const { pending: uploadPending, error: uploadError, execute: executeUpload } = usePostTrackerRequests()
+const { pending: requestPending, error: requestError, data: requestData, execute: fetchRequest } = useGetTrackerRequest()
+
+const fullDescription = computed(() => withFooter(description.value))
+const cloneRequestId = computed(() => (typeof route.query.source === 'string' ? route.query.source : ''))
+
+const currentStep = ref(0)
 const selectedPath = ref<Path>()
 const selectedTrackers = ref<string[]>([])
 const reviewedMetadata = ref<{ filename: string; metadata: Metadata }>()
 const prefetchedMetadata = ref<MetadataResponse>()
 const description = ref('')
 const logoUrl = ref<string>()
-const fullDescription = computed(() => withFooter(description.value))
 const reviewedTrackers = ref<TrackerItem[]>([])
-const { pending: uploadPending, error: uploadError, execute: executeUpload } = usePostTrackerRequests()
-const toast = useToast()
 
-onMounted(async () => {
-    if (!cloneRequestId) return
+watch(
+    cloneRequestId,
+    async (requestId) => {
+        if (requestId) {
+        await fetchRequest(requestId)
 
-    await fetchRequest(cloneRequestId)
-
-    if (requestData.value) {
-        selectedPath.value = {
-            value: requestData.value.filepath,
-            label: requestData.value.filepath,
-            folder: requestData.value.folder,
-            icon: requestData.value.folder ? 'i-lucide-folder' : 'i-lucide-file',
+        if (requestData.value) {
+            currentStep.value = 2
+            selectedPath.value = {
+                    value: requestData.value.filepath,
+                    label: requestData.value.filepath,
+                    folder: requestData.value.folder,
+                    icon: requestData.value.folder ? 'i-lucide-folder' : 'i-lucide-file',
+                }
+            reviewedMetadata.value = { filename: requestData.value.filename, metadata: requestData.value.metadata }
+            description.value = withoutFooter(requestData.value.description)
         }
-        reviewedMetadata.value = { filename: requestData.value.filename, metadata: requestData.value.metadata }
-        description.value = withoutFooter(requestData.value.description)
-    } else {
-        currentStep.value = 0
-    }
-})
+        }
+    },
+    { immediate: true }
+)
 
 watch(
     () => selectedPath.value?.value?.trim() ?? '',
