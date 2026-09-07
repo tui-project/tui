@@ -42,7 +42,7 @@ const baseOptions: TrackerUploadOptions = { anonymous: false, modQueueOptIn: fal
 
 const URL = 'https://tracker.example.com'
 const API_KEY = 'apikey'
-const MOCK_DOWNLOAD_URL = 'https://tracker.example.com/torrent/download/123'
+const MOCK_DOWNLOAD_URL = 'https://tracker.example.com/torrent/download/123.example-rss-key'
 
 beforeEach(() => {
     readFileMock.mockResolvedValue(Buffer.from('torrent-data') as never)
@@ -51,6 +51,7 @@ beforeEach(() => {
 
 describe('upload', () => {
     it.each([
+        ['https://tracker.example.com/torrent/download/123.example-rss-key', 'https://tracker.example.com/torrents/123'],
         ['https://tracker.example.com/torrents/download/123/secret?api_token=secret', 'https://tracker.example.com/torrents/123'],
         ['https://tracker.example.com/torrent/download/456', 'https://tracker.example.com/torrents/456'],
         ['https://tracker.example.com/unexpected', undefined],

@@ -126,7 +126,7 @@ export async function upload(
 
 function getTorrentUrl(downloadUrl: string): string | undefined {
     // UNIT3D download URLs may contain a passkey; persist only the details URL.
-    const match = downloadUrl.match(/^https?:\/\/[^/?#]+\/torrents?\/download\/(\d+)(?:[/?#]|$)/)
+    const match = downloadUrl.match(/^https?:\/\/[^/?#]+\/torrents?\/download\/(\d+)(?:[./?#]|$)/)
     if (!match) return undefined
     return `${new URL(downloadUrl).origin}/torrents/${match[1]}`
 }
