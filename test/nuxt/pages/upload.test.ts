@@ -145,6 +145,7 @@ describe('upload page', () => {
             })
             await renderSuspended(UploadPage)
             await screen.findByRole('checkbox', { name: 'Upload.cx (ULCX)' })
+            expect(fetchMock.mock.calls.filter(([url]) => url === '/api/settings')).toHaveLength(1)
             expect(screen.getByRole('button', { name: 'Next' })).toHaveProperty('disabled', true)
             expect(fetchMock.mock.calls.some(([url]) => url === '/api/paths')).toBe(false)
             await fireEvent.click(screen.getByRole('button', { name: 'Back' }))
