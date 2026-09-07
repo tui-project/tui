@@ -1,4 +1,4 @@
-import { mockNuxtImport, renderSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, mountSuspended, renderSuspended } from '@nuxt/test-utils/runtime'
 import { fireEvent, screen, waitFor } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { isRef, ref, toValue, watch } from 'vue'
@@ -32,6 +32,9 @@ const fetchedMetadata: Metadata = {
 }
 
 const FILENAME = 'Movie.2024.1080p.BluRay.ENCODE.H.264.DTS-HD.MA.5.1-GROUP.mkv'
+
+const sourceQuery = ref<Record<string, unknown>>({})
+mockNuxtImport('useRoute', () => () => ({ query: sourceQuery.value }))
 
 const fetchMock = vi.fn()
 type UseFetchTestOptions = Record<string, unknown> & {
@@ -81,6 +84,7 @@ function resolveOptionObject(value: unknown) {
 
 beforeEach(() => {
     vi.clearAllMocks()
+    sourceQuery.value = {}
     fetchMock.mockImplementation(async (url: string) => {
         if (url === '/api/paths') return [{ path: '/media/Movie.2024.mkv', folder: false }]
         if (url === '/api/metadata') return { filename: FILENAME, metadata: fetchedMetadata }
@@ -124,6 +128,86 @@ async function advanceToReview() {
 }
 
 describe('upload page', () => {
+    describe('reuse an existing request', () => {
+        it.each([false, true])('loads saved data and navigates back and forth for folder: %s', async (folder) => {
+            sourceQuery.value = { source: 'saved-request' }
+            const fallback = fetchMock.getMockImplementation()!
+            fetchMock.mockImplementation(async (url, options) => {
+                if (url === '/api/tracker/requests/saved-request')
+                    return {
+                        filepath: '/media/Movie.2024.mkv',
+                        folder,
+                        filename: FILENAME,
+                        metadata: { ...fetchedMetadata, title: 'Saved title' },
+                        description: 'Saved description\n\n[right][url=https://example.com]Uploaded using Tui v 0.1.0[/url][/right]',
+                    }
+                return fallback(url, options)
+            })
+            await renderSuspended(UploadPage)
+            await screen.findByRole('checkbox', { name: 'Upload.cx (ULCX)' })
+            expect(screen.getByRole('button', { name: 'Next' })).toHaveProperty('disabled', true)
+            await fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+            expect(await screen.findByRole('textbox', { name: 'Title' })).toHaveProperty('value', 'Saved title')
+            await fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+            expect(await screen.findByText(folder ? 'Selected folder' : 'Selected file')).toBeTruthy()
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+            await screen.findByRole('textbox', { name: 'Title' })
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+            await fireEvent.click(await screen.findByRole('checkbox', { name: 'Upload.cx (ULCX)' }))
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+            await waitFor(() => expect(screen.getByRole('button', { name: 'Next' })).toHaveProperty('disabled', false))
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+            expect(await screen.findByPlaceholderText('Description')).toHaveProperty('value', 'Saved description')
+            await fireEvent.click(screen.getByRole('button', { name: 'Submit Upload' }))
+            await waitFor(() =>
+                expect(fetchMock).toHaveBeenCalledWith(
+                    '/api/tracker/requests',
+                    expect.objectContaining({
+                        body: expect.objectContaining({
+                            filepath: '/media/Movie.2024.mkv',
+                            metadata: expect.objectContaining({ title: 'Saved title' }),
+                            description: expect.stringContaining('Saved description'),
+                        }),
+                    })
+                )
+            )
+            const body = fetchMock.mock.calls.find(([url]) => url === '/api/tracker/requests')![1].body
+            expect(body.description.match(/Uploaded using Tui/g)).toHaveLength(1)
+            expect(body).not.toHaveProperty('id')
+            expect(fetchMock.mock.calls.some(([url]) => url === '/api/metadata')).toBe(false)
+        })
+
+        it('shows a loading state until the saved request arrives', async () => {
+            sourceQuery.value = { source: 'saved-request' }
+            let resolveSource!: (value: unknown) => void
+            fetchMock.mockReturnValue(
+                new Promise((resolve) => {
+                    resolveSource = resolve
+                })
+            )
+            const wrapper = await mountSuspended(UploadPage)
+            expect(wrapper.findAllComponents({ name: 'USkeleton' })).toHaveLength(3)
+            expect(wrapper.text()).not.toContain('Select media source')
+            resolveSource(null)
+            await waitFor(() => expect(wrapper.text()).toContain('Select media source'))
+        })
+
+        it('allows starting from media selection when loading fails', async () => {
+            sourceQuery.value = { source: 'missing' }
+            fetchMock.mockRejectedValue(new Error('not_found'))
+            await renderSuspended(UploadPage)
+            expect(await screen.findByText('Unable to reuse this upload request.')).toBeTruthy()
+            expect(await screen.findByText('Select media source')).toBeTruthy()
+        })
+
+        it.each(['', ['one', 'two']])('ignores an invalid source query: %j', async (source) => {
+            sourceQuery.value = { source }
+            await renderSuspended(UploadPage)
+            expect(await screen.findByText('Select media source')).toBeTruthy()
+            expect(fetchMock.mock.calls.some(([url]) => url.startsWith('/api/tracker/requests/'))).toBe(false)
+        })
+    })
+
     describe('initial render', () => {
         it('renders the Upload heading', async () => {
             await renderSuspended(UploadPage)

@@ -48,6 +48,24 @@ describe('history page', () => {
         groupExecute.mockResolvedValue(undefined)
     })
 
+    it('links both the latest request and older uploads to the upload flow', async () => {
+        listData.value = { items: [buildItem({ groupCount: 2 })], total: 1 }
+        groupData.value = { items: [buildItem(), buildItem({ id: 'r0' })], total: 2 }
+        await renderSuspended(HistoryPage)
+        const rowClone = screen.getByRole('link', { name: 'Clone' })
+        expect(rowClone.getAttribute('href')).toBe('/upload?source=r1')
+        await fireEvent.click(rowClone)
+        expect(groupExecute).not.toHaveBeenCalled()
+
+        await fireEvent.click(screen.getByText('Movie.2024.mkv'))
+        await nextTick()
+        const cloneLinks = screen.getAllByRole('link', { name: 'Clone' })
+        expect(cloneLinks.map((link) => link.getAttribute('href'))).toEqual(['/upload?source=r1', '/upload?source=r1', '/upload?source=r0'])
+
+        await fireEvent.click(cloneLinks[1]!)
+        expect(screen.getByText('Current')).toBeTruthy()
+    })
+
     it.each([undefined, 'https://tracker.example/torrents/123'])('links trackers in rows and expanded uploads: %s', async (torrentUrl) => {
         listData.value = { items: [buildItem({ groupCount: 2, trackers: [buildTracker({ torrentUrl })] })], total: 1 }
         groupData.value = { items: [buildItem(), buildItem({ id: 'r0', trackers: [buildTracker({ code: 'ATH', torrentUrl })] })], total: 2 }

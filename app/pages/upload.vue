@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { StepperItem } from '@nuxt/ui'
 
-const { withFooter } = useDescriptionFooter()
+const { withFooter, withoutFooter } = useDescriptionFooter()
+const route = useRoute()
+const { pending: requestPending, error: requestError, data: requestData, execute: fetchRequest } = useGetTrackerRequest()
 
 const stepItems: StepperItem[] = [
     {
@@ -44,6 +46,24 @@ const reviewedTrackers = ref<TrackerItem[]>([])
 const { pending: uploadPending, error: uploadError, execute: executeUpload } = usePostTrackerRequests()
 const toast = useToast()
 
+onMounted(async () => {
+    if (typeof route.query.source !== 'string' || !route.query.source) return
+
+    await fetchRequest(route.query.source)
+
+    if (!requestData.value || requestError.value) return
+
+    selectedPath.value = {
+        value: requestData.value.filepath,
+        label: requestData.value.filepath,
+        folder: requestData.value.folder,
+        icon: requestData.value.folder ? 'i-lucide-folder' : 'i-lucide-file',
+    }
+    reviewedMetadata.value = { filename: requestData.value.filename, metadata: requestData.value.metadata }
+    description.value = withoutFooter(requestData.value.description)
+    currentStep.value = 2
+})
+
 watch(
     () => selectedPath.value?.value?.trim() ?? '',
     (path, previousPath) => {
@@ -83,7 +103,20 @@ async function submitUpload() {
 <template>
     <PageContainer>
         <PageHeader title="Upload" description="Create torrents and upload to private trackers." />
-        <UStepper ref="stepper" v-model="currentStep" :items="stepItems" class="w-full" size="lg" disabled>
+        <UCard v-if="requestPending">
+            <div class="space-y-3">
+                <USkeleton class="h-20 w-full" />
+                <USkeleton class="h-20 w-full" />
+                <USkeleton class="h-20 w-full" />
+            </div>
+        </UCard>
+        <UAlert
+            v-else-if="requestError"
+            color="error"
+            title="Unable to reuse this upload request."
+            description="The request or its source may no longer be available. You can start a new upload by selecting a source."
+        />
+        <UStepper v-if="!requestPending" ref="stepper" v-model="currentStep" :items="stepItems" class="w-full" size="lg" disabled>
             <template #select-media>
                 <UploadStepSelectMedia v-model="selectedPath" @next="goToNextStep" />
             </template>

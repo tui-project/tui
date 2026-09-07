@@ -9,5 +9,9 @@ export function useDescriptionFooter() {
         return description ? `${description}\n\n${footer}` : footer
     }
 
-    return { withFooter }
+    function withoutFooter(description: string) {
+        return description.replace(/(?:\n\n)?\[right\]\[url=[^\]]+\]Uploaded using Tui v [^[]+\[\/url\]\[\/right\]$/, '')
+    }
+
+    return { withFooter, withoutFooter }
 }

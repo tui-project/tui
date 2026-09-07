@@ -56,9 +56,9 @@ function toggleTracker(code: string) {
         <UAlert v-if="error" color="error" variant="soft" title="Failed to load trackers from settings. Please try again." class="mb-4" />
 
         <div v-if="pending" class="space-y-2">
-            <USkeleton class="h-8 w-full" />
-            <USkeleton class="h-8 w-full" />
-            <USkeleton class="h-8 w-full" />
+            <USkeleton class="h-20 w-full" />
+            <USkeleton class="h-20 w-full" />
+            <USkeleton class="h-20 w-full" />
         </div>
 
         <UAlert
