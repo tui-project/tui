@@ -79,23 +79,28 @@ async function handleRetry(request: TrackerRequestResponse) {
                         <div class="wrap-break-word text-sm font-medium text-highlighted">
                             {{ getRequestLabel(request.filepath) }}
                         </div>
-                        <div class="flex flex-wrap gap-1">
-                            <template v-for="tracker in request.trackers" :key="tracker.code">
-                                <UBadge :color="getTrackerUploadStatusColor(tracker.uploadStatus)" variant="soft" size="lg">
-                                    <a v-if="tracker.torrentUrl" :href="tracker.torrentUrl" target="_blank" rel="noopener noreferrer" class="hover:underline">
-                                        {{ tracker.code }}
-                                    </a>
-                                    <template v-else>{{ tracker.code }}</template>
-                                </UBadge>
-                                <UBadge
-                                    v-if="getInjectionBadgeProps(tracker.torrentClientInjected)"
-                                    v-bind="getInjectionBadgeProps(tracker.torrentClientInjected)!"
-                                    variant="soft"
-                                    size="lg"
-                                >
-                                    {{ getInjectionBadgeProps(tracker.torrentClientInjected)!.label }}
-                                </UBadge>
-                            </template>
+                        <div class="flex items-start gap-2">
+                            <div class="flex min-w-0 flex-1 flex-wrap gap-1">
+                                <template v-for="tracker in request.trackers" :key="tracker.code">
+                                    <UBadge :color="getTrackerUploadStatusColor(tracker.uploadStatus)" variant="soft" size="lg">
+                                        <a v-if="tracker.torrentUrl" :href="tracker.torrentUrl" target="_blank" rel="noopener noreferrer" class="hover:underline">
+                                            {{ tracker.code }}
+                                        </a>
+                                        <template v-else>{{ tracker.code }}</template>
+                                    </UBadge>
+                                    <UBadge
+                                        v-if="getInjectionBadgeProps(tracker.torrentClientInjected)"
+                                        v-bind="getInjectionBadgeProps(tracker.torrentClientInjected)!"
+                                        variant="soft"
+                                        size="lg"
+                                    >
+                                        {{ getInjectionBadgeProps(tracker.torrentClientInjected)!.label }}
+                                    </UBadge>
+                                </template>
+                            </div>
+                            <UButton :to="{ path: '/upload', query: { source: request.id } }" size="sm" variant="soft" color="neutral" icon="i-lucide-copy" class="shrink-0">
+                                Clone
+                            </UButton>
                         </div>
 
                         <div v-if="shouldShowProgress(request.status)" class="space-y-1">

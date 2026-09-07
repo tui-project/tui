@@ -5,7 +5,7 @@ export function usePatchTrackerRequest() {
         pending,
         error,
         execute: _execute,
-    } = useApiFetch(() => `/api/tracker/requests/${id.value}`, {
+    } = useApiFetch((): string => `/api/tracker/requests/${id.value}`, {
         method: 'PATCH',
         body: { action: 'retry' },
         immediate: false,

@@ -97,6 +97,14 @@ describe('tracker upload requests', async () => {
         await expect(() => $fetch('/api/tracker/requests')).rejects.toMatchObject({ statusCode: 401 })
     })
 
+    it.each([
+        [false, 401],
+        [true, 404],
+    ])('GET by id enforces authentication and handles missing requests (authenticated: %s)', async (authenticated, statusCode) => {
+        const cookie = authenticated ? await getSessionCookie() : ''
+        await expect($fetch('/api/tracker/requests/missing', { headers: { cookie } })).rejects.toMatchObject({ statusCode })
+    })
+
     it('POST creates an upload request and returns 201 with pending status', async () => {
         const cookie = await getSessionCookie()
 
@@ -139,6 +147,17 @@ describe('tracker upload requests', async () => {
 
         expect(requests.items.some((r) => r.id === created.id)).toBe(true)
         expect(requests.total).toBeGreaterThanOrEqual(1)
+
+        const source = await $fetch(`/api/tracker/requests/${created.id}`, { headers: { cookie } })
+        expect(source).toMatchObject({
+            filepath: expect.stringContaining('second.mkv'),
+            folder: false,
+            filename: 'second.mkv',
+            metadata: VALID_METADATA,
+            description: 'Another upload',
+        })
+        expect(source).not.toHaveProperty('trackers')
+        expect(source).not.toHaveProperty('status')
     })
 
     it('GET respects the optional page and size query parameters', async () => {

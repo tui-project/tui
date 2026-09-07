@@ -80,6 +80,7 @@ function formatDate(value?: Date) {
                                 <th class="px-3 py-3">Trackers</th>
                                 <th class="px-3 py-3">Status</th>
                                 <th class="px-3 py-3 pr-4">Date</th>
+                                <th class="px-3 py-3">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-default">
@@ -132,10 +133,13 @@ function formatDate(value?: Date) {
                                         </UBadge>
                                     </td>
                                     <td class="px-3 py-3 pr-4 whitespace-nowrap text-muted">{{ formatDate(request.createdAt) }}</td>
+                                    <td class="px-3 py-3">
+                                        <UButton :to="{ path: '/upload', query: { source: request.id } }" size="sm" variant="soft" color="neutral" @click.stop>Clone</UButton>
+                                    </td>
                                 </tr>
                                 <tr v-if="isExpanded(request.id)" class="bg-elevated/30">
                                     <td />
-                                    <td colspan="4" class="px-3 py-3 pr-4">
+                                    <td colspan="5" class="px-3 py-3 pr-4">
                                         <div class="rounded-lg bg-default ring ring-default overflow-hidden">
                                             <div v-if="expandedUploads === null" class="space-y-2 p-4">
                                                 <USkeleton class="h-5 w-2/3" />
@@ -148,6 +152,7 @@ function formatDate(value?: Date) {
                                                         <th class="px-4 py-2.5">Status</th>
                                                         <th class="px-3 py-2.5">Trackers</th>
                                                         <th class="px-3 py-2.5 pr-4">Date</th>
+                                                        <th class="px-3 py-2.5">Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody class="divide-y divide-default">
@@ -185,6 +190,11 @@ function formatDate(value?: Date) {
                                                             </div>
                                                         </td>
                                                         <td class="px-3 py-2.5 pr-4 whitespace-nowrap text-muted">{{ formatDate(attempt.createdAt) }}</td>
+                                                        <td class="px-3 py-2.5">
+                                                            <UButton :to="{ path: '/upload', query: { source: attempt.id } }" size="sm" variant="soft" color="neutral" @click.stop
+                                                                >Clone</UButton
+                                                            >
+                                                        </td>
                                                     </tr>
                                                 </tbody>
                                             </table>

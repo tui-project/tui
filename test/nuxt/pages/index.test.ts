@@ -51,6 +51,12 @@ describe('index page', () => {
         vi.useRealTimers()
     })
 
+    it('links an existing request to a new upload', async () => {
+        useFetchData.value = [{ ...BASE_REQUEST, id: 'upload-1', filepath: '/media/Movie.mkv', status: 'success', trackers: [] }]
+        await renderSuspended(IndexPage)
+        expect(screen.getByRole('link', { name: 'Clone' }).getAttribute('href')).toBe('/upload?source=upload-1')
+    })
+
     it.each([undefined, 'https://tracker.example/torrents/123'])('links the tracker when a view URL is available: %s', async (torrentUrl) => {
         useFetchData.value = [
             {
