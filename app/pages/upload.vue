@@ -52,19 +52,21 @@ watch(
     cloneRequestId,
     async (requestId) => {
         if (requestId) {
-        await fetchRequest(requestId)
-
-        if (requestData.value) {
             currentStep.value = 2
-            selectedPath.value = {
+            await fetchRequest(requestId)
+
+            if (requestData.value) {
+                selectedPath.value = {
                     value: requestData.value.filepath,
                     label: requestData.value.filepath,
                     folder: requestData.value.folder,
                     icon: requestData.value.folder ? 'i-lucide-folder' : 'i-lucide-file',
                 }
-            reviewedMetadata.value = { filename: requestData.value.filename, metadata: requestData.value.metadata }
-            description.value = withoutFooter(requestData.value.description)
-        }
+                reviewedMetadata.value = { filename: requestData.value.filename, metadata: requestData.value.metadata }
+                description.value = withoutFooter(requestData.value.description)
+            } else {
+                currentStep.value = 0
+            }
         }
     },
     { immediate: true }
