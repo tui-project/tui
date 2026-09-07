@@ -10,9 +10,17 @@ updates:
       schedule:
           interval: 'weekly'
       groups:
-          npm:
-              patterns:
-                  - '*'
+        npm-minor-and-patch:
+            patterns:
+                - '*'
+            update-types:
+                - "minor"
+                - "patch"
+        npm-major:
+            patterns:
+                - '*'
+            update-types:
+                - "major"
 
     - package-ecosystem: 'docker'
       directory: '/'
