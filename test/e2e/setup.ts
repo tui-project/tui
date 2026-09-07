@@ -1,7 +1,7 @@
 import { resolve } from 'node:path'
 import { setup as setupNuxt, type TestOptions } from '@nuxt/test-utils/e2e'
 
-export const e2eOutputDir = resolve('.nuxt/e2e-output')
+export const e2eOutputDir = resolve('.output')
 
 export async function setup(options: Partial<TestOptions> = {}) {
     await setupNuxt({
