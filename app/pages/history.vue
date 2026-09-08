@@ -148,7 +148,7 @@ function formatDate(value?: Date) {
                                     </td>
                                     <td class="px-3 py-3 pr-4 whitespace-nowrap text-muted">{{ formatDate(request.createdAt) }}</td>
                                     <td class="px-3 py-3">
-                                        <div v-if="hasFinalStatus(request.status)" class="flex items-center gap-2">
+                                        <div v-if="!hasOtherUploads(request) && hasFinalStatus(request.status)" class="flex items-center gap-2">
                                             <UTooltip text="Clone">
                                                 <UButton
                                                     :to="{ path: '/upload', query: { source: request.id } }"

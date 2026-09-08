@@ -59,21 +59,19 @@ describe('history page', () => {
         executeRetryMock.mockReset()
     })
 
-    it('links both the latest request and older uploads to the upload flow', async () => {
+    it('only links individual grouped uploads to the upload flow', async () => {
         listData.value = { items: [buildItem({ groupCount: 2 })], total: 1 }
         groupData.value = { items: [buildItem(), buildItem({ id: 'r0' })], total: 2 }
         await renderSuspended(HistoryPage)
-        const rowClone = screen.getByRole('link', { name: 'Clone' })
-        expect(rowClone.getAttribute('href')).toBe('/upload?source=r1')
-        await fireEvent.click(rowClone)
-        expect(groupExecute).not.toHaveBeenCalled()
+        expect(screen.queryByRole('link', { name: 'Clone' })).toBeNull()
+        expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
 
         await fireEvent.click(screen.getByText('Movie.2024.mkv'))
         await nextTick()
         const cloneLinks = screen.getAllByRole('link', { name: 'Clone' })
-        expect(cloneLinks.map((link) => link.getAttribute('href'))).toEqual(['/upload?source=r1', '/upload?source=r1', '/upload?source=r0'])
+        expect(cloneLinks.map((link) => link.getAttribute('href'))).toEqual(['/upload?source=r1', '/upload?source=r0'])
 
-        await fireEvent.click(cloneLinks[1]!)
+        await fireEvent.click(cloneLinks[0]!)
         expect(screen.getByText('Current')).toBeTruthy()
     })
 
@@ -97,6 +95,7 @@ describe('history page', () => {
         expect(retryButton.parentElement?.getAttribute('title')).toBe('Retry')
         expect(cloneLinks[1]!.closest('.flex')).toBe(retryButton.closest('.flex'))
 
+        await fireEvent.click(cloneLinks[0]!)
         await fireEvent.click(retryButton)
         expect(executeRetryMock).toHaveBeenCalledWith('failed')
         expect(groupExecute).not.toHaveBeenCalled()
