@@ -70,8 +70,32 @@ async function handleRetry(request: TrackerRequestResponse) {
             <div v-else class="grid gap-3 sm:grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 h-full">
                 <UCard v-for="request in requests" :key="request.id" variant="outline">
                     <div class="space-y-3">
-                        <div class="flex justify-end mt-auto">
-                            <UBadge :color="getStatusColor(request.status)" variant="soft" size="md" class="gap-1.5">
+                        <div class="flex items-center justify-between gap-2 mt-auto">
+                            <div v-if="hasFinalStatus(request.status)" class="flex gap-2">
+                                <UTooltip text="Clone">
+                                    <UButton
+                                        :to="{ path: '/upload', query: { source: request.id } }"
+                                        size="sm"
+                                        variant="soft"
+                                        color="neutral"
+                                        icon="i-lucide-copy"
+                                        square
+                                        aria-label="Clone"
+                                    />
+                                </UTooltip>
+                                <UTooltip v-if="isRetryable(request.status)" text="Retry">
+                                    <UButton
+                                        size="sm"
+                                        variant="soft"
+                                        color="neutral"
+                                        icon="i-heroicons-arrow-path"
+                                        square
+                                        aria-label="Retry"
+                                        @click="handleRetry(request)"
+                                    />
+                                </UTooltip>
+                            </div>
+                            <UBadge :color="getStatusColor(request.status)" variant="soft" size="md" class="gap-1.5 ml-auto">
                                 <UIcon :name="getStatusIcon(request.status)" :class="{ 'animate-spin': shouldAnimateIcon(request.status) }" />
                                 {{ formatStatus(request.status) }}
                             </UBadge>
@@ -79,28 +103,23 @@ async function handleRetry(request: TrackerRequestResponse) {
                         <div class="wrap-break-word text-sm font-medium text-highlighted">
                             {{ getRequestLabel(request.filepath) }}
                         </div>
-                        <div class="flex items-start gap-2">
-                            <div class="flex min-w-0 flex-1 flex-wrap gap-1">
-                                <template v-for="tracker in request.trackers" :key="tracker.code">
-                                    <UBadge :color="getTrackerUploadStatusColor(tracker.uploadStatus)" variant="soft" size="lg">
-                                        <a v-if="tracker.torrentUrl" :href="tracker.torrentUrl" target="_blank" rel="noopener noreferrer" class="hover:underline">
-                                            {{ tracker.code }}
-                                        </a>
-                                        <template v-else>{{ tracker.code }}</template>
-                                    </UBadge>
-                                    <UBadge
-                                        v-if="getInjectionBadgeProps(tracker.torrentClientInjected)"
-                                        v-bind="getInjectionBadgeProps(tracker.torrentClientInjected)!"
-                                        variant="soft"
-                                        size="lg"
-                                    >
-                                        {{ getInjectionBadgeProps(tracker.torrentClientInjected)!.label }}
-                                    </UBadge>
-                                </template>
-                            </div>
-                            <UButton :to="{ path: '/upload', query: { source: request.id } }" size="sm" variant="soft" color="neutral" icon="i-lucide-copy" class="shrink-0">
-                                Clone
-                            </UButton>
+                        <div class="flex min-w-0 flex-wrap gap-1">
+                            <template v-for="tracker in request.trackers" :key="tracker.code">
+                                <UBadge :color="getTrackerUploadStatusColor(tracker.uploadStatus)" variant="soft" size="lg">
+                                    <a v-if="tracker.torrentUrl" :href="tracker.torrentUrl" target="_blank" rel="noopener noreferrer" class="hover:underline">
+                                        {{ tracker.code }}
+                                    </a>
+                                    <template v-else>{{ tracker.code }}</template>
+                                </UBadge>
+                                <UBadge
+                                    v-if="getInjectionBadgeProps(tracker.torrentClientInjected)"
+                                    v-bind="getInjectionBadgeProps(tracker.torrentClientInjected)!"
+                                    variant="soft"
+                                    size="lg"
+                                >
+                                    {{ getInjectionBadgeProps(tracker.torrentClientInjected)!.label }}
+                                </UBadge>
+                            </template>
                         </div>
 
                         <div v-if="shouldShowProgress(request.status)" class="space-y-1">
@@ -116,9 +135,6 @@ async function handleRetry(request: TrackerRequestResponse) {
                             <div v-if="hasInjectionFailure(request)" class="text-xs text-warning">Torrent client injection failed for one or more trackers.</div>
                         </template>
 
-                        <div v-if="isRetryable(request.status)" class="flex justify-end">
-                            <UButton size="sm" variant="soft" color="neutral" icon="i-heroicons-arrow-path" @click="handleRetry(request)"> Retry </UButton>
-                        </div>
                     </div>
                 </UCard>
             </div>

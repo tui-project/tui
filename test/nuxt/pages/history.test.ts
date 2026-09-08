@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { renderSuspended, mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { renderSuspended, mountSuspended, mockComponent, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { screen, fireEvent } from '@testing-library/vue'
 import { nextTick, ref } from 'vue'
 import HistoryPage from '../../../app/pages/history.vue'
@@ -7,6 +7,12 @@ import HistoryPage from '../../../app/pages/history.vue'
 const listData = ref<{ items: Partial<TrackerRequestResponse>[]; total: number } | null>(null)
 const listError = ref<Error | null>(null)
 const listPending = ref(false)
+const executeRetryMock = vi.fn()
+
+mockComponent('UTooltip', {
+    props: ['text'],
+    template: '<span :title="text"><slot /></span>',
+})
 
 mockNuxtImport('useApiFetch', () => {
     return () => ({ data: listData, error: listError, pending: listPending, refresh: vi.fn(), execute: vi.fn() })
@@ -17,6 +23,10 @@ const groupExecute = vi.fn()
 
 mockNuxtImport('useGetTrackerRequestGroup', () => {
     return () => ({ data: groupData, pending: ref(false), error: ref(null), execute: groupExecute })
+})
+
+mockNuxtImport('usePatchTrackerRequest', () => {
+    return () => ({ execute: executeRetryMock, pending: ref(false), error: ref(null), data: ref(null) })
 })
 
 function buildTracker(overrides: Partial<TrackerItem> = {}): TrackerItem {
@@ -46,6 +56,7 @@ describe('history page', () => {
         groupData.value = null
         groupExecute.mockReset()
         groupExecute.mockResolvedValue(undefined)
+        executeRetryMock.mockReset()
     })
 
     it('links both the latest request and older uploads to the upload flow', async () => {
@@ -64,6 +75,31 @@ describe('history page', () => {
 
         await fireEvent.click(cloneLinks[1]!)
         expect(screen.getByText('Current')).toBeTruthy()
+    })
+
+    it('shows final-stage actions together and retries retryable requests', async () => {
+        listData.value = {
+            items: [
+                buildItem({ id: 'success', status: 'success' }),
+                buildItem({ id: 'failed', status: 'fail' }),
+                buildItem({ id: 'pending', status: 'pending' }),
+            ],
+            total: 3,
+        }
+        executeRetryMock.mockResolvedValue(undefined)
+
+        await renderSuspended(HistoryPage)
+
+        const cloneLinks = screen.getAllByRole('link', { name: 'Clone' })
+        const retryButton = screen.getByRole('button', { name: 'Retry' })
+        expect(cloneLinks.map((link) => link.getAttribute('href'))).toEqual(['/upload?source=success', '/upload?source=failed'])
+        expect(cloneLinks[0]!.parentElement?.getAttribute('title')).toBe('Clone')
+        expect(retryButton.parentElement?.getAttribute('title')).toBe('Retry')
+        expect(cloneLinks[1]!.closest('.flex')).toBe(retryButton.closest('.flex'))
+
+        await fireEvent.click(retryButton)
+        expect(executeRetryMock).toHaveBeenCalledWith('failed')
+        expect(groupExecute).not.toHaveBeenCalled()
     })
 
     it.each([undefined, 'https://tracker.example/torrents/123'])('links trackers in rows and expanded uploads: %s', async (torrentUrl) => {
@@ -169,6 +205,9 @@ describe('history page', () => {
         expect(screen.getByText('Current')).toBeTruthy()
         expect(screen.getByText('Fail')).toBeTruthy()
         expect(screen.getByText('ATH')).toBeTruthy()
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+        expect(executeRetryMock).toHaveBeenCalledWith('r0')
     })
 
     it('does not expand when a single-upload row body is clicked', async () => {

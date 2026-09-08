@@ -1,11 +1,13 @@
 <script setup lang="ts">
 const PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 100]
+const FINAL_STATUSES = new Set<string>([STATUS.SUCCESS, STATUS.PARTIAL_SUCCESS, STATUS.FAIL])
 
 const page = ref(1)
 const pageSize = ref(15)
 
 const { pending, data, error } = useGetTrackerRequests({ page, size: pageSize, withGroupCount: true })
 const { formatStatus, getRequestLabel, getStatusColor, getStatusIcon, getTrackerUploadStatusColor } = useTrackerRequestStatus()
+const { execute: executeRetry } = usePatchTrackerRequest()
 
 const list = computed(() => data.value ?? { items: [] as TrackerRequestResponse[], total: 0 })
 const requests = computed(() => list.value.items)
@@ -13,6 +15,18 @@ const total = computed(() => list.value.total)
 
 function hasOtherUploads(request: TrackerRequestResponse) {
     return (request.groupCount ?? 0) > 1
+}
+
+function hasFinalStatus(status: Status) {
+    return FINAL_STATUSES.has(status)
+}
+
+function isRetryable(status: Status) {
+    return status === STATUS.FAIL || status === STATUS.PARTIAL_SUCCESS
+}
+
+async function handleRetry(request: TrackerRequestResponse) {
+    await executeRetry(request.id)
 }
 
 const expandedId = ref<string | null>(null)
@@ -134,7 +148,31 @@ function formatDate(value?: Date) {
                                     </td>
                                     <td class="px-3 py-3 pr-4 whitespace-nowrap text-muted">{{ formatDate(request.createdAt) }}</td>
                                     <td class="px-3 py-3">
-                                        <UButton :to="{ path: '/upload', query: { source: request.id } }" size="sm" variant="soft" color="neutral" @click.stop>Clone</UButton>
+                                        <div v-if="hasFinalStatus(request.status)" class="flex items-center gap-2">
+                                            <UTooltip text="Clone">
+                                                <UButton
+                                                    :to="{ path: '/upload', query: { source: request.id } }"
+                                                    size="sm"
+                                                    variant="soft"
+                                                    color="neutral"
+                                                    icon="i-lucide-copy"
+                                                    square
+                                                    aria-label="Clone"
+                                                    @click.stop
+                                                />
+                                            </UTooltip>
+                                            <UTooltip v-if="isRetryable(request.status)" text="Retry">
+                                                <UButton
+                                                    size="sm"
+                                                    variant="soft"
+                                                    color="neutral"
+                                                    icon="i-heroicons-arrow-path"
+                                                    square
+                                                    aria-label="Retry"
+                                                    @click.stop="handleRetry(request)"
+                                                />
+                                            </UTooltip>
+                                        </div>
                                     </td>
                                 </tr>
                                 <tr v-if="isExpanded(request.id)" class="bg-elevated/30">
@@ -191,9 +229,31 @@ function formatDate(value?: Date) {
                                                         </td>
                                                         <td class="px-3 py-2.5 pr-4 whitespace-nowrap text-muted">{{ formatDate(attempt.createdAt) }}</td>
                                                         <td class="px-3 py-2.5">
-                                                            <UButton :to="{ path: '/upload', query: { source: attempt.id } }" size="sm" variant="soft" color="neutral" @click.stop
-                                                                >Clone</UButton
-                                                            >
+                                                            <div v-if="hasFinalStatus(attempt.status)" class="flex items-center gap-2">
+                                                                <UTooltip text="Clone">
+                                                                    <UButton
+                                                                        :to="{ path: '/upload', query: { source: attempt.id } }"
+                                                                        size="sm"
+                                                                        variant="soft"
+                                                                        color="neutral"
+                                                                        icon="i-lucide-copy"
+                                                                        square
+                                                                        aria-label="Clone"
+                                                                        @click.stop
+                                                                    />
+                                                                </UTooltip>
+                                                                <UTooltip v-if="isRetryable(attempt.status)" text="Retry">
+                                                                    <UButton
+                                                                        size="sm"
+                                                                        variant="soft"
+                                                                        color="neutral"
+                                                                        icon="i-heroicons-arrow-path"
+                                                                        square
+                                                                        aria-label="Retry"
+                                                                        @click.stop="handleRetry(attempt)"
+                                                                    />
+                                                                </UTooltip>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 </tbody>
