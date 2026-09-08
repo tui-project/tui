@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { renderSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { renderSuspended, mockComponent, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { screen } from '@testing-library/vue'
 import { computed, nextTick, ref } from 'vue'
 import IndexPage from '../../../app/pages/index.vue'
@@ -10,6 +10,11 @@ const useFetchPending = ref(false)
 const useFetchConnected = ref(true)
 const executeRetryMock = vi.fn()
 let capturedRetryUrlGetter: (() => string) | null = null
+
+mockComponent('UTooltip', {
+    props: ['text'],
+    template: '<span :title="text"><slot /></span>',
+})
 
 mockNuxtImport('useStreamTrackerRequests', () => {
     return () => ({
@@ -54,7 +59,10 @@ describe('index page', () => {
     it('links an existing request to a new upload', async () => {
         useFetchData.value = [{ ...BASE_REQUEST, id: 'upload-1', filepath: '/media/Movie.mkv', status: 'success', trackers: [] }]
         await renderSuspended(IndexPage)
-        expect(screen.getByRole('link', { name: 'Clone' }).getAttribute('href')).toBe('/upload?source=upload-1')
+        const cloneLink = screen.getByRole('link', { name: 'Clone' })
+        expect(cloneLink.getAttribute('href')).toBe('/upload?source=upload-1')
+        expect(cloneLink.parentElement?.getAttribute('title')).toBe('Clone')
+        expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
     })
 
     it.each([undefined, 'https://tracker.example/torrents/123'])('links the tracker when a view URL is available: %s', async (torrentUrl) => {
@@ -296,6 +304,7 @@ describe('index page', () => {
         expect(screen.getByText('Pending')).toBeTruthy()
         expect(screen.queryByText('Creating torrent')).toBeNull()
         expect(screen.queryByText(/Failed trackers/)).toBeNull()
+        expect(screen.queryByRole('link', { name: 'Clone' })).toBeNull()
     })
 
     it('shows neutral badge for an uploading request without progress or failed trackers', async () => {
@@ -387,5 +396,6 @@ describe('index page', () => {
 
         expect(executeRetryMock).toHaveBeenCalledTimes(1)
         expect(capturedRetryUrlGetter?.()).toBe('/api/tracker/requests/upload-1')
+        expect(screen.getByRole('link', { name: 'Clone' }).closest('.flex')).toBe(screen.getByRole('button', { name: 'Retry' }).closest('.flex'))
     })
 })
