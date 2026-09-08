@@ -77,11 +77,7 @@ describe('history page', () => {
 
     it('shows final-stage actions together and retries retryable requests', async () => {
         listData.value = {
-            items: [
-                buildItem({ id: 'success', status: 'success' }),
-                buildItem({ id: 'failed', status: 'fail' }),
-                buildItem({ id: 'pending', status: 'pending' }),
-            ],
+            items: [buildItem({ id: 'success', status: 'success' }), buildItem({ id: 'failed', status: 'fail' }), buildItem({ id: 'pending', status: 'pending' })],
             total: 3,
         }
         executeRetryMock.mockResolvedValue(undefined)

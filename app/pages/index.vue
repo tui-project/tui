@@ -84,15 +84,7 @@ async function handleRetry(request: TrackerRequestResponse) {
                                     />
                                 </UTooltip>
                                 <UTooltip v-if="isRetryable(request.status)" text="Retry">
-                                    <UButton
-                                        size="sm"
-                                        variant="soft"
-                                        color="neutral"
-                                        icon="i-heroicons-arrow-path"
-                                        square
-                                        aria-label="Retry"
-                                        @click="handleRetry(request)"
-                                    />
+                                    <UButton size="sm" variant="soft" color="neutral" icon="i-heroicons-arrow-path" square aria-label="Retry" @click="handleRetry(request)" />
                                 </UTooltip>
                             </div>
                             <UBadge :color="getStatusColor(request.status)" variant="soft" size="md" class="gap-1.5 ml-auto">
@@ -134,7 +126,6 @@ async function handleRetry(request: TrackerRequestResponse) {
                             <div v-if="request.failedTrackerCodes?.length" class="text-xs text-muted">Failed trackers: {{ request.failedTrackerCodes.join(', ') }}</div>
                             <div v-if="hasInjectionFailure(request)" class="text-xs text-warning">Torrent client injection failed for one or more trackers.</div>
                         </template>
-
                     </div>
                 </UCard>
             </div>
