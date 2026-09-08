@@ -256,8 +256,17 @@ describe('tracker upload requests', async () => {
             ignoreResponseError: true,
         })
 
-        // wait briefly for the async upload to fail (the file doesn't exist)
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        await expect
+            .poll(
+                async () => {
+                    const requests = await $fetch<{ items: Array<{ id: string; status: string }> }>('/api/tracker/requests', {
+                        headers: { cookie },
+                    })
+                    return requests.items.find((request) => request.id === created.id)?.status
+                },
+                { timeout: 5_000 }
+            )
+            .toBe('fail')
 
         const retried = await $fetch<{ id: string; status: string }>(`/api/tracker/requests/${created.id}`, {
             method: 'PATCH',
