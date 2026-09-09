@@ -819,6 +819,27 @@ describe('GET /api/metadata route handler', () => {
         expect(result.metadata.originalTitle).toBe('Expired')
     })
 
+    it('preserves the original title over an untyped origin-country alias', async () => {
+        getQuery.mockReturnValue({ path: '/media/movie.mkv' })
+        parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 14673 })
+        getDetails.mockResolvedValue({
+            title: 'Savage Streets',
+            original_title: 'Savage Streets',
+            original_language: 'en',
+            year: 1984,
+            origin_country: 'US',
+            external_ids: { imdb_id: 'tt0088044' },
+            alternative_titles: [
+                { iso_3166_1: 'US', title: 'Zombie Brigade', type: '' },
+                { iso_3166_1: 'FR', title: 'les rues de l enfer', type: '' },
+            ],
+        })
+
+        const handler = await loadHandler()
+        const result = await handler({} as never)
+        expect(result.metadata.originalTitle).toBe('Savage Streets')
+    })
+
     it('ignores a US sort title that only moves the leading article', async () => {
         getQuery.mockReturnValue({ path: '/media/show.mkv' })
         parseMetadataFromMediainfo.mockResolvedValue({ hdr: [], language: [], tmdbId: 67557 })
