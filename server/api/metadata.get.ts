@@ -179,8 +179,12 @@ function selectOriginalTitle(
     const transliteration = rankedTitles.find(({ title }) => isRomanizationType(title.type))?.title.title
     const equivalentPreferredTitle =
         preferredTitle && rankedTitles.some(({ title }) => normaliseSearchString(title.title) === normaliseSearchString(preferredTitle)) ? preferredTitle : undefined
+    const hasOriginCountryAlternative = rankedTitles.some(({ title }) => title.iso_3166_1 === originCountry)
     const selected =
-        transliteration ?? (originalTitle && originalTitle !== preferredTitle ? originalTitle : (equivalentPreferredTitle ?? rankedTitles[0]?.title.title ?? originalTitle))
+        transliteration ??
+        (originalTitle && (originalTitle !== preferredTitle || hasOriginCountryAlternative)
+            ? originalTitle
+            : (equivalentPreferredTitle ?? rankedTitles[0]?.title.title ?? originalTitle))
 
     logger.debug('Selected original title from TMDB details.', { originCountry, alternativeTitles, originalTitle, selected })
 
