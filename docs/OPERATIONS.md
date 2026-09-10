@@ -14,7 +14,7 @@ docker compose up -d tui
 docker compose logs --tail=100 tui
 ```
 
-For reproducible deployments, replace `latest` with a published version tag, for example `ghcr.io/tui-project/tui:0.2.1`. Docker version tags do not include the `v` prefix used by Git tags. Change the pinned version when you want to upgrade.
+For reproducible deployments, replace `latest` with a published version tag, for example `ghcr.io/tui-project/tui:0.2.2`. Docker version tags do not include the `v` prefix used by Git tags. Change the pinned version when you want to upgrade.
 
 The checked-in Compose file uses `build: .`. When building from source, check out the desired release and run `docker compose up -d --build tui` instead of pulling an image.
 
