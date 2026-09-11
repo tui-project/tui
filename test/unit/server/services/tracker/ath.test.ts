@@ -1175,8 +1175,9 @@ describe('athTrackerService — findDuplicates', () => {
         expect(url).not.toContain('episodeNumber')
     })
 
-    it('returns empty array when fetch fails', async () => {
-        fetchMock.mockRejectedValue(new Error('network error'))
-        expect(await service.findDuplicates(baseMetadata)).toEqual([])
+    it('propagates the error when fetching duplicates fails', async () => {
+        const error = new Error('network error')
+        fetchMock.mockRejectedValue(error)
+        await expect(service.findDuplicates(baseMetadata)).rejects.toBe(error)
     })
 })

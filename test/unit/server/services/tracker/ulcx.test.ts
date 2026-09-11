@@ -788,9 +788,10 @@ describe('ulcxTrackerService — findDuplicates', () => {
         expect(result).toEqual([{ name: 'Movie.2024.1080p.BluRay.x264-GROUP', url: 'https://upload.cx/torrents/1', trumpable: false }])
     })
 
-    it('returns empty array when fetch fails', async () => {
-        fetchMock.mockRejectedValue(new Error('network error'))
-        expect(await service.findDuplicates(baseMetadata)).toEqual([])
+    it('propagates the error when fetching duplicates fails', async () => {
+        const error = new Error('network error')
+        fetchMock.mockRejectedValue(error)
+        await expect(service.findDuplicates(baseMetadata)).rejects.toBe(error)
     })
 
     // ── HDR slot separation ────────────────────────────────────────────────────

@@ -316,10 +316,10 @@ describe('getTorrents', () => {
         expect(url).not.toContain('tmdbId')
     })
 
-    it('returns empty array and logs warning when $fetch throws', async () => {
-        vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('Network error')))
-        const result = await getTorrents(URL, API_KEY, { tmdbId: 1 })
-        expect(result).toEqual([])
+    it('propagates the error when $fetch throws', async () => {
+        const error = new Error('Network error')
+        vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(error))
+        await expect(getTorrents(URL, API_KEY, { tmdbId: 1 })).rejects.toBe(error)
     })
 
     it.each([

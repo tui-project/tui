@@ -170,7 +170,7 @@ export async function getTorrents(
         return response.data.map((t) => mapTorrentAttributes(t.attributes))
     } catch (error: unknown) {
         logger.warn('Failed to fetch torrents from UNIT3D tracker.', { trackerUrl: url, error })
-        return []
+        throw error
     }
 }
 
