@@ -184,7 +184,7 @@ function mapTorrentAttributes(attrs: Attributes): TorrentResult {
         resolution: RESOLUTION_IDS.getByValue(attrs.resolution_id)!,
         sourceType: TYPE_IDS.getByValue(attrs.type_id)!,
         videoCodec: parsed.videoCodec!,
-        videoBitrate: parseVideoBitrate(attrs.media_info),
+        videoBitrate: parseVideoBitrate(attrs.media_info)!,
         hdr: parsed.hdr,
         repack: parsed.repack,
         proper: parsed.proper,
@@ -201,9 +201,15 @@ function mapTorrentAttributes(attrs: Attributes): TorrentResult {
     }
 }
 
-function parseVideoBitrate(mediaInfo: string): number {
-    const videoSection = /(?:^|\r?\n)Video(?:\s*#\d+)?\r?\n([\s\S]*?)(?=\r?\n(?:Audio|Text|Menu)(?:\s*#\d+)?\r?\n|$)/i.exec(mediaInfo)![1]!
-    const match = /^Bit rate\s*:\s*([\d .]+)\s*([kmg]?)b\/s\s*$/im.exec(videoSection)!
+function parseVideoBitrate(mediaInfo: string): number | undefined {
+    if (!mediaInfo) return undefined
+
+    const videoSectionMatch = /(?:^|\r?\n)Video(?:\s*#\d+)?\r?\n([\s\S]*?)(?=\r?\n(?:Audio|Text|Menu)(?:\s*#\d+)?\r?\n|$)/i.exec(mediaInfo)
+    if (!videoSectionMatch) return undefined
+
+    const match = /^Bit rate\s*:\s*([\d .]+)\s*([kmg]?)b\/s\s*$/im.exec(videoSectionMatch[1]!)
+    if (!match) return undefined
+
     const value = Number.parseFloat(match[1]!.replaceAll(' ', ''))
     switch (match[2]!.toLowerCase()) {
         case 'g':

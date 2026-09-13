@@ -292,8 +292,9 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata) {
     logger.trace('Candidate torrents from tracker for duplicate check', { candidates })
 
     const uploadHdrTier = getHdrTier(metadata.hdr)
+    const uploadEncodeSizeTier = isEncode(metadata) ? getEncodeSizeTier(metadata.resolution, metadata.videoBitrate) : undefined
     const uploadContext: TorrentContext = {
-        slot: getSlot(metadata.sourceType, uploadHdrTier, metadata.videoCodec, metadata.service, metadata.cut, metadata.ratio, getMetadataEncodeSizeTier(metadata)),
+        slot: getSlot(metadata.sourceType, uploadHdrTier, metadata.videoCodec, metadata.service, metadata.cut, metadata.ratio, uploadEncodeSizeTier),
         hdrTier: uploadHdrTier,
         sourceRank: WEB_SOURCE_RANK[metadata.sourceType] ?? 0,
         repack: metadata.repack,
@@ -316,7 +317,7 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata) {
                 torrent.service,
                 torrent.cut,
                 torrent.ratio,
-                getEncodeSizeTier(torrent.resolution, torrent.videoBitrate)
+                torrent.videoBitrate == null ? undefined : getEncodeSizeTier(torrent.resolution, torrent.videoBitrate)
             ),
             hdrTier,
             sourceRank: WEB_SOURCE_RANK[torrent.sourceType] ?? 0,
@@ -393,8 +394,4 @@ function getSlot(sourceType: SourceType, tier: HdrTier, videoCodec: VideoCodec, 
         default:
             return `web:${svc}:${cutPart}:${ratioPart}:${slotTier}:${getVideoCodecFamily(videoCodec)}`
     }
-}
-
-function getMetadataEncodeSizeTier(metadata: Metadata): EncodeSizeTier | undefined {
-    return isEncode(metadata) ? getEncodeSizeTier(metadata.resolution, metadata.videoBitrate) : undefined
 }

@@ -851,6 +851,12 @@ describe('ulcxTrackerService — findDuplicates', () => {
         expect(await service.findDuplicates({ ...baseMetadata, videoBitrate: 12_000_000 })).toHaveLength(0)
     })
 
+    it('ignores an encode candidate whose size tier cannot be determined', async () => {
+        mockParsed({ videoCodec: 'x264' })
+        fetchMock.mockResolvedValue({ data: [makeUlcxCandidate({ media_info: null })] })
+        expect(await service.findDuplicates({ ...baseMetadata, videoBitrate: 12_000_000 })).toHaveLength(0)
+    })
+
     it('does not split encode slots by provider', async () => {
         mockParsed({ videoCodec: 'x264', service: 'NF' })
         expect(await service.findDuplicates({ ...baseMetadata, service: 'AMZN' })).toHaveLength(1)
