@@ -86,6 +86,35 @@ describe('tmdb service', () => {
         })
     })
 
+    it('prefers an exact title with different spacing over a longer title from the same year', async () => {
+        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
+        const { findByTitle } = await loadTMDbService()
+
+        vi.stubGlobal(
+            '$fetch',
+            vi.fn().mockResolvedValue({
+                results: [
+                    {
+                        id: 1615581,
+                        title: 'No Strings Attached: A Behind the Scenes Look at Puppet Master',
+                        original_title: 'No Strings Attached: A Behind the Scenes Look at Puppet Master',
+                        original_language: 'en',
+                        release_date: '1989-10-12',
+                    },
+                    {
+                        id: 26953,
+                        title: 'Puppetmaster',
+                        original_title: 'Puppetmaster',
+                        original_language: 'en',
+                        release_date: '1989-10-12',
+                    },
+                ],
+            })
+        )
+
+        await expect(findByTitle('Puppet Master', 'movie', 1989)).resolves.toMatchObject({ id: 26953, title: 'Puppetmaster' })
+    })
+
     it('filters TV title searches by first air year', async () => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
         const { findByTitle } = await loadTMDbService()

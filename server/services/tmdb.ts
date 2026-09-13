@@ -177,11 +177,16 @@ function selectLogoUrl(logos: TMDbImage[], originalLanguage: string) {
 }
 
 function getTitleMatchScore(result: TMDbSearchResult, normalizedTitle: string, year: number | undefined): number {
-    const titleMatches = [result.title, result.original_title, ...result.alternative_titles.map(({ title }) => title)].some(
-        (candidate) => normaliseSearchString(candidate) === normalizedTitle
-    )
+    const normalizedCandidates = [result.title, result.original_title, ...result.alternative_titles.map(({ title }) => title)].map((candidate) => normaliseSearchString(candidate))
+    const titleMatchScore = normalizedCandidates.some((candidate) => candidate === normalizedTitle)
+        ? 2
+        : Number(normalizedCandidates.some((candidate) => removeSpaces(candidate) === removeSpaces(normalizedTitle)))
 
-    return Number(year !== undefined && result.year === year) * 2 + Number(titleMatches)
+    return Number(year !== undefined && result.year === year) * 4 + titleMatchScore
+}
+
+function removeSpaces(value: string) {
+    return value.replaceAll(' ', '')
 }
 
 export async function findLocale(title: string, tmdbId: number, mediaType: MediaType): Promise<string | undefined> {
