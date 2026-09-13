@@ -238,7 +238,16 @@ describe('upload', () => {
 })
 
 function makeTorrentEntry(
-    overrides: Partial<{ name: string; details_link: string; resolution_id: number; type_id: number; hdr: string | null; season_number: number; episode_number: number }> = {}
+    overrides: Partial<{
+        name: string
+        details_link: string
+        resolution_id: number
+        type_id: number
+        hdr: string | null
+        season_number: number
+        episode_number: number
+        media_info: string | null
+    }> = {}
 ) {
     return {
         attributes: {
@@ -366,6 +375,12 @@ describe('getTorrents', () => {
         vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ data: [makeTorrentEntry({ media_info: `General\nMovie\n\nVideo\nBit rate : ${bitrate}\n\nAudio\nFormat : E-AC-3` })] }))
         const [result] = await getTorrents(URL, API_KEY, { tmdbId: 1 })
         expect(result!.videoBitrate).toBe(expected)
+    })
+
+    it.each([null, '', 'General\nMovie', 'Video\nFormat : AVC'])('maps an unusable MediaInfo bitrate %j as undefined', async (mediaInfo) => {
+        vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ data: [makeTorrentEntry({ media_info: mediaInfo })] }))
+        const [result] = await getTorrents(URL, API_KEY, { tmdbId: 1 })
+        expect(result).toMatchObject({ name: 'Movie.2024.1080p.BluRay.ENCODE.x264-GROUP', videoBitrate: undefined })
     })
 
     it('returns MediaInfo bitrate even when the release name contains a tier label', async () => {
