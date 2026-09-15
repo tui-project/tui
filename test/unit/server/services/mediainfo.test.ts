@@ -55,12 +55,15 @@ describe('mediainfo service', () => {
     })
 
     describe('parseMetadataFromMediainfo', () => {
-        it('returns the raw video bitrate', async () => {
-            mockTracks(videoTrack({ BitRate: '17000000' }), audioTrack())
+        it.each([
+            { fields: { BitRate: '17000000', BitRate_Maximum: '19000000' }, expected: 17_000_000 },
+            { fields: { BitRate_Maximum: '36999168' }, expected: 36_999_168 },
+        ])('returns the available video bitrate from $fields', async ({ fields, expected }) => {
+            mockTracks(videoTrack(fields), audioTrack())
             const { parseMetadataFromMediainfo } = await loadService()
 
             const result = await parseMetadataFromMediainfo('/tmp/movie.mkv', 'ENCODE')
-            expect(result.videoBitrate).toBe(17_000_000)
+            expect(result.videoBitrate).toBe(expected)
         })
 
         it('falls back to the first audio track when none is marked Default', async () => {

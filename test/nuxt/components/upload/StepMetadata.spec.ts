@@ -781,6 +781,19 @@ describe('StepMetadata', { timeout: 11000 }, () => {
             await waitFor(() => expect(onNext).toHaveBeenCalledTimes(1))
         })
 
+        it('continues when video bitrate is unavailable', async () => {
+            const onNext = vi.fn()
+            mockExecute.mockImplementation(() => {
+                mockData.value = createMetadata({ videoBitrate: undefined })
+            })
+
+            await renderSuspended(StepMetadata, { props: { selectedPath, onNext } })
+
+            await fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+            await waitFor(() => expect(onNext).toHaveBeenCalledTimes(1))
+        })
+
         it('emits back and next events', async () => {
             const onBack = vi.fn()
             const onNext = vi.fn()
