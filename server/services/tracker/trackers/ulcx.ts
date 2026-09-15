@@ -292,7 +292,7 @@ async function findDuplicates(url: string, apiKey: string, metadata: Metadata) {
     logger.trace('Candidate torrents from tracker for duplicate check', { candidates })
 
     const uploadHdrTier = getHdrTier(metadata.hdr)
-    const uploadEncodeSizeTier = isEncode(metadata) ? getEncodeSizeTier(metadata.resolution, metadata.videoBitrate) : undefined
+    const uploadEncodeSizeTier = isEncode(metadata) && metadata.videoBitrate != null ? getEncodeSizeTier(metadata.resolution, metadata.videoBitrate) : undefined
     const uploadContext: TorrentContext = {
         slot: getSlot(metadata.sourceType, uploadHdrTier, metadata.videoCodec, metadata.service, metadata.cut, metadata.ratio, uploadEncodeSizeTier),
         hdrTier: uploadHdrTier,

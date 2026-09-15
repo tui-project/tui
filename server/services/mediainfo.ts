@@ -21,7 +21,7 @@ export interface ParsedMediainfoMetadata {
     resolution?: Resolution
     videoCodec?: VideoCodec
     videoStandard?: VideoStandard
-    videoBitrate: number
+    videoBitrate?: number
     frameRate?: number
     hi10p: boolean
     hdr: HDR[]
@@ -56,7 +56,7 @@ export async function parseMetadataFromMediainfo(filePath: string, sourceType: S
     const format = toStringValue(video, 'Format')
     const formatVersion = toStringValue(video, 'Format_Version')
     const videoCodec = parseVideoCodec(format, formatVersion, sourceType)
-    const videoBitrate = parseNumberValue(video, 'BitRate')!
+    const videoBitrate = parseVideoBitrate(video)
 
     const standard = toStringValue(video, 'Standard')
     const videoStandard = parseVideoStandard(standard)
@@ -258,6 +258,10 @@ function parseVideoCodec(format: string, formatVersion: string, sourceType: Sour
             logger.warn('Unabled to detect video codec.', { format, formatVersion, sourceType })
             return undefined
     }
+}
+
+function parseVideoBitrate(video: MediaInfoTrack | undefined): number | undefined {
+    return parseNumberValue(video, 'BitRate') ?? parseNumberValue(video, 'BitRate_Maximum')
 }
 
 function parseVideoStandard(standard: string): VideoStandard | undefined {

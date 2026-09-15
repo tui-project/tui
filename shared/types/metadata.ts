@@ -441,7 +441,7 @@ export const MetadataSchema = z
         audioMetadata: z.enum(AUDIO_METADATA_TYPES).optional(),
         hasTrueHDCompatibilityTrack: z.boolean().optional(),
         hasEnglishSubs: z.boolean(),
-        videoBitrate: z.number().positive(),
+        videoBitrate: z.number().positive().optional(),
         tmdbId: z.number().int().min(1, 'TMDb ID is required'),
         imdbId: z.string().trim().min(1, 'IMDb ID is required'),
         tvdbId: z.number().int().optional(),
