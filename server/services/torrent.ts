@@ -37,6 +37,9 @@ const torrentsDirectory = join(process.cwd(), 'config', 'torrents')
 const tempDirectory = join(process.cwd(), 'config', 'tmp', 'torrents')
 
 export async function createGenericTorrent(options: CreateGenericTorrentOptions): Promise<GenericTorrentResult> {
+    const {
+        public: { version, projectUrl },
+    } = useRuntimeConfig()
     const torrentId = randomUUID()
     const genericTorrentPath = join(torrentsDirectory, `${torrentId}.torrent`)
     const pieceLength = await calculatePieceLength(options.sourcePath)
@@ -56,7 +59,7 @@ export async function createGenericTorrent(options: CreateGenericTorrentOptions)
             {
                 announceList: [],
                 pieceLength,
-                createdBy: 'tui',
+                createdBy: `Tui v${version} (${projectUrl})`,
                 onProgress: (hashedBytes: number, totalBytes: number) => {
                     const progressPercent = toProgressPercent(hashedBytes, totalBytes)
                     if (progressPercent === lastProgressPercent) {

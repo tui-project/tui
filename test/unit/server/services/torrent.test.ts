@@ -8,6 +8,12 @@ const writeFile = vi.fn()
 const createTorrent = vi.fn()
 const parseTorrent = vi.fn()
 const toTorrentFile = vi.fn()
+const useRuntimeConfig = vi.fn(() => ({
+    public: {
+        version: '0.2.2',
+        projectUrl: 'https://github.com/tui-project/tui',
+    },
+}))
 const logger = {
     trace: vi.fn(),
     debug: vi.fn(),
@@ -39,6 +45,7 @@ describe('torrent service', () => {
     beforeEach(() => {
         vi.resetModules()
         vi.clearAllMocks()
+        vi.stubGlobal('useRuntimeConfig', useRuntimeConfig)
     })
 
     it('creates a tracker-free torrent and reports progress', async () => {
@@ -58,11 +65,17 @@ describe('torrent service', () => {
         createTorrent.mockImplementation(
             (
                 _sourcePath: string,
-                options: { onProgress: (hashedBytes: number, totalBytes: number) => void; announceList: string[][]; pieceLength: number },
+                options: {
+                    onProgress: (hashedBytes: number, totalBytes: number) => void
+                    announceList: string[][]
+                    pieceLength: number
+                    createdBy: string
+                },
                 callback: (error: Error | null, torrent: Buffer) => void
             ) => {
                 expect(options.announceList).toEqual([])
                 expect(options.pieceLength).toBe(1024 * 1024)
+                expect(options.createdBy).toBe('Tui v0.2.2 (https://github.com/tui-project/tui)')
                 options.onProgress(256, 1024)
                 options.onProgress(257, 1024)
                 options.onProgress(1024, 1024)
