@@ -443,6 +443,20 @@ describe('settings page', () => {
         expect(wrapper.findAllComponents({ name: 'USeparator' }).length).toBeGreaterThan(0)
     })
 
+    it.each([0, 1])('shows a torrent client separator only before another client (selected index %i)', async (selectedIndex) => {
+        loadedDataRef.value = buildSettings({
+            torrentClients: [
+                { selected: selectedIndex === 0, code: 'QUI', name: 'qui', url: '', apiKey: '' },
+                { selected: selectedIndex === 1, code: 'OTHER', name: 'Other', url: '', apiKey: '' },
+            ],
+        })
+
+        await renderSuspended(SettingsPage)
+
+        const credentials = screen.getByPlaceholderText('e.g. http://localhost:7474').closest('.pl-6')!
+        expect(credentials.parentElement!.querySelectorAll('[role="separator"]')).toHaveLength(selectedIndex === 0 ? 1 : 0)
+    })
+
     it('does not deselect other torrent clients when a client is deselected', async () => {
         loadedDataRef.value = buildSettings({
             mediaPaths: ['/media/a'],

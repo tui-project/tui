@@ -250,17 +250,19 @@ function buildSaveSettingsRequest(settings: SettingsFormState): AppSettings {
                                 "
                             />
 
-                            <div v-if="client.selected" class="space-y-4 pl-6">
-                                <UFormField label="URL" :name="`torrentClients.${index}.url`" required>
-                                    <UInput v-model="client.url" size="xl" class="w-full" :placeholder="`e.g. http://localhost:7474`" />
-                                </UFormField>
+                            <template v-if="client.selected">
+                                <div class="space-y-4 pl-6">
+                                    <UFormField label="URL" :name="`torrentClients.${index}.url`" required>
+                                        <UInput v-model="client.url" size="xl" class="w-full" :placeholder="`e.g. http://localhost:7474`" />
+                                    </UFormField>
 
-                                <UFormField label="API Key" :name="`torrentClients.${index}.apiKey`" required>
-                                    <UInput v-model="client.apiKey" size="xl" class="w-full" :placeholder="`Enter ${client.name} API key`" />
-                                </UFormField>
-                            </div>
+                                    <UFormField label="API Key" :name="`torrentClients.${index}.apiKey`" required>
+                                        <UInput v-model="client.apiKey" size="xl" class="w-full" :placeholder="`Enter ${client.name} API key`" />
+                                    </UFormField>
+                                </div>
 
-                            <USeparator v-if="index < formState.torrentClients.length - 1 && client.selected" />
+                                <USeparator v-if="index < formState.torrentClients.length - 1" />
+                            </template>
                         </div>
                     </template>
                 </div>
