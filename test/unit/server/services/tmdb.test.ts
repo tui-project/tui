@@ -154,45 +154,35 @@ describe('tmdb service', () => {
         await expect(findByTitle('Movie', 'movie')).resolves.toBeNull()
     })
 
-    it('finds by external id and normalizes prefixed id', async () => {
+    it.each([
+        { mediaType: 'movie', idType: 'imdb_id', externalID: 'movie/tt2795196' },
+        { mediaType: 'tv', idType: 'imdb_id', externalID: 'tv/tt2795196' },
+        { mediaType: 'tv', idType: 'tvdb_id', externalID: 'tv/300' },
+    ] as const)('finds $mediaType by $idType without external_ids in the response', async ({ mediaType, idType, externalID }) => {
         getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { findByExternalID, ID_TYPES } = await loadTMDbService()
+        const { findByExternalID } = await loadTMDbService()
+        const item = {
+            id: 99,
+            title: 'Movie',
+            name: 'Show',
+            original_language: 'en',
+            release_date: '2020-01-01',
+            first_air_date: '2020-01-01',
+        }
+        const fetchMock = vi.fn().mockResolvedValue({
+            movie_results: mediaType === 'movie' ? [item] : [],
+            tv_results: mediaType === 'tv' ? [item] : [],
+        })
+        vi.stubGlobal('$fetch', fetchMock)
 
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({
-                movie_results: [],
-                tv_results: [
-                    {
-                        id: 99,
-                        name: 'Show',
-                        original_name: 'Show O',
-                        original_language: 'en',
-                        first_air_date: '2020-01-01',
-                        origin_country: [],
-                        external_ids: { imdb_id: 'tt123' },
-                    },
-                ],
-            })
-        )
-
-        await expect(findByExternalID('tv/tt123', ID_TYPES.IMDB, 'tv')).resolves.toMatchObject({ id: 99, title: 'Show', year: 2020, media_type: 'tv' })
-    })
-
-    it('returns external ids from find response when present', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { findByExternalID, ID_TYPES } = await loadTMDbService()
-
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({
-                movie_results: [{ id: 5, title: 'Film', release_date: '2020-01-01', origin_country: [], external_ids: { imdb_id: 'tt999', tvdb_id: null } }],
-                tv_results: [],
-            })
-        )
-
-        await expect(findByExternalID('tt999', ID_TYPES.IMDB, 'movie')).resolves.toMatchObject({
-            external_ids: { imdb_id: 'tt999' },
+        await expect(findByExternalID(externalID, idType, mediaType)).resolves.toMatchObject({
+            id: 99,
+            year: 2020,
+            media_type: mediaType,
+            external_ids: undefined,
+        })
+        expect(fetchMock).toHaveBeenCalledExactlyOnceWith(`https://api.themoviedb.org/3/find/${externalID.split('/')[1]}`, {
+            query: { api_key: 'key', external_source: idType },
         })
     })
 
@@ -230,8 +220,8 @@ describe('tmdb service', () => {
         vi.stubGlobal(
             '$fetch',
             vi.fn().mockResolvedValue({
-                movie_results: [{ id: 7, title: 'Movie Pick', release_date: '2021-03-03', origin_country: [], external_ids: { imdb_id: 'tt777' } }],
-                tv_results: [{ id: 8, name: 'TV Pick', first_air_date: '2021-03-03', origin_country: [], external_ids: { imdb_id: 'tt777' } }],
+                movie_results: [{ id: 7, title: 'Movie Pick', release_date: '2021-03-03', origin_country: [] }],
+                tv_results: [{ id: 8, name: 'TV Pick', first_air_date: '2021-03-03', origin_country: [] }],
             })
         )
 
@@ -248,22 +238,6 @@ describe('tmdb service', () => {
         vi.stubGlobal('$fetch', vi.fn().mockRejectedValue(new Error('network error')))
 
         await expect(findByExternalID('tt123', ID_TYPES.IMDB, 'movie')).resolves.toBeNull()
-    })
-
-    it('returns tvdb_id from external_ids when present on selected item', async () => {
-        getSettings.mockResolvedValue({ tmdbApiKey: 'key' })
-        const { findByExternalID, ID_TYPES } = await loadTMDbService()
-        vi.stubGlobal(
-            '$fetch',
-            vi.fn().mockResolvedValue({
-                movie_results: [],
-                tv_results: [{ id: 5, name: 'Show', first_air_date: '2020-01-01', origin_country: [], external_ids: { imdb_id: undefined, tvdb_id: 300 } }],
-            })
-        )
-
-        const result = await findByExternalID('300', ID_TYPES.TVDB, 'tv')
-        expect(result?.external_ids?.tvdb_id).toBe(300)
-        expect(result?.external_ids?.imdb_id).toBeUndefined()
     })
 
     it('gets movie details with external ids and normalized alternative titles', async () => {
