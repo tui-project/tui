@@ -26,7 +26,7 @@ interface TMDbItem {
     first_air_date?: string
     media_type?: MediaType
     origin_country?: string[]
-    external_ids: TMDbExternalIDs
+    external_ids?: TMDbExternalIDs
     alternative_titles?: {
         results?: TMDbAlternativeTitle[]
         titles?: TMDbAlternativeTitle[]
@@ -55,7 +55,7 @@ export interface TMDbSearchResult {
     year: number
     media_type: MediaType
     origin_country?: string
-    external_ids: TMDbExternalIDs
+    external_ids?: TMDbExternalIDs
     alternative_titles: TMDbAlternativeTitle[]
     logo_url?: string
 }
@@ -266,12 +266,7 @@ export async function findByExternalID(externalID: string, idType: IDType, media
             return null
         }
 
-        const externalIds: TMDbExternalIDs = {
-            imdb_id: selected.external_ids.imdb_id,
-            tvdb_id: selected.external_ids.tvdb_id,
-        }
-
-        return toSearchResult({ ...selected, external_ids: externalIds }, mediaType)
+        return toSearchResult(selected, mediaType)
     } catch (error: unknown) {
         logger.warn('Find by external ID request failed.', { mediaType, idType, endpoint: path, externalID: normalizedExternalID, error })
         return null
